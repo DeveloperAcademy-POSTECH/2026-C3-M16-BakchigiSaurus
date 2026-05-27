@@ -1,6 +1,6 @@
 # 2026-C3-M16-BakchigiSaurus
 
-![박치기사우르스](<img width="2448" height="1633" alt="image" src="https://github.com/user-attachments/assets/991832b7-070a-4545-9790-63059be5c714" />)
+<img width="500" height="auto" alt="Image" src="https://github.com/user-attachments/assets/d2b1b41c-ca95-4b91-96fe-664e76aee3d5" />
 
 > 고산, 카야, 하지, 살룻, 라나키, 캄초
 
