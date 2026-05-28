@@ -1,0 +1,20 @@
+#!/bin/zsh
+export PATH="$PATH:/opt/homebrew/bin"
+
+echo "Running SwiftFormat..."
+
+if command -v swiftformat >/dev/null; then
+    swiftformat .
+else
+    echo "SwiftFormat not installed"
+fi
+
+echo "Running SwiftLint..."
+
+if command -v swiftlint >/dev/null; then
+    swiftlint --config "$PWD/swiftlint.yml"
+else
+    echo "SwiftLint not installed"
+fi
+
+echo "Pre-commit checks complete."
