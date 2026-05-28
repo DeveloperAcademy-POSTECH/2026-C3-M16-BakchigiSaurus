@@ -2,12 +2,14 @@ name: Xcode Build and Test
 
 on:
   push:
+    branches: [ "develop" ]
     paths:
-      - "project/**"
+      - "Project/**"
       - ".github/workflows/xcode-project.yml"
   pull_request:
+    branches: [ "develop" ]
     paths:
-      - "project/**"
+      - "Project/**"
       - ".github/workflows/xcode-project.yml"
   workflow_dispatch:
 
@@ -17,7 +19,7 @@ jobs:
     timeout-minutes: 30
     defaults:
       run:
-        working-directory: project
+        working-directory: Project
     env:
       PROJECT_PATH: hideandseek.xcodeproj
       SCHEME: hideandseek
