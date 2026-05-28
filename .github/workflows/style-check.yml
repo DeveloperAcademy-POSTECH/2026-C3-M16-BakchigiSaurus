@@ -1,0 +1,25 @@
+name: Style Check
+
+on:
+  pull_request:
+    branches: [ "*" ]
+
+jobs:
+  style-check:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install SwiftLint and SwiftFormat
+        run: |
+          brew install swiftlint swiftformat
+
+      - name: Check SwiftFormat
+        run: |
+          swiftformat . --lint
+
+      - name: Check SwiftLint
+        run: |
+          swiftlint --config swiftlint.yml
