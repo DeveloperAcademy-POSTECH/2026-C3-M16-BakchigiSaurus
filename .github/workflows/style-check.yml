@@ -17,9 +17,11 @@ jobs:
           brew install swiftlint swiftformat
 
       - name: Check SwiftFormat
+        working-directory: Project
         run: |
-          swiftformat . --lint
+          swiftformat hideandseek --config .swiftformat --lint
 
       - name: Check SwiftLint
+        working-directory: Project
         run: |
-          swiftlint --config swiftlint.yml
+          swiftlint --config swiftlint.yml hideandseek
