@@ -1,5 +1,5 @@
 //
-//  hideandseekApp.swift
+//  HideandseekApp.swift
 //  hideandseek
 //
 //  Created by Lanakee on 5/28/26.
