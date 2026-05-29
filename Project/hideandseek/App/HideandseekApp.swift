@@ -8,7 +8,7 @@
 import SwiftUI
 
 @main
-struct hideandseekApp: App {
+struct HideandseekApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
