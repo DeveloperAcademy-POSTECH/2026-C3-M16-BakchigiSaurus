@@ -8,11 +8,12 @@
 import SwiftUI
 
 struct TaggerSearchView: View {
+    
+    @State private var showHintAlert: Bool = false
+    
     var body: some View {
         ZStack {
 //            TODO: CameraView 호출
-//            Color.orange
-//                .ignoresSafeArea()
             ZStack {
                 VStack {
                     GameTimer(timeLeft: 300)
@@ -32,7 +33,7 @@ struct TaggerSearchView: View {
                             }
                             Button {
                                 // TODO: 힌트 갯수 연결
-
+                                showHintAlert = true
                             } label: {
                                 Label("힌트 (n개 남음)", systemImage: "magnifyingglass")
                                     .padding(.vertical, 10)
@@ -41,6 +42,8 @@ struct TaggerSearchView: View {
                             .buttonStyle(.glass)
                             .cornerRadius(20)
                             .padding(.bottom, 7)
+                            
+                            HintActivationView(isAlertPresented: $showHintAlert)
                         }
                         Spacer()
                     }

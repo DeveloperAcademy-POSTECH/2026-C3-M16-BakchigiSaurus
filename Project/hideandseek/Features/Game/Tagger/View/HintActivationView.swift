@@ -8,11 +8,22 @@
 import SwiftUI
 
 struct HintActivationView: View {
+    
+    @Binding var isAlertPresented: Bool
+    
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        EmptyView()
+            .alert("힌트를 사용할까요?", isPresented: $isAlertPresented) {
+                Button("네", role: .none) {
+                    //TODO: HintSuccessView Or HintFailureView 로 이동함
+                }
+                Button("아니요", role: .cancel) { }
+            } message: {
+                Text("가장 가까운 사람의 방향이 잠시동안 표시됩니다")
+            }
     }
 }
 
 #Preview {
-    HintActivationView()
+    HintActivationView(isAlertPresented: .constant(true))
 }
