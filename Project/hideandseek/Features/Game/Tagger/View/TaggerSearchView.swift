@@ -20,30 +20,27 @@ struct TaggerSearchView: View {
                     HStack {
                         VStack(alignment: .leading) {
                             Text("주변에")
-                                .font(.title)
-                                .bold()
+                                .font(.largeTitle.bold())
                                 .foregroundStyle(Color.gray)
                             HStack {
                                 Text("숨은 사람")
-                                    .font(.title)
-                                    .bold()
+                                    .font(.largeTitle.bold())
                                     .foregroundStyle(Color.white)
                                 Text("을 찾는 중")
-                                    .font(.title)
-                                    .bold()
+                                    .font(.largeTitle.bold())
                                     .foregroundStyle(Color.gray)
                             }
                             Button {
                                 // TODO: 힌트 갯수 연결
-                              
+
                             } label: {
-                              Label("힌트 (n개 남음)", systemImage: "magnifyingglass")
-                                .padding(.vertical, 10)
+                                Label("힌트 (n개 남음)", systemImage: "magnifyingglass")
+                                    .padding(.vertical, 10)
+                                    .font(.title3)
                             }
                             .buttonStyle(.glass)
                             .cornerRadius(20)
                             .padding(.bottom, 7)
-                            .padding(.top, 16)
                         }
                         Spacer()
                     }
