@@ -21,14 +21,14 @@ struct TaggerSearchView: View {
                         VStack(alignment: .leading) {
                             Text("주변에")
                                 .font(.largeTitle.bold())
-                                .foregroundStyle(Color.gray)
+                                .foregroundStyle(.secondary)
                             HStack {
                                 Text("숨은 사람")
                                     .font(.largeTitle.bold())
-                                    .foregroundStyle(Color.white)
+                                    .foregroundStyle(.primary)
                                 Text("을 찾는 중")
                                     .font(.largeTitle.bold())
-                                    .foregroundStyle(Color.gray)
+                                    .foregroundStyle(.secondary)
                             }
                             Button {
                                 // TODO: 힌트 갯수 연결
