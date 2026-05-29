@@ -15,7 +15,7 @@ struct TaggerSearchView: View {
                 .ignoresSafeArea()
             ZStack {
                 VStack {
-                    Text("timer")
+                    GameTimer(timeLeft: 300)
                     Spacer()
                     HStack {
                         VStack (alignment: .leading) {
@@ -55,5 +55,8 @@ struct TaggerSearchView: View {
 }
 
 #Preview {
-    TaggerSearchView()
+    VStack {
+        TaggerSearchView()
+    }
+    .background(.white)
 }
