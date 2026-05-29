@@ -23,5 +23,7 @@ struct GameTimer: View {
 #Preview {
   VStack {
     GameTimer()
-  }.padding(24)
+  }
+  .padding(24)
+  .background(.white)
 }
