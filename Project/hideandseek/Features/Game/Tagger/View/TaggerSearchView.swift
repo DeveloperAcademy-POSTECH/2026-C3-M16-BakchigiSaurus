@@ -33,23 +33,23 @@ struct TaggerSearchView: View {
                                     .bold()
                                     .foregroundStyle(Color.gray)
                             }
-                            Button("힌트 n 개 남음") {
+                            Button {
                                 // TODO: 힌트 갯수 연결
+                              
+                            } label: {
+                              Label("힌트 (n개 남음)", systemImage: "magnifyingglass")
+                                .padding(.vertical, 10)
                             }
-                            .buttonStyle(.borderedProminent)
-                            .tint(.clear)
-                            .background(.ultraThinMaterial)
-                            .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.5), lineWidth: 1))
-                            .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: 10)
+                            .buttonStyle(.glass)
                             .cornerRadius(20)
-                            .padding(.top, 2)
-                            .padding(.bottom, 10)
+                            .padding(.bottom, 7)
+                            .padding(.top, 16)
                         }
                         Spacer()
                     }
                 }
             }
-            .padding(30)
+            .padding(.horizontal, 24)
         }
     }
 }
