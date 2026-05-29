@@ -10,7 +10,7 @@ import SwiftUI
 struct TaggerSearchView: View {
     var body: some View {
         ZStack {
-            // TODO: CameraView 호출
+//            TODO: CameraView 호출
             Color.orange
                 .ignoresSafeArea()
             ZStack {
@@ -36,6 +36,12 @@ struct TaggerSearchView: View {
                             Button("힌트 n개 남음") {
                                 //힌트플로우 연결
                             }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.clear)
+                            .background(.ultraThinMaterial)
+                            .overlay(RoundedRectangle(cornerRadius: 20) .stroke(Color.white.opacity(0.5),lineWidth: 2))
+                            .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: 10)
+                            .cornerRadius(20)
                             .padding(.top,2)
                             .padding(.bottom,10)
                         }
