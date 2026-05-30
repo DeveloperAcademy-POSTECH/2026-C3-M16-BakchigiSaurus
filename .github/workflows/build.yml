@@ -26,6 +26,7 @@ jobs:
         run: xcodebuild -version
 
       - name: Build app
+        working-directory: Project
         run: |
           xcodebuild \
             -project hideandseek.xcodeproj \
