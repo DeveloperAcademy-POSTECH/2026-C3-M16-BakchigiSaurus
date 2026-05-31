@@ -8,7 +8,7 @@
 import AVFoundation
 import SwiftUI
 
-final class RecorderDelegate: NSObject,
+nonisolated final class RecorderDelegate: NSObject,
                               AVCaptureFileOutputRecordingDelegate,
                               @unchecked Sendable {
     
@@ -164,7 +164,6 @@ struct RecordingView: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            // ✅ model.service.session: nonisolated(unsafe)라 await 없이 main에서 접근 가능
             CameraPreview(session: model.service.session)
                 .ignoresSafeArea()
             

@@ -10,9 +10,22 @@
 		96888C252FC7E3990080F374 /* hideandseek.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = hideandseek.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		63EE4A2F2FCC24200004B6B7 /* Exceptions for "hideandseek" folder in "hideandseek" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 96888C242FC7E3990080F374 /* hideandseek */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		96888C272FC7E3990080F374 /* hideandseek */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				63EE4A2F2FCC24200004B6B7 /* Exceptions for "hideandseek" folder in "hideandseek" target */,
+			);
 			path = hideandseek;
 			sourceTree = "<group>";
 		};
@@ -278,6 +291,7 @@
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = P9K4FP6UPH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = hideandseek/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -314,6 +328,7 @@
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = P9K4FP6UPH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = hideandseek/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
