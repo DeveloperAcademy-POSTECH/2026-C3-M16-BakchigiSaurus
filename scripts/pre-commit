@@ -1,20 +1,15 @@
 #!/bin/zsh
+set -e
+
 export PATH="$PATH:/opt/homebrew/bin"
 
-echo "Running SwiftFormat..."
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+PROJECT_DIR="$REPO_ROOT/Project"
 
-if command -v swiftformat >/dev/null; then
-    swiftformat .
-else
-    echo "SwiftFormat not installed"
-fi
+echo "Running SwiftFormat..."
+swiftformat "$PROJECT_DIR"
 
 echo "Running SwiftLint..."
-
-if command -v swiftlint >/dev/null; then
-    swiftlint --config "$PWD/swiftlint.yml"
-else
-    echo "SwiftLint not installed"
-fi
+swiftlint --config "$PROJECT_DIR/swiftlint.yml" "$PROJECT_DIR"
 
 echo "Pre-commit checks complete."
