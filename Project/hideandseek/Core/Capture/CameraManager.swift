@@ -39,6 +39,7 @@ import SwiftUI
 
 // =====================================================================
 // MARK: - RecorderDelegate
+
 // =====================================================================
 
 /// `AVCaptureMovieFileOutput`의 녹화 완료 delegate 콜백을 `async`/`await`로 바꿔주는 어댑터.
@@ -50,25 +51,25 @@ import SwiftUI
 /// `continuation` 접근은 `NSLock`으로 직접 보호하므로 `@unchecked Sendable`로 표시한다.
 ///
 /// - Important: 직접 쓰지 말고 ``CaptureService``를 통해서만 사용한다.
-nonisolated final class RecorderDelegate: NSObject,
-                                          AVCaptureFileOutputRecordingDelegate,
-                                          @unchecked Sendable {
-    
+final nonisolated class RecorderDelegate: NSObject,
+    AVCaptureFileOutputRecordingDelegate,
+    @unchecked Sendable
+{
     private let output: AVCaptureMovieFileOutput
     private let lock = NSLock()
     private var continuation: CheckedContinuation<URL, Error>?
-    
+
     /// - Parameter output: 이 delegate가 제어할 동영상 파일 출력.
     init(output: AVCaptureMovieFileOutput) {
         self.output = output
     }
-    
+
     /// 지정한 경로로 녹화를 시작한다.
     /// - Parameter url: 결과 클립이 저장될 임시 파일 경로.
     func start(to url: URL) {
         output.startRecording(to: url, recordingDelegate: self)
     }
-    
+
     /// 녹화를 멈추고, 파일 기록이 끝날 때까지 기다린 뒤 결과 URL을 돌려준다.
     /// - Returns: 녹화된 `.mov` 파일의 URL.
     /// - Throws: 녹화 중 발생한 오류.
@@ -82,17 +83,19 @@ nonisolated final class RecorderDelegate: NSObject,
             output.stopRecording()
         }
     }
-    
+
     // AVCaptureFileOutputRecordingDelegate: AVFoundation이 자체 스레드에서 호출한다.
-    func fileOutput(_ output: AVCaptureFileOutput,
-                    didFinishRecordingTo outputFileURL: URL,
-                    from connections: [AVCaptureConnection],
-                    error: Error?) {
+    func fileOutput(
+        _ output: AVCaptureFileOutput,
+        didFinishRecordingTo outputFileURL: URL,
+        from connections: [AVCaptureConnection],
+        error: Error?
+    ) {
         lock.lock()
         let cont = continuation
         continuation = nil
         lock.unlock()
-        
+
         if let error {
             cont?.resume(throwing: error)
         } else {
@@ -103,6 +106,7 @@ nonisolated final class RecorderDelegate: NSObject,
 
 // =====================================================================
 // MARK: - CaptureService
+
 // =====================================================================
 
 /// `AVCaptureSession`에 대한 모든 접근을 직렬화하는 actor.
@@ -112,59 +116,61 @@ nonisolated final class RecorderDelegate: NSObject,
 ///
 /// - Note: 보통 직접 쓰지 않고 ``CameraModel``을 통해 사용한다.
 actor CaptureService {
-    
     /// 미리보기 레이어에 연결할 캡처 세션.
     ///
     /// 미리보기(메인 액터)에서 읽어야 하는데 `AVCaptureSession`은 non-Sendable이라
     /// actor 밖으로 꺼낼 수 없다. setup 시 1회만 전달되는 안전한 케이스이므로
     /// `nonisolated(unsafe)`로 격리 검사를 해제한다.
     nonisolated(unsafe) let session = AVCaptureSession()
-    
+
     private let output = AVCaptureMovieFileOutput()
     private lazy var recorder = RecorderDelegate(output: output)
-    
+
     /// 후면 카메라 + 마이크 입력과 동영상 파일 출력을 세션에 구성한다.
     /// - Throws: 입력 디바이스(`AVCaptureDeviceInput`) 생성에 실패한 경우.
     func configure() throws {
         session.beginConfiguration()
         session.sessionPreset = .high
-        
-        if let camera = AVCaptureDevice.default(.builtInWideAngleCamera,
-                                                for: .video, position: .back) {
+
+        if let camera = AVCaptureDevice.default(
+            .builtInWideAngleCamera,
+            for: .video,
+            position: .back
+        ) {
             let videoInput = try AVCaptureDeviceInput(device: camera)
             if session.canAddInput(videoInput) { session.addInput(videoInput) }
         }
-        
-        if let mic = AVCaptureDevice.default(for: .audio) {  // 빠지면 무음 영상
+
+        if let mic = AVCaptureDevice.default(for: .audio) { // 빠지면 무음 영상
             let audioInput = try AVCaptureDeviceInput(device: mic)
             if session.canAddInput(audioInput) { session.addInput(audioInput) }
         }
-        
+
         if session.canAddOutput(output) { session.addOutput(output) }
-        
+
         session.commitConfiguration()
     }
-    
+
     /// 세션을 시작한다. (이미 실행 중이면 무시)
     /// - Note: `startRunning()`은 blocking 호출이지만 시동 시 1회뿐이라 그대로 둔다.
     func start() {
         guard !session.isRunning else { return }
         session.startRunning()
     }
-    
+
     /// 세션을 정지한다. (게임 종료 등 완전 정리 시점에 사용)
     func stop() {
         guard session.isRunning else { return }
         session.stopRunning()
     }
-    
+
     /// 새 클립 녹화를 시작한다. 결과는 임시 디렉터리에 `.mov`로 저장된다.
     func startRecording() {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("\(UUID().uuidString).mov")
         recorder.start(to: url)
     }
-    
+
     /// 녹화를 멈추고 저장이 끝난 클립의 URL을 돌려준다.
     /// - Returns: 저장된 `.mov` 파일 URL.
     /// - Throws: 녹화 중 발생한 오류.
@@ -175,6 +181,7 @@ actor CaptureService {
 
 // =====================================================================
 // MARK: - CameraModel
+
 // =====================================================================
 
 /// 카메라 세션의 수명과 "녹화 의도"를 관리하는 메인 액터 모델.
@@ -203,22 +210,21 @@ actor CaptureService {
 @MainActor
 @Observable
 final class CameraModel {
-    
     /// 세션이 구성·시작되어 녹화 가능한 상태인지 여부.
     var isReady = false
-    
+
     /// 현재 녹화 중인지 여부.
     var isRecording = false
-    
+
     /// 가장 최근에 저장된 클립의 파일 URL. ``setRecording(_:)``에 `false`를 준 뒤 갱신된다.
     var lastSavedURL: URL?
-    
+
     /// 미리보기 연결 등에 쓰이는 캡처 서비스. (보통 직접 만질 필요 없음)
     let service = CaptureService()
-    
+
     /// 외부에서 주입한 "원하는 녹화 상태". 실제 적용은 ``reconcile()``이 담당한다.
     private var desiredRecording = false
-    
+
     /// 권한 요청 → 세션 구성 → 시작까지 한 번에 수행한다. 게임 루트에서 **1회만** 호출한다.
     ///
     /// 마지막에 ``reconcile()``을 호출해, 세션 기동 전에 들어온 녹화 요청이 있으면 반영한다.
@@ -230,18 +236,18 @@ final class CameraModel {
             try await service.configure()
             await service.start()
             isReady = true
-            await reconcile()   // 기동 전 들어온 녹화 의도 반영
+            await reconcile() // 기동 전 들어온 녹화 의도 반영
         } catch {
             print("setup error:", error)
         }
     }
-    
+
     /// 세션을 정지하고 준비 상태를 해제한다. 게임을 완전히 떠날 때 호출한다.
     func stop() async {
         await service.stop()
         isReady = false
     }
-    
+
     /// 녹화 여부를 외부 Bool로 제어하는 진입점.
     ///
     /// 직접 녹화를 켜고 끄지 않고 "원하는 상태"만 기록한 뒤 ``reconcile()``에 위임한다.
@@ -251,14 +257,14 @@ final class CameraModel {
         desiredRecording = shouldRecord
         await reconcile()
     }
-    
+
     /// 원하는 상태(``desiredRecording``)와 실제 상태(``isRecording``)의 차이를 메운다.
     ///
     /// 차이가 있을 때만 동작하므로 반복 호출에 안전하고, 세션이 아직 안 켜졌으면 아무것도 하지 않는다.
     /// (선언형 reconciliation 패턴)
     private func reconcile() async {
         guard isReady else { return }
-        
+
         if desiredRecording, !isRecording {
             await service.startRecording()
             isRecording = true
@@ -271,7 +277,7 @@ final class CameraModel {
             isRecording = false
         }
     }
-    
+
     /// 카메라·마이크 권한을 요청한다.
     /// - Returns: 둘 다 허용되면 `true`, 하나라도 거부되면 `false`.
     private func requestPermissions() async -> Bool {
