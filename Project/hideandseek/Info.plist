@@ -3,8 +3,8 @@
 <plist version="1.0">
 <dict>
 	<key>NSCameraUsageDescription</key>
-	<string></string>
+	<string>플레이중 장면을 녹화하기 위해서 권한이 필요합니다.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string></string>
+	<string>플레이중 소리를 녹화하기 위해서 권한이 필요합니다.</string>
 </dict>
 </plist>
