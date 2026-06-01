@@ -42,12 +42,18 @@ struct TaggerSearchView: View {
                             .buttonStyle(.glass)
                             .cornerRadius(20)
                             .padding(.bottom, 7)
-                            
-                            HintActivationView(isAlertPresented: $showHintAlert)
                         }
                         Spacer()
                     }
                 }
+            }
+            .alert("힌트를 사용할까요?", isPresented: $showHintAlert) {
+                Button("네", role: .none) {
+                    //TODO: HintSuccessView Or HintFailureView 로 이동함
+                }
+                Button("아니요", role: .cancel) { }
+            } message: {
+                Text("가장 가까운 사람의 방향이 잠시동안 표시됩니다")
             }
             .padding(.horizontal, 24)
         }
