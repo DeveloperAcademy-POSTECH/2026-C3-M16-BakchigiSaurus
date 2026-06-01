@@ -13,7 +13,7 @@ struct TaggerSearchView: View {
     
     var body: some View {
         ZStack {
-//            TODO: CameraView 호출
+            //            TODO: CameraView 호출
             ZStack {
                 VStack {
                     GameTimer(timeLeft: 300)
