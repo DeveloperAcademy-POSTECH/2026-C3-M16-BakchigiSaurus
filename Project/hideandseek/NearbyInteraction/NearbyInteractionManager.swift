@@ -17,7 +17,14 @@ final class NearbyInteractionManager: NSObject, NISessionDelegate {
         session?.delegate = self
     }
     
+    func getMyDiscoveryToken() -> NIDiscoveryToken? {
+        return session?.discoveryToken
+    }
     
+    func run(with peerToken: NIDiscoveryToken) {
+        let config = NINearbyPeerConfiguration(peerToken: peerToken)
+        session?.run(config)
+    }
     
     
 }
