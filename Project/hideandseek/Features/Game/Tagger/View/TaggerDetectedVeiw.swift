@@ -8,16 +8,17 @@
 import SwiftUI
 
 struct TaggerDetectedVeiw: View {
-    
     let camera: CameraModel
     let isHiderNearby: Bool
     let isUsingHint: Bool
-    
+
     var body: some View {
         ZStack {
-            GameCameraBackground(camera: camera,
-                                 isRevealed: isHiderNearby && isUsingHint,
-                                 isRecording: isHiderNearby)
+            GameCameraBackground(
+                camera: camera,
+                isRevealed: isHiderNearby && isUsingHint,
+                isRecording: isHiderNearby
+            )
             VStack {
                 GameTimer(timeLeft: 300)
                 Spacer()
@@ -26,7 +27,6 @@ struct TaggerDetectedVeiw: View {
                     .foregroundStyle(.primary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.bottom, 7)
-                  
             }
             .padding(.horizontal, 36)
         }

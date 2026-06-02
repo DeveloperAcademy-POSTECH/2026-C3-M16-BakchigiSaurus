@@ -8,16 +8,17 @@
 import SwiftUI
 
 struct HintSuccessView: View {
-    
     let camera: CameraModel
     let isHiderNearby: Bool
     let isUsingHint: Bool
-    
+
     var body: some View {
         ZStack {
-            GameCameraBackground(camera: camera,
-                                isRevealed: isHiderNearby && isUsingHint,
-                                isRecording: isHiderNearby)
+            GameCameraBackground(
+                camera: camera,
+                isRevealed: isHiderNearby && isUsingHint,
+                isRecording: isHiderNearby
+            )
             Color.appSuccess
                 .ignoresSafeArea()
                 .opacity(0.75)
