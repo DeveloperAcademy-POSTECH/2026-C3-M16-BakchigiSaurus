@@ -53,9 +53,32 @@ final class NearbyInteractionManager: NSObject {
 
 
 extension NearbyInteractionManager: NISessionDelegate {
-    func session(_ session: NISession, didUpdate nearbyObjects: [NINearbyObject]) {
-        // 추후 브랜치에서 보완 예정
+    // 시스템 호출 콜백
+    func sessionDidStartRunning(_ session: NISession) {
+        state = .running
     }
-
     
+    func session(_ session: NISession, didUpdate nearbyObjects: [NINearbyObject]) {
+        // 추후 브랜치 feat/ni-update에서 distance.direction 처리
+    }
+    
+    func session(_ session: NISession, didRemove nearbyObjects: [NINearbyObject], reason: NINearbyObject.RemovalReason) {
+        // feat/ni-error에서 timeout.peerEnded 처리
+    }
+    
+    // 중단 관리
+    func sessionWasSuspended(_ session: NISession) {
+        state = .suspended
+    }
+    
+    func sessionSuspensionEnded(_ session: NISession) {
+        state = .ready
+    }
+    
+    // 오류 처리
+    func session(_ session: NISession, didInvalidateWith error: Error) {
+        self.session = nil
+        sharedTokenWithPeer = false
+        state = .failed(.sessionInvalidated(error))
+    }
 }
