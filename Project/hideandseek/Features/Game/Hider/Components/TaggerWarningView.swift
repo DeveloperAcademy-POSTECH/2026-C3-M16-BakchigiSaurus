@@ -9,7 +9,7 @@ import SwiftUI
 
 /// 술래가 가까울때 보여주는 경고 화면
 struct TaggerWarningView: View {
-    let remainingTime: String
+    let remainingSeconds: Int
 
     var body: some View {
         ZStack {
@@ -49,9 +49,7 @@ struct TaggerWarningView: View {
 
     private var topWarningBar: some View {
         VStack(spacing: 10) {
-            Text(remainingTime)
-                .font(.system(size: 38, weight: .bold))
-                .foregroundStyle(.white)
+            GameTimer(timeLeft: remainingSeconds)
 
             HStack(spacing: 8) {
                 Image(systemName: "exclamationmark.triangle.fill")
@@ -86,5 +84,5 @@ struct TaggerWarningView: View {
 }
 
 #Preview {
-    TaggerWarningView(remainingTime: "3:00")
+    TaggerWarningView(remainingSeconds: 180)
 }
