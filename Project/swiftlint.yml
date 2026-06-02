@@ -14,7 +14,6 @@ opt_in_rules:
   - empty_count
   - force_unwrapping
   - implicitly_unwrapped_optional
-  - unused_import
 
 included:
   - .

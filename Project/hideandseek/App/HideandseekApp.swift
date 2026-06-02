@@ -1,5 +1,5 @@
 //
-//  hideandseekApp.swift
+//  HideandseekApp.swift
 //  hideandseek
 //
 //  Created by Lanakee on 5/28/26.
@@ -8,7 +8,7 @@
 import SwiftUI
 
 @main
-struct hideandseekApp: App {
+struct HideandseekApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
