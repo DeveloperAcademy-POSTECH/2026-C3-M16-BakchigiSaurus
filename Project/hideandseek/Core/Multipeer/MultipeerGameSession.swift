@@ -28,11 +28,8 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
 
     var currentPeers: [PeerID] {
         stateQueue.sync {
-            let connectedPeers = connectedMCPeers.map {
-                PeerID(rawID: $0.displayName, displayName: $0.displayName)
-            }
-
-            return [localPeer] + connectedPeers
+            let connectedPeers = connectedMCPeers.map { PeerID(mcPeerID: $0) }
+            return uniquePeers([localPeer] + connectedPeers)
         }
     }
 
@@ -65,5 +62,26 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
         AsyncStream { continuation in
             self.eventContinuation = continuation
         }
+    }
+}
+private extension MultipeerGameSession {
+    func uniquePeers(_ peers: [PeerID]) -> [PeerID] {
+        var seen = Set<PeerID>()
+
+        return peers.filter { peer in
+            if seen.contains(peer) {
+                return false
+            } else {
+                seen.insert(peer)
+                return true
+            }
+        }
+    }
+}
+
+private extension PeerID {
+    init(mcPeerID: MCPeerID) {
+        self.rawID = mcPeerID.displayName
+        self.displayName = mcPeerID.displayName
     }
 }
