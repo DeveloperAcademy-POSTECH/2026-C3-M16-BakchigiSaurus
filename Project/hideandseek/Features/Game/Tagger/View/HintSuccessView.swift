@@ -56,7 +56,7 @@ struct HintSuccessView: View {
                     }
                 }
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, 36)
         }
     }
 }
