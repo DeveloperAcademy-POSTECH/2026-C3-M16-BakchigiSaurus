@@ -8,9 +8,11 @@
 import SwiftUI
 
 struct TaggerSearchView: View {
+    @State private var showHintAlert: Bool = false
+
     var body: some View {
         ZStack {
-//            TODO: CameraView 호출
+            //            TODO: CameraView 호출
             ZStack {
                 VStack {
                     GameTimer(timeLeft: 300)
@@ -30,7 +32,7 @@ struct TaggerSearchView: View {
                             }
                             Button {
                                 // TODO: 힌트 갯수 연결
-
+                                showHintAlert = true
                             } label: {
                                 Label("힌트 (n개 남음)", systemImage: "magnifyingglass")
                                     .padding(.vertical, 10)
@@ -43,6 +45,14 @@ struct TaggerSearchView: View {
                         Spacer()
                     }
                 }
+            }
+            .alert("힌트를 사용할까요?", isPresented: $showHintAlert) {
+                Button("네", role: .none) {
+                    // TODO: HintSuccessView Or HintFailureView 로 이동함
+                }
+                Button("아니요", role: .cancel) {}
+            } message: {
+                Text("가장 가까운 사람의 방향이 잠시동안 표시됩니다")
             }
             .padding(.horizontal, 24)
         }
