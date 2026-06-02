@@ -56,4 +56,6 @@ extension NearbyInteractionManager: NISessionDelegate {
     func session(_ session: NISession, didUpdate nearbyObjects: [NINearbyObject]) {
         // 추후 브랜치에서 보완 예정
     }
+
+    
 }
