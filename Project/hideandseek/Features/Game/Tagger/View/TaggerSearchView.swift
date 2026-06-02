@@ -11,8 +11,6 @@ struct TaggerSearchView: View {
     var body: some View {
         ZStack {
 //            TODO: CameraView 호출
-//            Color.orange
-//                .ignoresSafeArea()
             ZStack {
                 VStack {
                     GameTimer(timeLeft: 300)
