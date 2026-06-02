@@ -166,8 +166,11 @@ actor CaptureService {
 
     /// 새 클립 녹화를 시작한다. 결과는 임시 디렉터리에 `.mov`로 저장된다.
     func startRecording() {
+        guard !output.isRecording else { return }
+
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("\(UUID().uuidString).mov")
+
         recorder.start(to: url)
     }
 
@@ -175,7 +178,11 @@ actor CaptureService {
     /// - Returns: 저장된 `.mov` 파일 URL.
     /// - Throws: 녹화 중 발생한 오류.
     func stopRecording() async throws -> URL {
-        try await recorder.stopAndWait()
+        guard output.isRecording else {
+            throw CameraError.notRecording
+        }
+
+        return try await recorder.stopAndWait()
     }
 }
 
