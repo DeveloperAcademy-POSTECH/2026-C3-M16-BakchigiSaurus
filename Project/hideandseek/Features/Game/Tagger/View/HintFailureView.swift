@@ -8,9 +8,16 @@
 import SwiftUI
 
 struct HintFailureView: View {
+    
+    let camera: CameraModel
+    let isHiderNearby: Bool
+    let isUsingHint: Bool
+    
     var body: some View {
         ZStack {
-//            TODO: CameraView 호출
+            GameCameraBackground(camera: camera,
+                                isRevealed: isHiderNearby && isUsingHint,
+                                isRecording: isHiderNearby)
             Color.appDanger
                 .ignoresSafeArea()
                 .opacity(0.75)
@@ -55,5 +62,5 @@ struct HintFailureView: View {
 }
 
 #Preview {
-    HintFailureView()
+    HintFailureView(camera: CameraModel(), isHiderNearby: false, isUsingHint: false)
 }
