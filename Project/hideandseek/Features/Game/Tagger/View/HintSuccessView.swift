@@ -34,9 +34,7 @@ struct HintSuccessView: View {
                                     .font(.largeTitle.bold())
                                     .foregroundStyle(.secondary)
                             }
-                            Button {
-
-                            } label: {
+                            Button {} label: {
                                 Label("힌트 (n개 남음)", systemImage: "magnifyingglass")
                                     .padding(.vertical, 10)
                                     .font(.title3)
