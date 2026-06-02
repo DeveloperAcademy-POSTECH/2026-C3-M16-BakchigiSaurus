@@ -9,40 +9,39 @@
 import Foundation
 import NearbyInteraction
 
-
 final class NearbyInteractionManager: NSObject {
     var session: NISession?
-    
+
     private(set) var state: NearbyInteractionState = .idle
     private(set) var sharedTokenWithPeer = false
-    
-    // 초기화 함수
+
+    /// 초기화 함수
     override init() {
         super.init()
     }
-    
-    // NI 세션을 시작 준비하는 함수
+
+    /// NI 세션을 시작 준비하는 함수
     func startSession() {
         guard NISession.deviceCapabilities.supportsPreciseDistanceMeasurement else {
             state = .unsupported
             return
         }
-        
+
         // NI 세션 생성
         let newSession = NISession()
         newSession.delegate = self
-        
+
         session = newSession
         sharedTokenWithPeer = false
         state = .ready
     }
-    
-    // NISession에서 내 token 가져오기
+
+    /// NISession에서 내 token 가져오기
     func getMyDiscoveryToken() -> NIDiscoveryToken? {
-        return session?.discoveryToken
+        session?.discoveryToken
     }
-    
-    // 세션 종료 함수
+
+    /// 세션 종료 함수
     func invalidateSession() {
         session?.invalidate()
         session = nil
@@ -51,31 +50,34 @@ final class NearbyInteractionManager: NSObject {
     }
 }
 
-
 extension NearbyInteractionManager: NISessionDelegate {
-    // 시스템 호출 콜백
+    /// 시스템 호출 콜백
     func sessionDidStartRunning(_ session: NISession) {
         state = .running
     }
-    
+
     func session(_ session: NISession, didUpdate nearbyObjects: [NINearbyObject]) {
         // 추후 브랜치 feat/ni-update에서 distance.direction 처리
     }
-    
-    func session(_ session: NISession, didRemove nearbyObjects: [NINearbyObject], reason: NINearbyObject.RemovalReason) {
+
+    func session(
+        _ session: NISession,
+        didRemove nearbyObjects: [NINearbyObject],
+        reason: NINearbyObject.RemovalReason
+    ) {
         // feat/ni-error에서 timeout.peerEnded 처리
     }
-    
-    // 중단 관리
+
+    /// 중단 관리
     func sessionWasSuspended(_ session: NISession) {
         state = .suspended
     }
-    
+
     func sessionSuspensionEnded(_ session: NISession) {
         state = .ready
     }
-    
-    // 오류 처리
+
+    /// 오류 처리
     func session(_ session: NISession, didInvalidateWith error: Error) {
         self.session = nil
         sharedTokenWithPeer = false
