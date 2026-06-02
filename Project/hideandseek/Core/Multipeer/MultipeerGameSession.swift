@@ -52,6 +52,7 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
         self.hostPeer = peer
 
         super.init()
+        self.session.delegate = self
 
         if isHost {
             self.hostPeer = self.localPeer
@@ -84,4 +85,59 @@ private extension PeerID {
         self.rawID = mcPeerID.displayName
         self.displayName = mcPeerID.displayName
     }
+}
+extension MultipeerGameSession: MCSessionDelegate {
+    func session(
+        _ session: MCSession,
+        peer peerID: MCPeerID,
+        didChange state: MCSessionState
+    ) {
+        let peer = PeerID(mcPeerID: peerID)
+
+        stateQueue.async {
+            self.connectedMCPeers = session.connectedPeers
+
+            switch state {
+            case .connected:
+                self.eventContinuation?.yield(.peerConnected(peer))
+
+            case .notConnected:
+                self.eventContinuation?.yield(.peerDisconnected(peer))
+
+            case .connecting:
+                break
+
+            @unknown default:
+                break
+            }
+        }
+    }
+
+    func session(
+        _ session: MCSession,
+        didReceive data: Data,
+        fromPeer peerID: MCPeerID
+    ) {}
+
+    func session(
+        _ session: MCSession,
+        didReceive stream: InputStream,
+        withName streamName: String,
+        fromPeer peerID: MCPeerID
+    ) {}
+
+    func session(
+        _ session: MCSession,
+        didStartReceivingResourceWithName resourceName: String,
+        fromPeer peerID: MCPeerID,
+        with progress: Progress
+    ) {}
+
+    func session(
+        _ session: MCSession,
+        didFinishReceivingResourceWithName resourceName: String,
+        fromPeer peerID: MCPeerID,
+        at localURL: URL?,
+        withError error: Error?
+    ) {}
 }
