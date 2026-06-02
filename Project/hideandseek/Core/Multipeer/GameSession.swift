@@ -9,19 +9,16 @@
 //  Feature는 이 protocol에만 의존한다.
 
 import Foundation
- 
 /// 게임 참가자 식별자. (MC의 `MCPeerID`를 감싸는 추상 타입)
 struct PeerID: Hashable {
     let rawID: String // MCPeerID 매핑용 안정 식별자
     let displayName: String // 예: "캄초의 iPhone"
 }
- 
 /// 세션 연결 변화 이벤트.
 enum SessionEvent {
     case peerConnected(PeerID)
     case peerDisconnected(PeerID)
 }
- 
 /// 수집 세션이 MC에게 요구하는 최소 인터페이스 (= MC 담당자의 구현 스펙).
 ///
 /// - Note: 클립 실제 송수신은 #3 `feat/clip-transfer`에서 확장한다. 여기엔 두지 않는다.
