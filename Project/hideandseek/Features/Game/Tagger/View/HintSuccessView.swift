@@ -11,6 +11,9 @@ struct HintSuccessView: View {
     var body: some View {
         ZStack {
 //            TODO: CameraView 호출
+            Color.appSuccess
+                .ignoresSafeArea()
+                .opacity(0.75)
             ZStack {
                 VStack {
                     GameTimer(timeLeft: 300)
