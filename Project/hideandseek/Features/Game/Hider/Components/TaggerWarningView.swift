@@ -10,22 +10,22 @@ import SwiftUI
 /// 술래가 가까울때 보여주는 경고 화면
 struct TaggerWarningView: View {
     let remainingSeconds: Int
-    
+
     var body: some View {
         ZStack {
             backgroundView
-            
+
             VStack {
                 topWarningBar
-                
+
                 Spacer()
-                
+
                 Text("!")
                     .font(.system(size: 150, weight: .bold))
                     .foregroundStyle(.red)
-                
+
                 Spacer()
-                
+
                 bottomMessage
             }
             .padding(.horizontal, 28)
@@ -33,7 +33,7 @@ struct TaggerWarningView: View {
         }
         .ignoresSafeArea()
     }
-    
+
     private var backgroundView: some View {
         LinearGradient(
             colors: [
@@ -46,15 +46,15 @@ struct TaggerWarningView: View {
             endPoint: .bottom
         )
     }
-    
+
     private var topWarningBar: some View {
         VStack(spacing: 10) {
             GameTimer(timeLeft: remainingSeconds)
-            
+
             HStack(spacing: 8) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 28, weight: .bold))
-                
+
                 Text("주변에 술래가 있어요")
                     .font(.system(size: 27, weight: .bold))
             }
@@ -69,12 +69,12 @@ struct TaggerWarningView: View {
         )
         .padding(.top, 8)
     }
-    
+
     private var bottomMessage: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("주변에")
                 .foregroundStyle(.white.opacity(0.65))
-            
+
             Text("\(Text("술래").foregroundStyle(.white))가 있어요!")
                 .foregroundStyle(.white.opacity(0.65))
         }

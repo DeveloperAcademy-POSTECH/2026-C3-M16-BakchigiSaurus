@@ -7,80 +7,80 @@
 
 import SwiftUI
 
-// 현재 숨는 사람 상태 보여주는 컴포넌트
+/// 현재 숨는 사람 상태 보여주는 컴포넌트
 struct HiderStatusView: View {
     let state: HiderModeState // 외부에서 현재 상태 전달받음
-    
+
     var body: some View {
         VStack(spacing: 8) {
             Text(eyebrowText)
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.55))
-            
+
             Text(titleText)
                 .font(.system(size: 30, weight: .bold))
                 .foregroundStyle(titleColor)
                 .multilineTextAlignment(.center)
         }
     }
-    
+
     private var eyebrowText: String {
         switch state {
         case .idle:
-            return "게임 대기"
-            
+            "게임 대기"
+
         case .hiding:
-            return "주변에"
-            
+            "주변에"
+
         case .taggerNearby:
-            return "주의"
-            
+            "주의"
+
         case .recording:
-            return "자동 녹화"
-            
+            "자동 녹화"
+
         case .taggedCheck:
-            return "확인 필요"
-            
+            "확인 필요"
+
         case .taggedConfirm:
-            return "한 번 더 확인"
-            
+            "한 번 더 확인"
+
         case .tagged:
-            return "라운드 종료"
+            "라운드 종료"
         }
     }
-    
+
     private var titleText: String {
         switch state {
         case .idle:
-            return "숨는 중"
-            
+            "숨는 중"
+
         case .hiding:
-            return "술래를 찾는중"
-            
+            "술래를 찾는중"
+
         case .taggerNearby:
-            return "술래가 가까이 있어요"
-            
+            "술래가 가까이 있어요"
+
         case .recording:
-            return "녹화중이에요"
-            
+            "녹화중이에요"
+
         case .taggedCheck:
-            return "술래에게 잡혔나요?"
-            
+            "술래에게 잡혔나요?"
+
         case .taggedConfirm:
-            return "정말로 잡혔나요?"
-            
+            "정말로 잡혔나요?"
+
         case .tagged:
-            return "술래에게 잡혔습니다"
+            "술래에게 잡혔습니다"
         }
     }
-    
+
     private var titleColor: Color {
         switch state {
         case .taggerNearby, .recording, .tagged:
-            return Color(red: 1.0, green: 0.24, blue: 0.27)
-            
+            Color(red: 1.0, green: 0.24, blue: 0.27)
+
         default:
-            return .white
+            .white
         }
     }
 }

@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-// 숨는 사람이 술래에게 잡혔는지 직접 확인하는 화면
+/// 숨는 사람이 술래에게 잡혔는지 직접 확인하는 화면
 struct TaggedCheckView: View {
     let remainingSeconds: Int
     let onYes: () -> Void // '네' 버튼 눌렀을 때
@@ -19,7 +19,7 @@ struct TaggedCheckView: View {
 
             VStack {
                 GameTimer(timeLeft: remainingSeconds)
-                                    .padding(.top, 76)
+                    .padding(.top, 76)
 
                 Spacer()
 
@@ -41,7 +41,7 @@ struct TaggedCheckView: View {
                                     color: Color(red: 1.000, green: 0.259, blue: 0.271)
                                 )
                             )
-                        
+
                         Button("네", action: onYes)
                             .buttonStyle(
                                 AnswerButtonStyle(
@@ -69,11 +69,11 @@ struct TaggedCheckView: View {
     }
 }
 
-// 버튼 디자인
+/// 버튼 디자인
 struct AnswerButtonStyle: ButtonStyle {
     let color: Color
 
-    // 버튼이 실제로 어떻게 보일지
+    /// 버튼이 실제로 어떻게 보일지
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 17, weight: .bold))
