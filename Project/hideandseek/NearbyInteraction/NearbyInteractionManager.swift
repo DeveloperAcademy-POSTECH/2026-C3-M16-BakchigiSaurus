@@ -40,7 +40,28 @@ final class NearbyInteractionManager: NSObject {
     func getMyDiscoveryToken() -> NIDiscoveryToken? {
         session?.discoveryToken
     }
-
+    
+    // 내 token을 MC가 보낼 수있는 Data로 변환
+    func makeLocalDiscoveryTokenData() throws -> Data {
+        guard let discoveryToken = session?.discoveryToken else {
+            throw NearbyInteractionError.missingDiscoveryToken
+        }
+        
+        let tokenData = try NSKeyedArchiver.archivedData(withRootObject: discoveryToken, requiringSecureCoding: true)
+        
+        return tokenData
+    }
+    
+    // MC에게 받은 Data를 다시 token으로 바꿈
+    func decodeDiscoveryToken(from data: Data) throws -> NIDiscoveryToken {
+        guard let token = try NSKeyedUnarchiver.unarchivedObject(ofClass: NIDiscoveryToken.self, from: data
+        ) else {
+            throw NearbyInteractionError.invalidDiscoveryToken
+        }
+        
+        return token
+    }
+    
     /// 세션 종료 함수
     func invalidateSession() {
         session?.invalidate()

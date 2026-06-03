@@ -36,6 +36,10 @@ enum NearbyInteractionError: Error {
     case unsupportedDevice
     case missingSession
     case sessionInvalidated(Error)
+    
+    // 토큰 변환 실패 case 추가
+    case missingDiscoveryToken
+    case invalidDiscoveryToken
 }
 
 /// NI가 측정한 거리/방향 값
