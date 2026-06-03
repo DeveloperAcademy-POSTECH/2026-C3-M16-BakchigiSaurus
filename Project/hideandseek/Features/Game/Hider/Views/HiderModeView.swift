@@ -7,37 +7,47 @@
 
 import SwiftUI
 
-/// 숨는 사람이 보는 메인 화면
+// 숨는 사람이 보는 전체  화면 흐름 관리하는 메인 화면
 struct HiderModeView: View {
+    let camera: CameraModel
+    // 상위 View에서 만든 camera를 받아서 사용
+    
+    // HiderModeViewModel을 생성
     @StateObject private var viewModel = HiderModeViewModel()
-
+    
     var body: some View {
-        screenContent
+        screenContent // 현재 상태에 따라 보여줄 화면 결정
             .onAppear {
-                viewModel.startHiding()
+                viewModel.startHiding() // 처음 화면
             }
     }
-
-    @ViewBuilder
+    
+    @ViewBuilder // 여러 종류 View를 조건에 따라 반환
     private var screenContent: some View {
-        // ViewModel의 현재 상태 확인. state 값에 따라 화면 변경
         switch viewModel.state {
+        //view 모델이 가지고 있는 현재 상태 확인
         case .idle, .hiding:
-            normalHiderContent
-
+            HiderSearchView(
+                remainingSeconds: viewModel.remainingSeconds
+            )
+            
         case .taggerNearby:
             TaggerWarningView(
-                remainingTime: viewModel.remainingTimeText
+                remainingSeconds: viewModel.remainingSeconds
             )
-
+            
         case .recording:
             CameraRecordingView(
-                remainingTime: viewModel.remainingTimeText
+                camera: camera,
+                // 상위 View에서 받은 카메라 객체를 CameraRecordingView에 넘김
+                remainingSeconds: viewModel.remainingSeconds,
+                isTaggerNearby: true // 술래가 가까운 상태라고 알려줌
             )
-
+            
         case .taggedCheck:
+            // 술래에게 잡혔는지 묻는 화면
             TaggedCheckView(
-                remainingTime: viewModel.remainingTimeText,
+                remainingSeconds: viewModel.remainingSeconds,
                 onYes: {
                     viewModel.selectTaggedAnswer(.yes)
                 },
@@ -45,10 +55,11 @@ struct HiderModeView: View {
                     viewModel.selectTaggedAnswer(.no)
                 }
             )
-
-        case let .taggedConfirm(answer):
+            
+        case .taggedConfirm(let answer):
+            // 1차 선택 답변 한번 더 확인
             TaggedCheckView(
-                remainingTime: viewModel.remainingTimeText,
+                remainingSeconds: viewModel.remainingSeconds,
                 onYes: {
                     viewModel.selectTaggedAnswer(.yes)
                 },
@@ -56,6 +67,7 @@ struct HiderModeView: View {
                     viewModel.selectTaggedAnswer(.no)
                 }
             )
+            // 팝업
             .overlay {
                 TaggedConfirmDialogView(
                     answer: answer,
@@ -67,42 +79,20 @@ struct HiderModeView: View {
                     }
                 )
             }
-
+            
         case .tagged:
-            TaggedOverlayView()
-        }
-    }
-
-    private var normalHiderContent: some View {
-        VStack(spacing: 32) {
-            HiderStatusView(state: viewModel.state)
-            TaggerSignalView(signal: viewModel.signal)
-            testButtons
-        }
-        .padding()
-    }
-
-    private var testButtons: some View {
-        VStack(spacing: 12) {
-            Button("테스트: 술래 가까움") {
-                viewModel.receiveTaggerSignal(.near)
-            }
-
-            Button("테스트: 녹화 시작") {
-                viewModel.receiveTaggerSignal(.veryNear)
-            }
-
-            Button("테스트: 50cm 이내") {
-                viewModel.updateTaggerDistance(0.5)
-            }
-
-            Button("테스트: 초기화") {
-                viewModel.reset()
-            }
+            TaggedOverlayView(
+                onConfirm: {
+                    viewModel.reset()
+                }
+            )
         }
     }
 }
 
+
 #Preview {
-    HiderModeView()
+    HiderModeView(
+        camera: CameraModel()
+    )
 }

@@ -7,19 +7,26 @@
 
 import SwiftUI
 
-/// 술래가 매우 가까이 왔을 때 녹화 중임을 보여주는 화면
+// 술래가 매우 가까이 왔을 때 카메라 화면을 보여주고 녹화 중임을 표시하는 화면
 struct CameraRecordingView: View {
-    let remainingTime: String
-
+    let camera: CameraModel // 카메라 기능을 관리하는 객체. 상위View에서 받은 카메라 사용
+    let remainingSeconds: Int // 남은 게임 시간. 초단위
+    let isTaggerNearby: Bool // 술래가 가까운지 여부
+    
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
-
+            GameCameraBackground(
+                camera: camera, // 상위에서 받은 카메라 객체 넘김
+                isRevealed: isTaggerNearby, // 카메라 화면 공개
+                isRecording: isTaggerNearby // 녹화 시작
+            )
+            
             VStack {
-                topWarningBar
-
+                GameTimer(timeLeft: remainingSeconds)
+                    .padding(.top, 58)
+                
                 Spacer()
-
+                
                 Text("녹화중이에요")
                     .font(.system(size: 34, weight: .bold))
                     .foregroundStyle(.white)
@@ -28,30 +35,14 @@ struct CameraRecordingView: View {
                     .padding(.bottom, 48)
             }
         }
-    }
-
-    private var topWarningBar: some View {
-        VStack(spacing: 8) {
-            Text(remainingTime)
-                .font(.system(size: 34, weight: .bold))
-                .foregroundStyle(.white)
-
-            HStack(spacing: 8) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                Text("주변에 술래가 있어요")
-            }
-            .font(.system(size: 24, weight: .bold))
-            .foregroundStyle(.red)
-        }
-        .padding(.top, 56)
-        .padding(.bottom, 24)
-        .frame(maxWidth: .infinity)
-        .background(Color.black)
+        .ignoresSafeArea()
     }
 }
 
 #Preview {
     CameraRecordingView(
-        remainingTime: "3:00"
+        camera: CameraModel(),
+        remainingSeconds: 180,
+        isTaggerNearby: true // 카메라 공개되고 녹화테스트
     )
 }

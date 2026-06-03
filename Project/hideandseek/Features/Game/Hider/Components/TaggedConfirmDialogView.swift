@@ -7,16 +7,16 @@
 
 import SwiftUI
 
-/// 술래에게 잡힘 여부를 한번 더 확인하는 팝업
+// 술래에게 잡힘 여부를 한번 더 확인하는 팝업
 struct TaggedConfirmDialogView: View {
-    let answer: TaggedAnswer
-    let onCancel: () -> Void
-    let onConfirm: () -> Void
+    let answer: TaggedAnswer // 1차 질문
+    let onCancel: () -> Void // '아니오' 버튼 눌렀을 때 실행
+    let onConfirm: () -> Void // '네' 버튼 눌렀을 때 실행
 
     var body: some View {
         ZStack {
             Color.black.opacity(0.45)
-                .ignoresSafeArea()
+                .ignoresSafeArea() // 화면전체 : 반투명 검정
 
             VStack(alignment: .leading, spacing: 18) {
                 Text(title)
@@ -30,10 +30,16 @@ struct TaggedConfirmDialogView: View {
 
                 HStack(spacing: 10) {
                     Button("아니요", action: onCancel)
-                        .buttonStyle(DialogButtonStyle(color: .gray))
+                        .buttonStyle(
+                            DialogButtonStyle(textColor: .white)
+                        )
 
                     Button("네", action: onConfirm)
-                        .buttonStyle(DialogButtonStyle(color: .red))
+                        .buttonStyle(
+                            DialogButtonStyle(
+                                textColor: Color(red: 1.000, green: 0.259, blue: 0.271)
+                            )
+                        )
                 }
             }
             .padding(22)
@@ -47,6 +53,7 @@ struct TaggedConfirmDialogView: View {
         }
     }
 
+    // 해당 뷰 안에서만 팝업 제목
     private var title: String {
         switch answer {
         case .yes:
@@ -56,33 +63,34 @@ struct TaggedConfirmDialogView: View {
         }
     }
 
+    // 해당 뷰 안에서는 팝업 문구
     private var message: String {
         switch answer {
         case .yes:
-            "술래에게 들켰을 경우에만 '네'를 눌러주세요"
+            "술래에게 잡혔을 경우에만 '네'를 눌러주세요"
         case .no:
-            "술래에게 들키지 않은 경우에만 '네'를 눌러주세요"
+            "술래에게 잡히지 않은 경우에만 '네'를 눌러주세요"
         }
     }
 }
 
 struct DialogButtonStyle: ButtonStyle {
-    let color: Color
+    let textColor: Color
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 16, weight: .bold))
-            .foregroundStyle(.white)
+            .foregroundStyle(textColor.opacity(configuration.isPressed ? 0.6 : 1))
             .frame(maxWidth: .infinity)
             .frame(height: 48)
-            .background(color.opacity(configuration.isPressed ? 0.6 : 0.9))
+            .background(Color.white.opacity(configuration.isPressed ? 0.08 : 0.12))
             .clipShape(Capsule())
     }
 }
 
 #Preview {
     TaggedConfirmDialogView(
-        answer: .yes,
+        answer: .yes, // 해당 상태 미리 보기
         onCancel: {},
         onConfirm: {}
     )

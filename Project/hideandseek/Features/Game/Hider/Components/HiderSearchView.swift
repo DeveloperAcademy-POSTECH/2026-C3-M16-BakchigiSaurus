@@ -7,16 +7,17 @@
 
 import SwiftUI
 
+// 숨는 사람이 처음 보는 기본 화면
 struct HiderSearchView: View {
-    let remainingSeconds: Int
+    let remainingSeconds: Int // 남은 게임 시간. 초단위
 
     var body: some View {
         ZStack {
-            searchBackground
+            searchBackground // 배경
 
             VStack {
                 GameTimer(timeLeft: remainingSeconds)
-                    .padding(.top, 58)
+                    .padding(.top, 75)
 
                 Spacer()
 
@@ -46,11 +47,14 @@ struct HiderSearchView: View {
             Text("주변에")
                 .foregroundStyle(.white.opacity(0.55))
 
-            Text("술래를 찾는중")
-                .foregroundStyle(.white)
+            Text("\(Text("술래").foregroundStyle(.white))를 찾는중")
+                        .foregroundStyle(.white.opacity(0.55))
+            
         }
-        .font(.system(size: 28, weight: .bold))
+        .font(.system(size: 32, weight: .bold))
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.leading, 8)
+        .padding(.bottom, 60)
     }
 }
 
