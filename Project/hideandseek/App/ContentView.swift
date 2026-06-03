@@ -11,7 +11,7 @@ struct ContentView: View {
     @StateObject private var connectionHolder = McniConnectionHolder()
 
     var body: some View {
-        HiderModeView()
+        GameRootView()
     }
 }
 

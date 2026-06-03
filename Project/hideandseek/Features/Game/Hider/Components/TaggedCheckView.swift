@@ -7,18 +7,19 @@
 
 import SwiftUI
 
-/// 술래에게 잡혔는지 묻는 화면
+// 숨는 사람이 술래에게 잡혔는지 직접 확인하는 화면
 struct TaggedCheckView: View {
-    let remainingTime: String
-    let onYes: () -> Void
-    let onNo: () -> Void
+    let remainingSeconds: Int
+    let onYes: () -> Void // '네' 버튼 눌렀을 때
+    let onNo: () -> Void // '아니요' 버튼 눌렀을 때
 
     var body: some View {
         ZStack {
             blurredBackground
 
             VStack {
-                timePill
+                GameTimer(timeLeft: remainingSeconds)
+                                    .padding(.top, 76)
 
                 Spacer()
 
@@ -35,13 +36,21 @@ struct TaggedCheckView: View {
 
                     HStack(spacing: 16) {
                         Button("아니요", action: onNo)
-                            .buttonStyle(AnswerButtonStyle(color: .red))
-
+                            .buttonStyle(
+                                AnswerButtonStyle(
+                                    color: Color(red: 1.000, green: 0.259, blue: 0.271)
+                                )
+                            )
+                        
                         Button("네", action: onYes)
-                            .buttonStyle(AnswerButtonStyle(color: .blue))
+                            .buttonStyle(
+                                AnswerButtonStyle(
+                                    color: Color(red: 0.427, green: 0.486, blue: 1.000)
+                                )
+                            )
                     }
                 }
-                .padding(.bottom, 90)
+                .padding(.bottom, 120)
             }
         }
         .ignoresSafeArea()
@@ -58,22 +67,13 @@ struct TaggedCheckView: View {
             endPoint: .bottom
         )
     }
-
-    private var timePill: some View {
-        Text(remainingTime)
-            .font(.system(size: 32, weight: .bold))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 42)
-            .padding(.vertical, 18)
-            .background(Color.black.opacity(0.65))
-            .clipShape(Capsule())
-            .padding(.top, 76)
-    }
 }
 
+// 버튼 디자인
 struct AnswerButtonStyle: ButtonStyle {
     let color: Color
 
+    // 버튼이 실제로 어떻게 보일지
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 17, weight: .bold))
@@ -86,7 +86,7 @@ struct AnswerButtonStyle: ButtonStyle {
 
 #Preview {
     TaggedCheckView(
-        remainingTime: "3:00",
+        remainingSeconds: 180,
         onYes: {},
         onNo: {}
     )

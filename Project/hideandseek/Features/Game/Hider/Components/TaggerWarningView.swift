@@ -10,22 +10,22 @@ import SwiftUI
 /// 술래가 가까울때 보여주는 경고 화면
 struct TaggerWarningView: View {
     let remainingSeconds: Int
-
+    
     var body: some View {
         ZStack {
             backgroundView
-
+            
             VStack {
                 topWarningBar
-
+                
                 Spacer()
-
+                
                 Text("!")
                     .font(.system(size: 150, weight: .bold))
                     .foregroundStyle(.red)
-
+                
                 Spacer()
-
+                
                 bottomMessage
             }
             .padding(.horizontal, 28)
@@ -33,7 +33,7 @@ struct TaggerWarningView: View {
         }
         .ignoresSafeArea()
     }
-
+    
     private var backgroundView: some View {
         LinearGradient(
             colors: [
@@ -46,22 +46,22 @@ struct TaggerWarningView: View {
             endPoint: .bottom
         )
     }
-
+    
     private var topWarningBar: some View {
         VStack(spacing: 10) {
             GameTimer(timeLeft: remainingSeconds)
-
+            
             HStack(spacing: 8) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 28, weight: .bold))
-
+                
                 Text("주변에 술래가 있어요")
                     .font(.system(size: 27, weight: .bold))
             }
             .foregroundStyle(.red)
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 56)
+        .padding(.top, 22)
         .padding(.bottom, 28)
         .background(Color.black)
         .clipShape(
@@ -69,17 +69,19 @@ struct TaggerWarningView: View {
         )
         .padding(.top, 8)
     }
-
+    
     private var bottomMessage: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("주변에")
                 .foregroundStyle(.white.opacity(0.65))
-
-            Text("술래가 있어요!")
-                .foregroundStyle(.white)
+            
+            Text("\(Text("술래").foregroundStyle(.white))가 있어요!")
+                .foregroundStyle(.white.opacity(0.65))
         }
-        .font(.system(size: 34, weight: .bold))
+        .font(.system(size: 32, weight: .bold))
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.leading, 8)
+        .padding(.bottom, 60)
     }
 }
 

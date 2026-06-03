@@ -29,6 +29,7 @@ final class HiderModeViewModel: ObservableObject {
         state = .hiding
         signal = .unknown
         remainingSeconds = 600
+        taggerDistance = nil
         startTimer()
     }
 
@@ -72,6 +73,10 @@ final class HiderModeViewModel: ObservableObject {
         state = .taggedConfirm(answer: answer)
     }
 
+    func cancelTaggedConfirm() {
+        state = .taggedCheck
+    }
+
     /// 한번 더 확인
     func confirmTaggedAnswer(_ answer: TaggedAnswer) {
         switch answer {
@@ -81,10 +86,6 @@ final class HiderModeViewModel: ObservableObject {
         case .no:
             state = .hiding
         }
-    }
-
-    func cancelTaggedConfirm() {
-        state = .taggedCheck
     }
 
     /// 최종 잡힘 처리
@@ -98,6 +99,7 @@ final class HiderModeViewModel: ObservableObject {
         state = .idle
         signal = .unknown
         remainingSeconds = 600
+        taggerDistance = nil
         stopTimer()
     }
 
