@@ -11,7 +11,7 @@ import ActivityKit
 struct HideAndSeekLiveActivityAttributes: ActivityAttributes {
     
     //고정되어 절대 안바뀌는 데이터
-    var roomValue: String
+    var roomName: String
     var totalPlayers: Int
     
     //변동 데이터
