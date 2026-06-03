@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-// 술래에게 잡힘 여부를 한번 더 확인하는 팝업
+/// 술래에게 잡힘 여부를 한번 더 확인하는 팝업
 struct TaggedConfirmDialogView: View {
     let answer: TaggedAnswer // 1차 질문
     let onCancel: () -> Void // '아니오' 버튼 눌렀을 때 실행
@@ -53,7 +53,7 @@ struct TaggedConfirmDialogView: View {
         }
     }
 
-    // 해당 뷰 안에서만 팝업 제목
+    /// 해당 뷰 안에서만 팝업 제목
     private var title: String {
         switch answer {
         case .yes:
@@ -63,7 +63,7 @@ struct TaggedConfirmDialogView: View {
         }
     }
 
-    // 해당 뷰 안에서는 팝업 문구
+    /// 해당 뷰 안에서는 팝업 문구
     private var message: String {
         switch answer {
         case .yes:

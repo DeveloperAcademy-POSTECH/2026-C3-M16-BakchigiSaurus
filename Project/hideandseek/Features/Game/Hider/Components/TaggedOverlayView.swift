@@ -7,30 +7,30 @@
 
 import SwiftUI
 
-// 게임이 끝났을 때 보여주는 화면
+/// 게임이 끝났을 때 보여주는 화면
 struct TaggedOverlayView: View {
     let onConfirm: () -> Void // 확인 버튼 눌렀을때.. 아직 미정
-    
+
     var body: some View {
         ZStack {
             Color.black.opacity(0.75)
                 .ignoresSafeArea()
-            
+
             VStack {
                 Spacer()
-                
+
                 VStack(spacing: 16) {
                     Text("게임이 종료되었습니다")
                         .font(.system(size: 36, weight: .bold))
                         .foregroundStyle(.white)
-                    
+
                     Text("처음 장소로 모여주세요")
                         .font(.system(size: 28, weight: .medium))
                         .foregroundStyle(.white.opacity(0.55))
                 }
-                
+
                 Spacer()
-                
+
                 Button(action: onConfirm) {
                     Text("확인")
                         .font(.system(size: 18, weight: .semibold))

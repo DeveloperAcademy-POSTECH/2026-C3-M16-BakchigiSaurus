@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-// 숨는 사람이 처음 보는 기본 화면
+/// 숨는 사람이 처음 보는 기본 화면
 struct HiderSearchView: View {
     let remainingSeconds: Int // 남은 게임 시간. 초단위
 
@@ -48,8 +48,7 @@ struct HiderSearchView: View {
                 .foregroundStyle(.white.opacity(0.55))
 
             Text("\(Text("술래").foregroundStyle(.white))를 찾는중")
-                        .foregroundStyle(.white.opacity(0.55))
-            
+                .foregroundStyle(.white.opacity(0.55))
         }
         .font(.system(size: 32, weight: .bold))
         .frame(maxWidth: .infinity, alignment: .leading)
