@@ -105,6 +105,15 @@ private extension MultipeerGameSession {
             }
         }
     }
+    func stopHostingOnStateQueue() {
+
+            advertiser?.stopAdvertisingPeer()
+
+            advertiser?.delegate = nil
+
+            advertiser = nil
+
+    }
 }
 
 private extension PeerID {
@@ -176,4 +185,32 @@ extension MultipeerGameSession: MCSessionDelegate {
         at localURL: URL?,
         withError error: Error?
     ) {}
+}
+
+extension MultipeerGameSession {
+    func startHosting() {
+        stateQueue.async {
+            self.stopHostingOnStateQueue()
+
+            let discoveryInfo = [
+                "hostRawID": self.localPeer.rawID,
+                "hostDisplayName": self.localPeer.displayName
+            ]
+
+            let advertiser = MCNearbyServiceAdvertiser(
+                peer: self.localMCPeerID,
+                discoveryInfo: discoveryInfo,
+                serviceType: self.serviceType
+            )
+
+            self.advertiser = advertiser
+            advertiser.startAdvertisingPeer()
+        }
+    }
+
+    func stopHosting() {
+        stateQueue.async {
+            self.stopHostingOnStateQueue()
+        }
+    }
 }
