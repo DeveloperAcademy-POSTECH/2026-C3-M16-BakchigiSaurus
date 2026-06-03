@@ -34,7 +34,7 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
     /// 연결/끊김 이벤트를 Feature로 전달하기 위한 AsyncStream continuation.
     private var eventContinuation: AsyncStream<SessionEvent>.Continuation?
     private var advertiser: MCNearbyServiceAdvertiser?
-    
+
     /// GameSession 요구사항: 이 기기의 추상화된 식별자.
     let localPeer: PeerID
 
@@ -104,7 +104,7 @@ private extension MultipeerGameSession {
             }
         }
     }
-    
+
     /// stateQueue 안에서만 호출되는 호스트 광고 정리 함수.
     func stopHostingOnStateQueue() {
         advertiser?.stopAdvertisingPeer()
@@ -238,4 +238,3 @@ extension MultipeerGameSession: MCNearbyServiceAdvertiserDelegate {
         print("Failed to start advertising peer:", error.localizedDescription)
     }
 }
-
