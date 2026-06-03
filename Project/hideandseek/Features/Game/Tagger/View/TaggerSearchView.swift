@@ -61,7 +61,7 @@ struct TaggerSearchView: View {
             } message: {
                 Text("가장 가까운 사람의 방향이 잠시동안 표시됩니다")
             }
-            .padding(.horizontal, 36)
+            .padding(.horizontal, 24)
         }
     }
 }
