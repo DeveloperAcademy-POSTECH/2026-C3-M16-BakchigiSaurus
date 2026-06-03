@@ -203,6 +203,7 @@ extension MultipeerGameSession {
                 serviceType: self.serviceType
             )
 
+            advertiser.delegate = self
             self.advertiser = advertiser
             advertiser.startAdvertisingPeer()
         }
@@ -212,5 +213,22 @@ extension MultipeerGameSession {
         stateQueue.async {
             self.stopHostingOnStateQueue()
         }
+    }
+}
+extension MultipeerGameSession: MCNearbyServiceAdvertiserDelegate {
+    func advertiser(
+        _ advertiser: MCNearbyServiceAdvertiser,
+        didReceiveInvitationFromPeer peerID: MCPeerID,
+        withContext context: Data?,
+        invitationHandler: @escaping (Bool, MCSession?) -> Void
+    ) {
+        invitationHandler(true, session)
+    }
+
+    func advertiser(
+        _ advertiser: MCNearbyServiceAdvertiser,
+        didNotStartAdvertisingPeer error: Error
+    ) {
+        print("Failed to start advertising peer:", error.localizedDescription)
     }
 }
