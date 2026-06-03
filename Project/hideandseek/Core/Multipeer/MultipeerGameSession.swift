@@ -105,14 +105,11 @@ private extension MultipeerGameSession {
             }
         }
     }
+    /// stateQueue 안에서만 호출되는 호스트 광고 정리 함수.
     func stopHostingOnStateQueue() {
-
-            advertiser?.stopAdvertisingPeer()
-
-            advertiser?.delegate = nil
-
-            advertiser = nil
-
+        advertiser?.stopAdvertisingPeer()
+        advertiser?.delegate = nil
+        advertiser = nil
     }
 }
 
@@ -188,6 +185,8 @@ extension MultipeerGameSession: MCSessionDelegate {
 }
 
 extension MultipeerGameSession {
+    /// 호스트가 주변 기기에 자신의 세션을 광고하기 시작한다.
+    /// 방 만들기 플로우에서 호출되는 함수다.
     func startHosting() {
         stateQueue.async {
             self.stopHostingOnStateQueue()
@@ -209,13 +208,18 @@ extension MultipeerGameSession {
         }
     }
 
+    /// 호스트 광고를 중지한다.
+    /// 방 나가기, 게임 종료, 세션 초기화 시 호출할 수 있다.
     func stopHosting() {
         stateQueue.async {
             self.stopHostingOnStateQueue()
         }
     }
 }
+
 extension MultipeerGameSession: MCNearbyServiceAdvertiserDelegate {
+    /// 다른 peer가 이 호스트에게 참가 요청을 보냈을 때 호출된다.
+    /// MVP에서는 별도 승인 UI 없이 자동 수락한다.
     func advertiser(
         _ advertiser: MCNearbyServiceAdvertiser,
         didReceiveInvitationFromPeer peerID: MCPeerID,
@@ -225,6 +229,8 @@ extension MultipeerGameSession: MCNearbyServiceAdvertiserDelegate {
         invitationHandler(true, session)
     }
 
+    /// 호스트 광고 시작에 실패했을 때 호출된다.
+    /// 권한 설정이나 Bonjour serviceType 문제를 확인할 때 사용한다.
     func advertiser(
         _ advertiser: MCNearbyServiceAdvertiser,
         didNotStartAdvertisingPeer error: Error
