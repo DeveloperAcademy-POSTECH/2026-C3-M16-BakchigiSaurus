@@ -13,7 +13,7 @@ struct HiderModeView: View {
     // 상위 View에서 만든 camera를 받아서 사용
 
     /// HiderModeViewModel을 생성
-    @StateObject private var viewModel = HiderModeViewModel()
+    @State private var viewModel = HiderModeViewModel()
 
     var body: some View {
         screenContent // 현재 상태에 따라 보여줄 화면 결정
