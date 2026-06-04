@@ -37,7 +37,8 @@ struct TaggedConfirmDialogView: View {
                     Button("네", action: onConfirm)
                         .buttonStyle(
                             DialogButtonStyle(
-                                textColor: .appDanger)
+                                textColor: .appDanger
+                            )
                         )
                 }
             }

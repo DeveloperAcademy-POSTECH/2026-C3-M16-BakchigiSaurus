@@ -41,7 +41,7 @@ struct HiderModeView: View {
                 camera: camera,
                 // 상위 View에서 받은 카메라 객체를 CameraRecordingView에 넘김
                 remainingSeconds: viewModel.remainingSeconds,
-                isTaggerNearby: true,// 술래가 가까운 상태라고 알려줌
+                isTaggerNearby: true, // 술래가 가까운 상태라고 알려줌
                 onRecordingFinished: {
                     viewModel.receiveTaggerSignal(.near)
                 }

@@ -38,13 +38,15 @@ struct TaggedCheckView: View {
                         Button("아니요", action: onNo)
                             .buttonStyle(
                                 AnswerButtonStyle(
-                                    color: .appDanger)
+                                    color: .appDanger
+                                )
                             )
-                        
+
                         Button("네", action: onYes)
                             .buttonStyle(
                                 AnswerButtonStyle(
-                                    color: .accentColor)
+                                    color: .accentColor
+                                )
                             )
                     }
                 }
