@@ -283,6 +283,23 @@ extension MultipeerGameSession {
             self.stopBrowsingOnStateQueue()
         }
     }
+    /// 발견된 호스트에게 참가 요청을 보낸다.
+    func invite(_ peer: PeerID, timeout: TimeInterval = 10) {
+        stateQueue.async {
+            guard let mcPeerID = self.discoveredMCPeers[peer] else {
+                print("Failed to invite peer. MCPeerID not found:", peer.displayName)
+                return
+            }
+
+            self.hostPeer = peer
+            self.browser?.invitePeer(
+                mcPeerID,
+                to: self.session,
+                withContext: nil,
+                timeout: timeout
+            )
+        }
+    }
 }
 
 extension MultipeerGameSession: MCNearbyServiceAdvertiserDelegate {
