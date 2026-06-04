@@ -28,7 +28,21 @@ class LiveActivityManager {
         )
         
         do {
-            
+            currentActivity = try Activity.request(
+                attributes: attributes,
+                content: .init(state: initialState, staleDate: nil)
+            )
+            print("다이나믹 아일랜드 켜짐")
+        }catch{
+            print("다이나믹 아일랜드 켜기 실패")
+        }
+    }
+    
+    func stopLiveActivity() {
+        Task{
+            await currentActivity?.end(dismissalPolicy: .immediate)
+            currentActivity = nil
+            print("다이나믹 아일랜드 꺼짐")
         }
     }
     
