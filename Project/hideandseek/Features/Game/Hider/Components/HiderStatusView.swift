@@ -14,11 +14,11 @@ struct HiderStatusView: View {
     var body: some View {
         VStack(spacing: 8) {
             Text(eyebrowText)
-                .font(.system(size: 18, weight: .semibold))
+                .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(.secondary)
 
             Text(titleText)
-                .font(.system(size: 30, weight: .bold))
+                .font(.system(size: 34, weight: .bold))
                 .foregroundStyle(.primary)
                 .multilineTextAlignment(.center)
         }
@@ -69,8 +69,13 @@ struct HiderStatusView: View {
         case .taggedCheck:
             "술래에게 잡혔나요?"
 
-        case .taggedConfirm:
-            "정말로 잡혔나요?"
+        case let .taggedConfirm(answer):
+            switch answer {
+            case .yes:
+                "정말로 잡혔나요?"
+            case .no:
+                "정말로 잡히지 않았나요?"
+            }
 
         case .tagged:
             "술래에게 잡혔습니다"
@@ -83,10 +88,10 @@ struct HiderStatusView: View {
     private var titleColor: Color {
         switch state {
         case .taggerNearby, .recording, .tagged:
-            Color(red: 1.0, green: 0.24, blue: 0.27)
+                .secondary
 
         case .idle, .hiding, .taggedCheck, .taggedConfirm, .gameEnded:
-            .primary
+                .primary
         }
     }
 }
@@ -94,53 +99,53 @@ struct HiderStatusView: View {
 #Preview("대기 중") {
     HiderStatusView(state: .idle)
         .padding()
-        .background(.black)
+        .background(.appBackground)
 }
 
 #Preview("술래 위치 파악") {
     HiderStatusView(state: .hiding)
         .padding()
-        .background(.black)
+        .background(.appBackground)
 }
 
 #Preview("술래 가까움") {
     HiderStatusView(state: .taggerNearby)
         .padding()
-        .background(.black)
+        .background(.appBackground)
 }
 
 #Preview("녹화 중") {
     HiderStatusView(state: .recording)
         .padding()
-        .background(.black)
+        .background(.appBackground)
 }
 
 #Preview("잡힘 확인") {
     HiderStatusView(state: .taggedCheck)
         .padding()
-        .background(.black)
+        .background(.appBackground)
 }
 
 #Preview("잡힘 재확인 - 네") {
     HiderStatusView(state: .taggedConfirm(answer: .yes))
         .padding()
-        .background(.black)
+        .background(.appBackground)
 }
 
 #Preview("잡힘 재확인 - 아니요") {
     HiderStatusView(state: .taggedConfirm(answer: .no))
         .padding()
-        .background(.black)
+        .background(.appBackground)
 }
 
 #Preview("최종 잡힘") {
     HiderStatusView(state: .tagged)
         .padding()
-        .background(.black)
+        .background(.appBackground)
 }
 
 #Preview("게임 종료") {
     HiderStatusView(state: .gameEnded)
         .padding()
-        .background(.black)
+        .background(.appBackground)
 }

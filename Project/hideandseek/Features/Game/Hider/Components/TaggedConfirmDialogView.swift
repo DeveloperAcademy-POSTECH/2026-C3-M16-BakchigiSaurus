@@ -44,7 +44,7 @@ struct TaggedConfirmDialogView: View {
             }
             .padding(22)
             .frame(width: 300)
-            .background(.black.opacity(0.78))
+            .background(.appCard)
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)

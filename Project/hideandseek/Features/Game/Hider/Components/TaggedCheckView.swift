@@ -24,14 +24,14 @@ struct TaggedCheckView: View {
                 Spacer()
 
                 Text("!")
-                    .font(.system(size: 130, weight: .bold))
-                    .foregroundStyle(.red)
+                    .font(.system(size: 200, weight: .bold))
+                    .foregroundStyle(.appDanger)
 
                 Spacer()
 
                 VStack(spacing: 18) {
                     Text("술래에게 잡혔나요?")
-                        .font(.system(size: 30, weight: .bold))
+                        .font(.system(size: 34, weight: .bold))
                         .foregroundStyle(.primary)
 
                     HStack(spacing: 16) {
@@ -77,7 +77,7 @@ struct AnswerButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 17, weight: .bold))
-            .foregroundStyle(.white)
+            .foregroundStyle(.primary)
             .frame(width: 122, height: 48)
             .background(color.opacity(configuration.isPressed ? 0.65 : 1))
             .clipShape(Capsule())
