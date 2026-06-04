@@ -12,6 +12,7 @@ struct TaggerSearchView: View {
     let camera: CameraModel
     let isHiderNearby: Bool
     let isUsingHint: Bool
+    @State var hintCount = 1
 
     var body: some View {
         ZStack {
@@ -41,7 +42,7 @@ struct TaggerSearchView: View {
                                 // TODO: 힌트 갯수 연결
                                 showHintAlert = true
                             } label: {
-                                Label("힌트 (n개 남음)", systemImage: "magnifyingglass")
+                                Label("힌트 \(hintCount)개 남음", systemImage: "magnifyingglass")
                                     .padding(.vertical, 10)
                                     .font(.title3)
                             }

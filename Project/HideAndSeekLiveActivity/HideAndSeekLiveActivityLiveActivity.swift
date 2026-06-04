@@ -35,6 +35,19 @@ struct HideAndSeekLiveActivityLiveActivity: Widget {
             DynamicIsland {
                 // 2) Expanded: 아일랜드를 꾹 눌러서 커졌을 때 화면
                 DynamicIslandExpandedRegion(.bottom) {
+//                    Text("hello")
+//                        .foregroundStyle(Color.yellow)
+                }
+                // 나머지 영역(Leading, Trailing, Center)은 비워둠으로써 삭제 효과
+                DynamicIslandExpandedRegion(.leading) {
+//                    Text("hello")
+//                        .foregroundStyle(Color.yellow)
+                }
+                DynamicIslandExpandedRegion(.trailing) {
+//                    Text("hello")
+//                        .foregroundStyle(Color.green)
+                }
+                DynamicIslandExpandedRegion(.center) {
                     VStack(spacing: 10) {
                         // 타이머 표시
                         let minutes = context.state.remainingTime / 60
@@ -57,17 +70,12 @@ struct HideAndSeekLiveActivityLiveActivity: Widget {
                     .padding(.vertical, 10)
                 }
                 
-                // 나머지 영역(Leading, Trailing, Center)은 비워둠으로써 삭제 효과
-                DynamicIslandExpandedRegion(.leading) { }
-                DynamicIslandExpandedRegion(.trailing) { }
-                DynamicIslandExpandedRegion(.center) { }
-                
             } compactLeading: {
-                // 3) Compact Leading: 기본 상태의 왼쪽 (역할 아이콘) - 안쓰므로 비워둠
+
             } compactTrailing: {
                 // 4) Compact Trailing: 기본 상태의 오른쪽 - 안쓰므로 비워둠
             } minimal: {
-                // 5) Minimal: 다른 앱과 겹쳤을 때 - 안쓰므로 비워둠
+
             }
             .widgetURL(URL(string: "http://www.apple.com"))
             .keylineTint(Color.cyan)
@@ -96,6 +104,20 @@ extension HideAndSeekLiveActivityAttributes.ContentState {
 
 //다이나믹 아일랜드 - 확장형 (Expanded) 프리뷰
 #Preview("Island Expanded", as: .dynamicIsland(.expanded), using: HideAndSeekLiveActivityAttributes.preview) {
+    HideAndSeekLiveActivityLiveActivity()
+} contentStates: {
+    HideAndSeekLiveActivityAttributes.ContentState.taggerTest
+}
+
+
+#Preview("Island Expanded", as: .dynamicIsland(.compact), using: HideAndSeekLiveActivityAttributes.preview) {
+    HideAndSeekLiveActivityLiveActivity()
+} contentStates: {
+    HideAndSeekLiveActivityAttributes.ContentState.taggerTest
+}
+
+
+#Preview("Island Expanded", as: .dynamicIsland(.minimal), using: HideAndSeekLiveActivityAttributes.preview) {
     HideAndSeekLiveActivityLiveActivity()
 } contentStates: {
     HideAndSeekLiveActivityAttributes.ContentState.taggerTest

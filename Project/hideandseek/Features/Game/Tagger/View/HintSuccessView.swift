@@ -11,6 +11,8 @@ struct HintSuccessView: View {
     let camera: CameraModel
     let isHiderNearby: Bool
     let isUsingHint: Bool
+    
+    @State var rotation: Double = 30.0
 
     var body: some View {
         ZStack {
@@ -28,6 +30,8 @@ struct HintSuccessView: View {
                     Spacer()
                     Image(systemName: "arrow.up")
                         .font(.system(size: 200))
+                        .rotationEffect(Angle(degrees: rotation))
+                    
                     Spacer()
                     HStack {
                         VStack(alignment: .leading) {

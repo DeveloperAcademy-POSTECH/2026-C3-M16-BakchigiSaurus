@@ -22,6 +22,4 @@ struct HideAndSeekLiveActivityAttributes: ActivityAttributes {
         var isTagger: Bool
         var isTargetNear: Bool
     }
-    
-    
 }
