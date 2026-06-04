@@ -55,6 +55,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Shared/Components/ActivityAttributes.swift,
+				Shared/Managers/LiveActivityManager.swift,
 			);
 			target = 57DC7D152FCFCA4A00EB2EA9 /* HideAndSeekLiveActivityExtension */;
 		};
