@@ -32,7 +32,7 @@ final class HiderModeViewModel {
     func receiveTaggerSignal(_ newSignal: TaggerSignal) {
         guard !state.shouldIgnoreTaggerUpdates else {
             return
-        // 현재 상태가 신호/거리 업데이트를 무시해야 하는 상태가 아니라면 계속 진행. but 무시해야 하는 상태라면 바로 return
+                // 현재 상태가 신호/거리 업데이트를 무시해야 하는 상태가 아니라면 계속 진행. but 무시해야 하는 상태라면 바로 return
         }
 
         signal = newSignal
@@ -54,24 +54,24 @@ final class HiderModeViewModel {
     func updateTaggerDistance(_ distance: Float?) {
         guard !state.shouldIgnoreTaggerUpdates else {
             return
-        // 현재 상태가 잡힘 확인/종료 흐름이면 거리 업데이트 무시
+                // 현재 상태가 잡힘 확인/종료 흐름이면 거리 업데이트 무시
         }
-        
+
         taggerDistance = distance
-        
+
         guard let distance else {
             return
-        // 거리값이 없으면 잡힘 판정 하지 않음
+                // 거리값이 없으면 잡힘 판정 하지 않음
         }
-        
+
         if ignoresTaggedDistanceUntilSafe {
             if distance > taggedDistanceThreshold {
                 ignoresTaggedDistanceUntilSafe = false
-            // 술래가 기준 거리보다 멀어졌다면 다시 거리 판정 허용
+                // 술래가 기준 거리보다 멀어졌다면 다시 거리 판정 허용
             }
             return
         }
-        
+
         // 거리가 기준 이하라면 잡힘 화면으로 이동
         if distance <= taggedDistanceThreshold {
             showTaggedCheck()
@@ -82,9 +82,9 @@ final class HiderModeViewModel {
     func showTaggedCheck() {
         guard !state.shouldIgnoreTaggerUpdates else {
             return
-        // 이미 잡힘 확인 중이거나 종료 상태라면 다시 실행하지 않음
+                // 이미 잡힘 확인 중이거나 종료 상태라면 다시 실행하지 않음
         }
-        
+
         state = .taggedCheck
     }
 
@@ -148,14 +148,14 @@ final class HiderModeViewModel {
 }
 
 private extension HiderModeState {
-    // 현재 상태에서 술래 신호/거리 업데이트를 무시해야 하는지 알려주는 계산 속성
+    /// 현재 상태에서 술래 신호/거리 업데이트를 무시해야 하는지 알려주는 계산 속성
     var shouldIgnoreTaggerUpdates: Bool {
         switch self {
         case .taggedCheck, .taggedConfirm, .tagged:
-            return true
-            
+            true
+
         case .idle, .hiding, .taggerNearby, .recording:
-            return false
+            false
         }
     }
 }
