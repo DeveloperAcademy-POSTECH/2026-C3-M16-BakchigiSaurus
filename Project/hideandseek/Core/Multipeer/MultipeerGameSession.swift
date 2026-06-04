@@ -9,8 +9,17 @@
 //
 
 import Foundation
+import MultipeerConnectivity
+import NearbyInteraction
 @preconcurrency import MultipeerConnectivity
 import UIKit
+
+/// MC를 통해 수신한 NI DiscoveryToken 이벤트.
+/// 어떤 peer에게서 받은 token인지 함께 전달한다.
+struct NIDiscoveryTokenEvent {
+    let peer: PeerID
+    let token: NIDiscoveryToken
+}
 
 /// GameSession 프로토콜을 실제 MultipeerConnectivity로 구현하는 클래스.
 /// Feature 쪽은 이 구현체가 아니라 GameSession 인터페이스에 의존한다.
@@ -33,6 +42,9 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
 
     /// 연결/끊김 이벤트를 Feature로 전달하기 위한 AsyncStream continuation.
     private var eventContinuation: AsyncStream<SessionEvent>.Continuation?
+
+    /// MC로 수신한 NI DiscoveryToken을 외부로 전달하기 위한 AsyncStream continuation.
+    private var niTokenContinuation: AsyncStream<NIDiscoveryTokenEvent>.Continuation?
 
     /// 호스트 광고를 담당하는 advertiser.
     private var advertiser: MCNearbyServiceAdvertiser?
@@ -107,10 +119,33 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
         }
     }
 
-    /// GameSession 요구사항: 연결 변화 이벤트 스트림 생성.
     func makeEventStream() -> AsyncStream<SessionEvent> {
         AsyncStream { continuation in
-            self.eventContinuation = continuation
+            stateQueue.async {
+                self.eventContinuation = continuation
+            }
+
+            continuation.onTermination = { [weak self] _ in
+                self?.stateQueue.async {
+                    self?.eventContinuation = nil
+                }
+            }
+        }
+    }
+
+    /// MCSession을 통해 수신한 상대방의 NIDiscoveryToken 이벤트 스트림을 생성한다.
+    /// NI 담당 객체는 이 스트림을 구독해 NINearbyPeerConfiguration에 사용할 token을 받을 수 있다.
+    func makeNIDiscoveryTokenStream() -> AsyncStream<NIDiscoveryTokenEvent> {
+        AsyncStream { continuation in
+            stateQueue.async {
+                self.niTokenContinuation = continuation
+            }
+
+            continuation.onTermination = { [weak self] _ in
+                self?.stateQueue.async {
+                    self?.niTokenContinuation = nil
+                }
+            }
         }
     }
 }
