@@ -53,7 +53,8 @@ import SwiftUI
 /// - Important: 직접 쓰지 말고 ``CaptureService``를 통해서만 사용한다.
 final nonisolated class RecorderDelegate: NSObject,
     AVCaptureFileOutputRecordingDelegate,
-    @unchecked Sendable {
+    @unchecked Sendable
+{
     private let output: AVCaptureMovieFileOutput
     private let lock = NSLock()
     private var continuation: CheckedContinuation<URL, Error>?
