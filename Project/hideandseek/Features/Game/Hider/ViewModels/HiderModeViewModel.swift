@@ -41,7 +41,7 @@ final class HiderModeViewModel {
         warningToRecordingTask?.cancel()
         state = .gameEnded
     }
-    
+
     /// 추후 Nearby와 연결
     func updateTaggerDistance(_ distance: Float?) {
         // 현재 상태가 거리 업데이트를 무시해야 하는 상태인지 확인 (뒤늦은 거리값이 들어와도 화면이 바뀌면 안됨)
