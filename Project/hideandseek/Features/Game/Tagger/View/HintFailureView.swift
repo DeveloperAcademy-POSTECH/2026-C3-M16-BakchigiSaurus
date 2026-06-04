@@ -44,26 +44,17 @@ struct HintFailureView: View {
                                     .font(.largeTitle.bold())
                                     .foregroundStyle(.secondary)
                             }
-                            Button {} label: {
-                                Label("힌트 (n개 남음)", systemImage: "magnifyingglass")
-                                    .padding(.vertical, 10)
-                                    .font(.title3)
-                            }
-                            .buttonStyle(.glass)
-                            .cornerRadius(20)
-                            .padding(.bottom, 7)
-                            .opacity(0)
-                            .disabled(true)
                         }
                         Spacer()
                     }
+                    .padding(.bottom)
                 }
             }
             .padding(.horizontal, 36)
         }
         .onAppear {
             Task {
-                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
                 dismiss()
             }
         }

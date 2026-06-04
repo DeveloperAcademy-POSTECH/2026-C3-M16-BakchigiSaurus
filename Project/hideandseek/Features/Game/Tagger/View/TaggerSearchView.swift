@@ -90,5 +90,5 @@ struct TaggerSearchView: View {
 }
 
 #Preview {
-    TaggerSearchView(camera: CameraModel(), isHiderNearby: false, isUsingHint: false)
+    TaggerSearchView(camera: CameraModel(), isHiderNearby: true, isUsingHint: false)
 }
