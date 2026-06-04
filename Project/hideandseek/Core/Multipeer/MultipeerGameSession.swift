@@ -33,7 +33,19 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
 
     /// 연결/끊김 이벤트를 Feature로 전달하기 위한 AsyncStream continuation.
     private var eventContinuation: AsyncStream<SessionEvent>.Continuation?
+
+    /// 호스트 광고를 담당하는 advertiser.
     private var advertiser: MCNearbyServiceAdvertiser?
+
+    /// 주변에서 광고 중인 호스트를 탐색하는 브라우저.
+    private var browser: MCNearbyServiceBrowser?
+
+    /// 발견된 호스트를 Feature용 PeerID와 실제 MC용 MCPeerID로 매핑한다.
+    private var discoveredMCPeers: [PeerID: MCPeerID] = [:]
+
+    /// displayName 기준으로 이미 확인한 PeerID를 저장한다.
+    /// 연결 이후에도 discoveryInfo에서 얻은 안정적인 rawID를 재사용하기 위해 사용한다.
+    private var knownPeerIDsByDisplayName: [String: PeerID] = [:]
 
     /// GameSession 요구사항: 이 기기의 추상화된 식별자.
     let localPeer: PeerID
@@ -47,6 +59,14 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
         stateQueue.sync {
             let connectedPeers = connectedMCPeers.map { PeerID(mcPeerID: $0) }
             return uniquePeers([localPeer] + connectedPeers)
+        }
+    }
+
+    /// 주변에서 발견된 호스트 목록.
+    /// 현재 GameSession 프로토콜에는 포함되어 있지 않은 구현체 전용 상태다.
+    var discoveredPeers: [PeerID] {
+        stateQueue.sync {
+            discoveredMCPeers.keys.sorted { $0.displayName < $1.displayName }
         }
     }
 
@@ -73,6 +93,8 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
         self.hostPeer = peer
 
         super.init()
+
+        self.knownPeerIDsByDisplayName[mcPeerID.displayName] = peer
 
         // MCSession 연결 상태 변화를 이 클래스에서 받을 수 있게 설정한다.
         self.session.delegate = self
