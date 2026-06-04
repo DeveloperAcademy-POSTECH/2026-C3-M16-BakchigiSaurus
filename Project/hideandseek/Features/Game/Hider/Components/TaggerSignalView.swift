@@ -91,16 +91,16 @@ struct TaggerSignalView: View {
     private var signalColor: Color {
         switch signal {
         case .unknown:
-                .gray
+            .gray
 
         case .far:
-                .green
+            .green
 
         case .near:
-                .orange
+            .orange
 
         case .veryNear:
-                .appDanger
+            .appDanger
         }
     }
 }
