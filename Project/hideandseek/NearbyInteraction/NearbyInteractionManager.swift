@@ -11,6 +11,7 @@ import NearbyInteraction
 
 final class NearbyInteractionManager: NSObject {
     var session: NISession?
+    var onReadingUpdated: ((NearbyInteractionReading) -> Void)? // 거리, 방향 값 들어왔을 때 외부에 콜백
 
     private(set) var state: NearbyInteractionState = .idle
     private(set) var sharedTokenWithPeer = false
@@ -94,8 +95,25 @@ extension NearbyInteractionManager: NISessionDelegate {
         state = .running
     }
 
+    // 거리, 방향 값 들어왔을 때 업데이트 과정
     func session(_ session: NISession, didUpdate nearbyObjects: [NINearbyObject]) {
-        // 추후 브랜치 feat/ni-update에서 distance.direction 처리
+        guard let peerDiscoveryToken else {
+                return
+            }
+        // 배열 안에서 상대방 object 찾기
+            guard let nearbyObject = nearbyObjects.first(where: {
+                $0.discoveryToken == peerDiscoveryToken
+            }) else {
+                return
+            }
+        // 상대와의 거리, 방향, 시각을 하나의 모델로 정리
+            let reading = NearbyInteractionReading(
+                distance: nearbyObject.distance,
+                direction: nearbyObject.direction,
+                timestamp: Date()
+            )
+
+            onReadingUpdated?(reading) // 만든 값을 외부로 전달
     }
 
     func session(
