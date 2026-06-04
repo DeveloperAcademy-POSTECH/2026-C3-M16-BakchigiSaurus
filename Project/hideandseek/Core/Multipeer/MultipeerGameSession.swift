@@ -172,13 +172,14 @@ extension MultipeerGameSession: MCSessionDelegate {
         peer peerID: MCPeerID,
         didChange state: MCSessionState
     ) {
-        let peer = PeerID(mcPeerID: peerID)
-
         stateQueue.async {
+            let peer = self.makeKnownPeerID(from: peerID)
             self.connectedMCPeers = session.connectedPeers
 
             switch state {
             case .connected:
+                self.knownPeerIDsByDisplayName[peerID.displayName] = peer
+                self.stopBrowsingOnStateQueue()
                 self.eventContinuation?.yield(.peerConnected(peer))
 
             case .notConnected:
