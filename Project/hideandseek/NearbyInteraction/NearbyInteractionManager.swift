@@ -10,7 +10,7 @@ import Foundation
 import NearbyInteraction
 
 final class NearbyInteractionManager: NSObject {
-    var session: NISession?
+    private var session: NISession?
     var onReadingUpdated: ((NearbyInteractionReading) -> Void)? // 거리, 방향 값 들어왔을 때 외부에 콜백
 
     private(set) var state: NearbyInteractionState = .idle
