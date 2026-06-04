@@ -15,4 +15,5 @@ enum HiderModeState {
     case taggedCheck // 술래에게 잡혔나요? 화면
     case taggedConfirm(answer: TaggedAnswer) // 한번 더 확인하는 팝업
     case tagged // 최종적으로 잡힘
+    case gameEnded
 }

@@ -8,6 +8,7 @@
 import Foundation
 import Observation
 
+@MainActor
 @Observable // 해당 클래스 안의 값이 바뀌면 SwiftUI 화면이 자동으로 변화 감지
 final class HiderModeViewModel {
     var state: HiderModeState = .idle // 숨는 사람 화면 상태
@@ -15,9 +16,9 @@ final class HiderModeViewModel {
     var remainingSeconds: Int = 600 // 남은 게임 시간
     var taggerDistance: Float? // 술래와의 거리 (값이 있을수도 없을수도)
 
-    private let taggedDistanceThreshold: Float = 0.2
-    private let nearbyDistanceThreshold: Float = 3.0
-    private let warningDisplayDuration: UInt64 = 1_000_000_000 // 경고 화면 보여주는 시간 (그 후 녹화)
+    private let taggedDistanceThreshold: Float = 0.2 // 0.2m
+    private let nearbyDistanceThreshold: Float = 3.0 // 3.0m
+    private let warningDisplayDuration: UInt64 = 1_000_000_000 // 1초?. 경고 화면 보여주는 시간 (그 후 녹화)
 
     private var timer: Timer? // 1초마다 시간 줄임
     private var warningToRecordingTask: Task<Void, Never>? // 녹화 화면으로 전환
@@ -27,13 +28,20 @@ final class HiderModeViewModel {
     func startHiding() {
         state = .hiding
         signal = .unknown
-        remainingSeconds = 600
         taggerDistance = nil
         hasRecordedForCurrentNearEvent = false // 이번 근접 상황에서 녹화하지 않은 상태로 초기화
         ignoresTaggedDistanceUntilSafe = false // 잡힘 거리 무시 상태 해제
-        startTimer()
     }
 
+    func updateRemainingSeconds(_ seconds: Int) {
+        remainingSeconds = max(0, seconds)
+    }
+
+    func handleGameEnded() {
+        warningToRecordingTask?.cancel()
+        state = .gameEnded
+    }
+    
     /// 추후 Nearby와 연결
     func updateTaggerDistance(_ distance: Float?) {
         // 현재 상태가 거리 업데이트를 무시해야 하는 상태인지 확인 (뒤늦은 거리값이 들어와도 화면이 바뀌면 안됨)
