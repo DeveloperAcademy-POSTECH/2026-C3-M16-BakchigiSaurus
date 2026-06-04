@@ -34,7 +34,6 @@ struct HideAndSeekLiveActivityLiveActivity: Widget {
         } dynamicIsland: { context in
             DynamicIsland {
                 // 2) Expanded: 아일랜드를 꾹 눌러서 커졌을 때 화면
-                // 타이머와 경고 문구만 하단에 집중 배치
                 DynamicIslandExpandedRegion(.bottom) {
                     VStack(spacing: 10) {
                         // 타이머 표시
@@ -64,18 +63,11 @@ struct HideAndSeekLiveActivityLiveActivity: Widget {
                 DynamicIslandExpandedRegion(.center) { }
                 
             } compactLeading: {
-                // 3) Compact Leading: 기본 상태의 왼쪽 (역할 아이콘)
-                Text(context.state.isTagger ? "👹" : "🏃‍♂️")
+                // 3) Compact Leading: 기본 상태의 왼쪽 (역할 아이콘) - 안쓰므로 비워둠
             } compactTrailing: {
-                // 4) Compact Trailing: 기본 상태의 오른쪽
-                if context.state.isTargetNear {
-                    Text("🚨")
-                } else {
-                    Text("\(context.state.remainingTime)초")
-                }
+                // 4) Compact Trailing: 기본 상태의 오른쪽 - 안쓰므로 비워둠
             } minimal: {
-                // 5) Minimal: 다른 앱과 겹쳤을 때
-                Text(context.state.isTargetNear ? "⚠️" : (context.state.isTagger ? "👹" : "🏃‍♂️"))
+                // 5) Minimal: 다른 앱과 겹쳤을 때 - 안쓰므로 비워둠
             }
             .widgetURL(URL(string: "http://www.apple.com"))
             .keylineTint(Color.cyan)
@@ -84,55 +76,27 @@ struct HideAndSeekLiveActivityLiveActivity: Widget {
 }
 
 // MARK: - Previews
-// 3️⃣ Xcode 오른쪽에 미리보기(Preview) 설정
+// Xcode 오른쪽에 미리보기(Preview) 설정
 
 extension HideAndSeekLiveActivityAttributes {
-    fileprivate static var preview: HideAndSeekLiveActivityAttributes {
-        HideAndSeekLiveActivityAttributes(roomName: "A동 숨바꼭질", totalPlayers: 5)
-    }
+    // 1. 방 이름이랑 인원수 설정
+    fileprivate static var preview = HideAndSeekLiveActivityAttributes(roomName: "테스트 방", totalPlayers: 5)
 }
 
 extension HideAndSeekLiveActivityAttributes.ContentState {
-    fileprivate static var taggerNormal: HideAndSeekLiveActivityAttributes.ContentState {
-        HideAndSeekLiveActivityAttributes.ContentState(
-            currentStatusMessage: "숨은 사람들을 찾으세요!",
-            remainingTime: 180,
-            caughtCount: 0,
-            isTagger: true,
-            isTargetNear: false
-        )
-    }
-    
-    fileprivate static var hiderDanger: HideAndSeekLiveActivityAttributes.ContentState {
-        HideAndSeekLiveActivityAttributes.ContentState(
-            currentStatusMessage: "심장이 두근거립니다...",
-            remainingTime: 120,
-            caughtCount: 2,
-            isTagger: false,
-            isTargetNear: true
-        )
-    }
+    // 2. 술래일 때 상황 딱 1개만 남기기 (나머지 한 개는 삭제!)
+    fileprivate static var taggerTest = HideAndSeekLiveActivityAttributes.ContentState(
+        currentStatusMessage: "게임 중...",
+        remainingTime: 180, // 3분
+        caughtCount: 0,
+        isTagger: true,      // 술래라면 ture, 숨는사람이라면 false
+        isTargetNear: true   // 근처에 타겟이 있다고 가정 (술래의 타겟은 숨은 사람 / 숨은 사람의 타겟은 술래)
+    )
 }
 
-// 1. 잠금화면/알림센터용 프리뷰
-#Preview("Notification", as: .content, using: HideAndSeekLiveActivityAttributes.preview) {
-    HideAndSeekLiveActivityLiveActivity()
-} contentStates: {
-    HideAndSeekLiveActivityAttributes.ContentState.taggerNormal
-    HideAndSeekLiveActivityAttributes.ContentState.hiderDanger
-}
-
-// 2. 다이나믹 아일랜드 - 확장형 (Expanded) 프리뷰
+//다이나믹 아일랜드 - 확장형 (Expanded) 프리뷰
 #Preview("Island Expanded", as: .dynamicIsland(.expanded), using: HideAndSeekLiveActivityAttributes.preview) {
     HideAndSeekLiveActivityLiveActivity()
 } contentStates: {
-    HideAndSeekLiveActivityAttributes.ContentState.taggerNormal
-    HideAndSeekLiveActivityAttributes.ContentState.hiderDanger
-}
-
-// 3. 다이나믹 아일랜드 - 컴팩트 (Compact) 프리뷰
-#Preview("Island Compact", as: .dynamicIsland(.compact), using: HideAndSeekLiveActivityAttributes.preview) {
-    HideAndSeekLiveActivityLiveActivity()
-} contentStates: {
-    HideAndSeekLiveActivityAttributes.ContentState.hiderDanger
+    HideAndSeekLiveActivityAttributes.ContentState.taggerTest
 }
