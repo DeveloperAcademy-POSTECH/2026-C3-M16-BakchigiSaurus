@@ -182,6 +182,13 @@ private extension MultipeerGameSession {
         knownPeerIDsByDisplayName[mcPeerID.displayName] ?? PeerID(mcPeerID: mcPeerID)
     }
 
+    /// 연결된 peer 목록에서 Feature용 PeerID와 매칭되는 MCPeerID를 찾는다.
+    func connectedMCPeer(for peer: PeerID) -> MCPeerID? {
+        connectedMCPeers.first { mcPeerID in
+            makeKnownPeerID(from: mcPeerID).rawID == peer.rawID
+        }
+    }
+
     /// 호스트가 광고한 discoveryInfo를 기반으로 Feature용 PeerID를 만든다.
     /// discoveryInfo가 없으면 MCPeerID의 displayName을 fallback으로 사용한다.
     func makeDiscoveredPeerID(
@@ -343,6 +350,49 @@ extension MultipeerGameSession {
                 withContext: nil,
                 timeout: timeout
             )
+        }
+    }
+
+    /// NI 담당 코드에서 생성한 localDiscoveryToken을 연결된 peer에게 전송한다.
+    /// peer를 지정하지 않으면 현재 연결된 모든 peer에게 전송한다.
+    func sendNIDiscoveryToken(
+        _ token: NIDiscoveryToken,
+        to peer: PeerID? = nil
+    ) {
+        stateQueue.async {
+            do {
+                let tokenData = try NIDiscoveryTokenCoding.encode(token)
+                let message = MultipeerMessage(
+                    kind: .niDiscoveryToken,
+                    payload: tokenData
+                )
+                let messageData = try JSONEncoder().encode(message)
+
+                let targetPeers: [MCPeerID]
+                if let peer {
+                    guard let targetPeer = self.connectedMCPeer(for: peer) else {
+                        print("Failed to send NI token. MCPeerID not found:", peer.displayName)
+                        return
+                    }
+
+                    targetPeers = [targetPeer]
+                } else {
+                    targetPeers = self.session.connectedPeers
+                }
+
+                guard !targetPeers.isEmpty else {
+                    print("Failed to send NI token. No connected peers.")
+                    return
+                }
+
+                try self.session.send(
+                    messageData,
+                    toPeers: targetPeers,
+                    with: .reliable
+                )
+            } catch {
+                print("Failed to send NI token:", error.localizedDescription)
+            }
         }
     }
 }
