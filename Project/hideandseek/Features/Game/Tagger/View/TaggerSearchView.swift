@@ -55,6 +55,7 @@ struct TaggerSearchView: View {
                             .buttonStyle(.glass)
                             .cornerRadius(20)
                             .padding(.bottom, 7)
+                            .disabled(hintCount == 0)
                         }
                         Spacer()
                     }
