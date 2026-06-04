@@ -246,7 +246,33 @@ extension MultipeerGameSession: MCSessionDelegate {
         _ session: MCSession,
         didReceive data: Data,
         fromPeer peerID: MCPeerID
-    ) {}
+    ) {
+        stateQueue.async {
+            do {
+                let message = try JSONDecoder().decode(
+                    MultipeerMessage.self,
+                    from: data
+                )
+
+                switch message.kind {
+                case .niDiscoveryToken:
+                    let token = try NIDiscoveryTokenCoding.decode(
+                        from: message.payload
+                    )
+                    let peer = self.makeKnownPeerID(from: peerID)
+
+                    self.niTokenContinuation?.yield(
+                        NIDiscoveryTokenEvent(
+                            peer: peer,
+                            token: token
+                        )
+                    )
+                }
+            } catch {
+                print("Failed to handle received multipeer data:", error.localizedDescription)
+            }
+        }
+    }
 
     /// 스트림 수신 콜백. 현재 브랜치에서는 사용하지 않는다.
     func session(
