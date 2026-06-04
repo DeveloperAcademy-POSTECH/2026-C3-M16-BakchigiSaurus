@@ -54,19 +54,19 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
     /// - Parameters:
     ///   - displayName: 주변 기기에 표시될 이름.
     ///   - isHost: 현재 기기가 호스트인지 여부.
-    init(displayName: String = UIDevice.current.name, isHost: Bool = true) {
-        let mcPeerID = MCPeerID(displayName: displayName)
+    init(
+        displayName: String = UIDevice.current.name,
+        isHost: Bool = true,
+        peerIdentityStore: LocalPeerIdentityStore = LocalPeerIdentityStore()
+    ) {
+        let peer = peerIdentityStore.loadOrCreatePeerID(displayName: displayName)
+        let mcPeerID = MCPeerID(displayName: peer.displayName)
 
         self.localMCPeerID = mcPeerID
         self.session = MCSession(
             peer: mcPeerID,
             securityIdentity: nil,
             encryptionPreference: .required
-        )
-
-        let peer = PeerID(
-            rawID: displayName,
-            displayName: displayName
         )
 
         self.localPeer = peer
