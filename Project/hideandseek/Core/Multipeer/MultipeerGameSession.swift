@@ -57,7 +57,7 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
     /// Feature에는 MCPeerID 대신 PeerID로 변환해서 제공한다.
     var currentPeers: [PeerID] {
         stateQueue.sync {
-            let connectedPeers = connectedMCPeers.map { PeerID(mcPeerID: $0) }
+            let connectedPeers = connectedMCPeers.map { makeKnownPeerID(from: $0) }
             return uniquePeers([localPeer] + connectedPeers)
         }
     }
@@ -140,6 +140,20 @@ private extension MultipeerGameSession {
         browser?.delegate = nil
         browser = nil
         discoveredMCPeers.removeAll()
+    }
+
+    func makeKnownPeerID(from mcPeerID: MCPeerID) -> PeerID {
+        knownPeerIDsByDisplayName[mcPeerID.displayName] ?? PeerID(mcPeerID: mcPeerID)
+    }
+
+    func makeDiscoveredPeerID(
+        from peerID: MCPeerID,
+        discoveryInfo: [String: String]?
+    ) -> PeerID {
+        PeerID(
+            rawID: discoveryInfo?["hostRawID"] ?? peerID.displayName,
+            displayName: discoveryInfo?["hostDisplayName"] ?? peerID.displayName
+        )
     }
 }
 
@@ -256,7 +270,7 @@ extension MultipeerGameSession {
                 peer: self.localMCPeerID,
                 serviceType: self.serviceType
             )
-
+            browser.delegate = self
             self.browser = browser
             browser.startBrowsingForPeers()
         }
@@ -290,5 +304,42 @@ extension MultipeerGameSession: MCNearbyServiceAdvertiserDelegate {
         didNotStartAdvertisingPeer error: Error
     ) {
         print("Failed to start advertising peer:", error.localizedDescription)
+    }
+}
+extension MultipeerGameSession: MCNearbyServiceBrowserDelegate {
+    func browser(
+        _ browser: MCNearbyServiceBrowser,
+        foundPeer peerID: MCPeerID,
+        withDiscoveryInfo info: [String: String]?
+    ) {
+        let peer = makeDiscoveredPeerID(
+            from: peerID,
+            discoveryInfo: info
+        )
+
+        stateQueue.async {
+            guard peer.rawID != self.localPeer.rawID else { return }
+
+            self.discoveredMCPeers[peer] = peerID
+            self.knownPeerIDsByDisplayName[peerID.displayName] = peer
+        }
+    }
+
+    func browser(
+        _ browser: MCNearbyServiceBrowser,
+        lostPeer peerID: MCPeerID
+    ) {
+        stateQueue.async {
+            self.discoveredMCPeers = self.discoveredMCPeers.filter { _, storedPeerID in
+                storedPeerID.displayName != peerID.displayName
+            }
+        }
+    }
+
+    func browser(
+        _ browser: MCNearbyServiceBrowser,
+        didNotStartBrowsingForPeers error: Error
+    ) {
+        print("Failed to start browsing peers:", error.localizedDescription)
     }
 }
