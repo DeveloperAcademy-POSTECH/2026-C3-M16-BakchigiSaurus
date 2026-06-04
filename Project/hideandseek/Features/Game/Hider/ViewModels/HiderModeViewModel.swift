@@ -145,15 +145,6 @@ final class HiderModeViewModel {
         state = .taggedCheck
     }
 
-    /// 네/아니오 선택
-    func selectTaggedAnswer(_ answer: TaggedAnswer) {
-        state = .taggedConfirm(answer: answer)
-    }
-
-    func cancelTaggedConfirm() {
-        state = .taggedCheck
-    }
-
     /// 한번 더 확인
     func confirmTaggedAnswer(_ answer: TaggedAnswer) {
         switch answer {
@@ -191,7 +182,7 @@ private extension HiderModeState {
     var shouldIgnoreTaggerUpdates: Bool {
         switch self {
         // 거리 업데이트 무시
-        case .taggedCheck, .taggedConfirm, .tagged, .gameEnded:
+        case .taggedCheck, .tagged, .gameEnded:
             true
 
         // 거리 업데이트 받음

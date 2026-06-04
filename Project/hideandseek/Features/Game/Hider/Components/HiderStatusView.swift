@@ -41,9 +41,6 @@ struct HiderStatusView: View {
         case .taggedCheck:
             "확인 필요"
 
-        case .taggedConfirm:
-            "한 번 더 확인"
-
         case .tagged:
             "잡힘"
 
@@ -69,14 +66,6 @@ struct HiderStatusView: View {
         case .taggedCheck:
             "술래에게 잡혔나요?"
 
-        case let .taggedConfirm(answer):
-            switch answer {
-            case .yes:
-                "정말로 잡혔나요?"
-            case .no:
-                "정말로 잡히지 않았나요?"
-            }
-
         case .tagged:
             "술래에게 잡혔습니다"
 
@@ -90,7 +79,7 @@ struct HiderStatusView: View {
         case .taggerNearby, .recording, .tagged:
             .secondary
 
-        case .idle, .hiding, .taggedCheck, .taggedConfirm, .gameEnded:
+        case .idle, .hiding, .taggedCheck, .gameEnded:
             .primary
         }
     }
@@ -122,18 +111,6 @@ struct HiderStatusView: View {
 
 #Preview("잡힘 확인") {
     HiderStatusView(state: .taggedCheck)
-        .padding()
-        .background(.appBackground)
-}
-
-#Preview("잡힘 재확인 - 네") {
-    HiderStatusView(state: .taggedConfirm(answer: .yes))
-        .padding()
-        .background(.appBackground)
-}
-
-#Preview("잡힘 재확인 - 아니요") {
-    HiderStatusView(state: .taggedConfirm(answer: .no))
         .padding()
         .background(.appBackground)
 }

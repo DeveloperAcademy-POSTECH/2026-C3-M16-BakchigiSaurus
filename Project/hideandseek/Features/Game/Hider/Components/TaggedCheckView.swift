@@ -10,47 +10,61 @@ import SwiftUI
 /// 숨는 사람이 술래에게 잡혔는지 직접 확인하는 화면
 struct TaggedCheckView: View {
     let remainingSeconds: Int
-    let onYes: () -> Void // '네' 버튼 눌렀을 때
-    let onNo: () -> Void // '아니요' 버튼 눌렀을 때
+    let onConfirmAnswer: (TaggedAnswer) -> Void
+
+    @State private var pendingAnswer: TaggedAnswer?
 
     var body: some View {
         ZStack {
             blurredBackground
-
+            
             VStack {
                 GameTimer(timeLeft: remainingSeconds)
                     .padding(.top, 76)
-
+                
                 Spacer()
-
+                
                 Text("!")
                     .font(.system(size: 200, weight: .bold))
                     .foregroundStyle(.appDanger)
-
+                
                 Spacer()
-
+                
                 VStack(spacing: 18) {
                     Text("술래에게 잡혔나요?")
                         .font(.system(size: 34, weight: .bold))
                         .foregroundStyle(.primary)
-
+                    
                     HStack(spacing: 16) {
-                        Button("아니요", action: onNo)
-                            .buttonStyle(
-                                AnswerButtonStyle(
-                                    color: .appDanger
-                                )
-                            )
-
-                        Button("네", action: onYes)
-                            .buttonStyle(
-                                AnswerButtonStyle(
-                                    color: .accentColor
-                                )
-                            )
+                        Button("아니요") {
+                            pendingAnswer = .no
+                        }
+                        .buttonStyle(
+                            AnswerButtonStyle(color: .appDanger)
+                        )
+                        
+                        Button("네") {
+                            pendingAnswer = .yes
+                        }
+                        .buttonStyle(
+                            AnswerButtonStyle(color: .accentColor)
+                        )
                     }
                 }
                 .padding(.bottom, 120)
+            }
+            
+            if let pendingAnswer {
+                TaggedConfirmDialogView(
+                    answer: pendingAnswer,
+                    onCancel: {
+                        self.pendingAnswer = nil
+                    },
+                    onConfirm: {
+                        onConfirmAnswer(pendingAnswer)
+                        self.pendingAnswer = nil
+                    }
+                )
             }
         }
         .ignoresSafeArea()
@@ -87,7 +101,6 @@ struct AnswerButtonStyle: ButtonStyle {
 #Preview {
     TaggedCheckView(
         remainingSeconds: 180,
-        onYes: {},
-        onNo: {}
+        onConfirmAnswer: { _ in }
     )
 }
