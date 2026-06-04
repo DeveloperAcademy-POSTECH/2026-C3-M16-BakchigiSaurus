@@ -292,6 +292,7 @@ extension MultipeerGameSession {
             self.stopBrowsingOnStateQueue()
         }
     }
+
     /// 발견된 호스트에게 참가 요청을 보낸다.
     func invite(_ peer: PeerID, timeout: TimeInterval = 10) {
         stateQueue.async {
@@ -332,10 +333,12 @@ extension MultipeerGameSession: MCNearbyServiceAdvertiserDelegate {
         print("Failed to start advertising peer:", error.localizedDescription)
     }
 }
+
 extension MultipeerGameSession: MCNearbyServiceBrowserDelegate {
     /// 주변에서 호스트 peer를 발견했을 때 호출된다.
-       /// discoveryInfo를 PeerID로 변환하고, 실제 초대에 필요한 MCPeerID와 매핑한다.
-       func browser(
+    /// discoveryInfo를 기반으로 PeerID를 만들고, 실제 invite에 필요한 MCPeerID와 매핑한다.
+
+    func browser(
         _ browser: MCNearbyServiceBrowser,
         foundPeer peerID: MCPeerID,
         withDiscoveryInfo info: [String: String]?
@@ -355,7 +358,7 @@ extension MultipeerGameSession: MCNearbyServiceBrowserDelegate {
     }
 
     /// 탐색 중이던 호스트 peer가 사라졌을 때 호출된다.
-    /// 저장된 rawID 매핑을 찾아 discovered 목록에서 제거한다.
+    /// 저장된 rawID 기준 매핑에서 해당 peer를 제거한다.
     func browser(
         _ browser: MCNearbyServiceBrowser,
         lostPeer peerID: MCPeerID
