@@ -17,24 +17,24 @@ struct TaggedCheckView: View {
     var body: some View {
         ZStack {
             blurredBackground
-            
+
             VStack {
                 GameTimer(timeLeft: remainingSeconds)
                     .padding(.top, 76)
-                
+
                 Spacer()
-                
+
                 Text("!")
                     .font(.system(size: 200, weight: .bold))
                     .foregroundStyle(.appDanger)
-                
+
                 Spacer()
-                
+
                 VStack(spacing: 18) {
                     Text("술래에게 잡혔나요?")
                         .font(.system(size: 34, weight: .bold))
                         .foregroundStyle(.primary)
-                    
+
                     HStack(spacing: 16) {
                         Button("아니요") {
                             pendingAnswer = .no
@@ -42,7 +42,7 @@ struct TaggedCheckView: View {
                         .buttonStyle(
                             AnswerButtonStyle(color: .appDanger)
                         )
-                        
+
                         Button("네") {
                             pendingAnswer = .yes
                         }
@@ -53,7 +53,7 @@ struct TaggedCheckView: View {
                 }
                 .padding(.bottom, 120)
             }
-            
+
             if let pendingAnswer {
                 TaggedConfirmDialogView(
                     answer: pendingAnswer,
