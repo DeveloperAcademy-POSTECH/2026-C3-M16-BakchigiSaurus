@@ -11,7 +11,9 @@ struct HintFailureView: View {
     let camera: CameraModel
     let isHiderNearby: Bool
     let isUsingHint: Bool
-
+    
+    @Environment(\.dismiss) private var dismiss
+    
     var body: some View {
         ZStack {
             GameCameraBackground(
@@ -58,6 +60,12 @@ struct HintFailureView: View {
                 }
             }
             .padding(.horizontal, 36)
+        }
+        .onAppear {
+            Task {
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                dismiss()
+            }
         }
     }
 }

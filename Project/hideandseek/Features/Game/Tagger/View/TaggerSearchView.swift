@@ -46,7 +46,6 @@ struct TaggerSearchView: View {
                                     .foregroundStyle(.secondary)
                             }
                             Button {
-                                // TODO: 힌트 갯수 연결
                                 showHintAlert = true
                             } label: {
                                 Label("힌트 \(hintCount)개 남음", systemImage: "magnifyingglass")

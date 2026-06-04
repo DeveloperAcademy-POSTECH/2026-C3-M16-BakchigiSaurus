@@ -13,6 +13,7 @@ struct HintSuccessView: View {
     let isUsingHint: Bool
     
     @State var rotation: Double = 30.0
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ZStack {
@@ -62,6 +63,12 @@ struct HintSuccessView: View {
                 }
             }
             .padding(.horizontal, 36)
+        }
+        .onAppear {
+            Task {
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                dismiss()
+            }
         }
     }
 }
