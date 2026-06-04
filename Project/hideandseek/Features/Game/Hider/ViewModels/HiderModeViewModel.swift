@@ -18,7 +18,7 @@ final class HiderModeViewModel {
     private let taggedDistanceThreshold: Float = 0.2
     private let nearbyDistanceThreshold: Float = 3.0
     private let warningDisplayDuration: UInt64 = 1_000_000_000 // 경고 화면 보여주는 시간 (그 후 녹화)
-    
+
     private var timer: Timer? // 1초마다 시간 줄임
     private var warningToRecordingTask: Task<Void, Never>? // 녹화 화면으로 전환
     private var hasRecordedForCurrentNearEvent = false // 술래와 근접 상황에서 녹화 되었는지 여부
@@ -33,22 +33,22 @@ final class HiderModeViewModel {
         ignoresTaggedDistanceUntilSafe = false // 잡힘 거리 무시 상태 해제
         startTimer()
     }
-    
-    // 추후 Nearby와 연결
+
+    /// 추후 Nearby와 연결
     func updateTaggerDistance(_ distance: Float?) {
         // 현재 상태가 거리 업데이트를 무시해야 하는 상태인지 확인 (뒤늦은 거리값이 들어와도 화면이 바뀌면 안됨)
         guard !state.shouldIgnoreTaggerUpdates else {
             return
         }
-        
+
         taggerDistance = distance // 새 거리값 저장
-        
+
         guard let distance else {
             signal = .unknown
             state = .hiding
             return
         }
-        
+
         // 잡힘 판정을 무시해야 하는 상태인지 확인
         if ignoresTaggedDistanceUntilSafe {
             // 술래가 기준 거리보다 멀어졌다면 다시 잡힘 판정 허용
@@ -57,7 +57,7 @@ final class HiderModeViewModel {
             }
             return
         }
-        
+
         // 술래가 기준 거리 이내인지 확인 (잡힘 여부)
         if distance <= taggedDistanceThreshold {
             warningToRecordingTask?.cancel()
@@ -65,7 +65,7 @@ final class HiderModeViewModel {
             showTaggedCheck()
             return
         }
-        
+
         // 술래가 기준 거리 이내인지 확인 (경고 및 녹화)
         if distance <= nearbyDistanceThreshold {
             signal = .near
@@ -73,54 +73,54 @@ final class HiderModeViewModel {
             scheduleRecordingIfNeeded()
             return
         }
-        
+
         signal = .far
         state = .hiding
         hasRecordedForCurrentNearEvent = false
         warningToRecordingTask?.cancel()
     }
-    
-    // 경고 화면을 보여준 뒤 녹화 화면으로 전환
+
+    /// 경고 화면을 보여준 뒤 녹화 화면으로 전환
     private func scheduleRecordingIfNeeded() {
         // 해당 이벤트에서 녹화를 했다면 다시 x (중복 방지)
         guard !hasRecordedForCurrentNearEvent else {
             return
         }
-        
+
         guard warningToRecordingTask == nil else {
             return
         }
-        
+
         warningToRecordingTask = Task { [weak self] in
             // ViewModel이 아직 살아있는지 확인
             guard let self else {
                 return
             }
-            
+
             // 1초 기다림
             try? await Task.sleep(nanoseconds: self.warningDisplayDuration)
             // 해당 시간 동안 작업 취소 여부 확인
             guard !Task.isCancelled else {
                 return
             }
-            
+
             guard !self.state.shouldIgnoreTaggerUpdates else {
                 return
             }
-            
+
             self.hasRecordedForCurrentNearEvent = true
             self.state = .recording
             self.warningToRecordingTask = nil
         }
     }
-    
-    // 2초 녹화가 끝났을 때 호출
+
+    /// 2초 녹화가 끝났을 때 호출
     func finishRecording() {
         // 잡힘 확인/종료 상태라면 무시
         guard !state.shouldIgnoreTaggerUpdates else {
             return
         }
-        
+
         state = .taggerNearby
         signal = .near
     }
@@ -201,11 +201,11 @@ private extension HiderModeState {
         switch self {
         // 거리 업데이트 무시
         case .taggedCheck, .taggedConfirm, .tagged:
-            return true
+            true
 
         // 거리 업데이트 받음
         case .idle, .hiding, .taggerNearby, .recording:
-            return false
+            false
         }
     }
 }
