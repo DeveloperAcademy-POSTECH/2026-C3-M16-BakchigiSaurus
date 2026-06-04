@@ -59,7 +59,7 @@ struct HideAndSeekLiveActivityLiveActivity: Widget {
                             .foregroundColor(.white)
                         
                         // 근처에 대상이 있을 때만 경고 워딩 표시
-                        if context.state.isTargetNear {
+                        if context.state.isHiderNearby {
                             Text(context.state.isTagger ? "근처에 숨은 사람이 있어요" : "주변에 술래가 있어요!!")
                                 .font(.title)
                                 .bold()
@@ -98,7 +98,7 @@ extension HideAndSeekLiveActivityAttributes.ContentState {
         remainingTime: 180, // 3분
         caughtCount: 0,
         isTagger: true,      // 술래라면 ture, 숨는사람이라면 false
-        isTargetNear: true   // 근처에 타겟이 있다고 가정 (술래의 타겟은 숨은 사람 / 숨은 사람의 타겟은 술래)
+        isHiderNearby: true   // 숨은 사람이 근처에 있는가
     )
 }
 
