@@ -335,8 +335,8 @@ extension MultipeerGameSession: MCNearbyServiceAdvertiserDelegate {
 }
 
 extension MultipeerGameSession: MCNearbyServiceBrowserDelegate {
-    /// 주변에서 호스트 peer를 발견했을 때 호출된다.
-    /// discoveryInfo를 기반으로 PeerID를 만들고, 실제 invite에 필요한 MCPeerID와 매핑한다.
+    // 주변에서 호스트 peer를 발견했을 때 호출된다.
+    // discoveryInfo를 기반으로 PeerID를 만들고, 실제 invite에 필요한 MCPeerID와 매핑한다.
 
     func browser(
         _ browser: MCNearbyServiceBrowser,
