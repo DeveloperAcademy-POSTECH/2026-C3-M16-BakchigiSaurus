@@ -62,22 +62,22 @@ struct HiderModeView: View {
         case let .taggedConfirm(answer):
             // 1차 선택 답변 한번 더 확인
             TaggedCheckView(
-                    remainingSeconds: viewModel.remainingSeconds,
-                    onYes: {},
-                    onNo: {}
+                remainingSeconds: viewModel.remainingSeconds,
+                onYes: {},
+                onNo: {}
+            )
+            .allowsHitTesting(false)
+            .overlay {
+                TaggedConfirmDialogView(
+                    answer: answer,
+                    onCancel: {
+                        viewModel.cancelTaggedConfirm()
+                    },
+                    onConfirm: {
+                        viewModel.confirmTaggedAnswer(answer)
+                    }
                 )
-                .allowsHitTesting(false)
-                .overlay {
-                    TaggedConfirmDialogView(
-                        answer: answer,
-                        onCancel: {
-                            viewModel.cancelTaggedConfirm()
-                        },
-                        onConfirm: {
-                            viewModel.confirmTaggedAnswer(answer)
-                        }
-                    )
-                }
+            }
 
         case .tagged:
             HiderStatusView(state: .tagged)

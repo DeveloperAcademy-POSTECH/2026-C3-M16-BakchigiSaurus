@@ -46,7 +46,7 @@ struct HiderStatusView: View {
 
         case .tagged:
             "잡힘"
-        
+
         case .gameEnded:
             "라운드 종료"
         }
@@ -74,7 +74,7 @@ struct HiderStatusView: View {
 
         case .tagged:
             "술래에게 잡혔습니다"
-            
+
         case .gameEnded:
             "게임이 종료되었습니다"
         }
@@ -86,7 +86,7 @@ struct HiderStatusView: View {
             Color(red: 1.0, green: 0.24, blue: 0.27)
 
         case .idle, .hiding, .taggedCheck, .taggedConfirm, .gameEnded:
-                .primary
+            .primary
         }
     }
 }

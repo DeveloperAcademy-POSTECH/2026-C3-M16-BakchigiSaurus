@@ -49,15 +49,15 @@ final class HiderModeViewModel {
         guard !state.shouldIgnoreTaggerUpdates else {
             return
         }
-        
+
         taggerDistance = distance // 새 거리값 저장
-        
+
         guard let distance else {
             signal = .unknown
             state = .hiding
             return
         }
-        
+
         // 잡힘 판정을 무시해야 하는 상태인지 확인
         if ignoresTaggedDistanceUntilSafe {
             // 술래가 기준 거리보다 멀어졌다면 다시 잡힘 판정 허용
@@ -66,7 +66,7 @@ final class HiderModeViewModel {
             }
             return
         }
-        
+
         // 술래가 기준 거리 이내인지 확인 (잡힘 여부)
         if distance <= taggedDistanceThresholdMeters {
             warningToRecordingTask?.cancel()
@@ -75,7 +75,7 @@ final class HiderModeViewModel {
             showTaggedCheck()
             return
         }
-        
+
         // 술래가 기준 거리 이내인지 확인 (경고 및 녹화)
         if distance <= nearbyDistanceThresholdMeters {
             signal = .near
@@ -83,14 +83,13 @@ final class HiderModeViewModel {
             scheduleRecordingIfNeeded()
             return
         }
-        
+
         signal = .far
         state = .hiding
         hasRecordedForCurrentNearEvent = false
         warningToRecordingTask?.cancel()
         warningToRecordingTask = nil
     }
-
 
     /// 경고 화면을 보여준 뒤 녹화 화면으로 전환
     private func scheduleRecordingIfNeeded() {
