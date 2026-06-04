@@ -50,7 +50,7 @@ struct HiderSearchView: View {
             Text("\(Text("술래").foregroundStyle(.primary))를 탐지중")
                 .foregroundStyle(.secondary)
         }
-        .font(.system(size: 32, weight: .bold))
+        .font(.system(size: 34, weight: .bold))
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.leading, 8)
         .padding(.bottom, 60)

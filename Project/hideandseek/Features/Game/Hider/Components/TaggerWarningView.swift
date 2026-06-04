@@ -21,7 +21,7 @@ struct TaggerWarningView: View {
                 Spacer()
 
                 Text("!")
-                    .font(.system(size: 150, weight: .bold))
+                    .font(.system(size: 200, weight: .bold))
                     .foregroundStyle(.appDanger)
 
                 Spacer()
@@ -56,7 +56,7 @@ struct TaggerWarningView: View {
                     .font(.system(size: 28, weight: .bold))
 
                 Text("주변에 술래가 있어요")
-                    .font(.system(size: 27, weight: .bold))
+                    .font(.system(size: 28, weight: .bold))
             }
             .foregroundStyle(.appDanger)
         }
@@ -78,7 +78,7 @@ struct TaggerWarningView: View {
             Text("\(Text("술래").foregroundStyle(.primary))가 있어요!")
                 .foregroundStyle(.secondary)
         }
-        .font(.system(size: 32, weight: .bold))
+        .font(.system(size: 34, weight: .bold))
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.leading, 8)
         .padding(.bottom, 56)

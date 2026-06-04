@@ -82,7 +82,7 @@ struct HiderModeView: View {
         case .tagged:
             HiderStatusView(state: .tagged)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.black)
+                .background(Color.appBackground)
                 .ignoresSafeArea()
 
         case .gameEnded:

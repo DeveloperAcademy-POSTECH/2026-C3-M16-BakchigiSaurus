@@ -91,16 +91,16 @@ struct TaggerSignalView: View {
     private var signalColor: Color {
         switch signal {
         case .unknown:
-            .gray
+                .gray
 
         case .far:
-            .green
+                .green
 
         case .near:
-            .orange
+                .orange
 
         case .veryNear:
-            Color(red: 1.0, green: 0.24, blue: 0.27)
+                .appDanger
         }
     }
 }
@@ -108,23 +108,23 @@ struct TaggerSignalView: View {
 #Preview("위치 모름") {
     TaggerSignalView(signal: .unknown)
         .padding()
-        .background(.black)
+        .background(.appBackground)
 }
 
 #Preview("안전") {
     TaggerSignalView(signal: .far)
         .padding()
-        .background(.black)
+        .background(.appBackground)
 }
 
 #Preview("주의") {
     TaggerSignalView(signal: .near)
         .padding()
-        .background(.black)
+        .background(.appBackground)
 }
 
 #Preview("위험") {
     TaggerSignalView(signal: .veryNear)
         .padding()
-        .background(.black)
+        .background(.appBackground)
 }
