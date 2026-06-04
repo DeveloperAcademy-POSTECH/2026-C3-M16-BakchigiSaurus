@@ -141,10 +141,14 @@ private extension MultipeerGameSession {
         discoveredMCPeersByRawID.removeAll()
     }
 
+    /// 이미 discoveryInfo를 통해 알고 있는 PeerID가 있으면 해당 값을 사용한다.
+    /// 없으면 MCPeerID의 displayName을 기반으로 fallback PeerID를 만든다.
     func makeKnownPeerID(from mcPeerID: MCPeerID) -> PeerID {
         knownPeerIDsByDisplayName[mcPeerID.displayName] ?? PeerID(mcPeerID: mcPeerID)
     }
 
+    /// 호스트가 광고한 discoveryInfo를 기반으로 Feature용 PeerID를 만든다.
+    /// discoveryInfo가 없으면 MCPeerID의 displayName을 fallback으로 사용한다.
     func makeDiscoveredPeerID(
         from peerID: MCPeerID,
         discoveryInfo: [String: String]?
@@ -329,7 +333,9 @@ extension MultipeerGameSession: MCNearbyServiceAdvertiserDelegate {
     }
 }
 extension MultipeerGameSession: MCNearbyServiceBrowserDelegate {
-    func browser(
+    /// 주변에서 호스트 peer를 발견했을 때 호출된다.
+       /// discoveryInfo를 PeerID로 변환하고, 실제 초대에 필요한 MCPeerID와 매핑한다.
+       func browser(
         _ browser: MCNearbyServiceBrowser,
         foundPeer peerID: MCPeerID,
         withDiscoveryInfo info: [String: String]?
@@ -348,6 +354,8 @@ extension MultipeerGameSession: MCNearbyServiceBrowserDelegate {
         }
     }
 
+    /// 탐색 중이던 호스트 peer가 사라졌을 때 호출된다.
+    /// 저장된 rawID 매핑을 찾아 discovered 목록에서 제거한다.
     func browser(
         _ browser: MCNearbyServiceBrowser,
         lostPeer peerID: MCPeerID
@@ -374,6 +382,7 @@ extension MultipeerGameSession: MCNearbyServiceBrowserDelegate {
         }
     }
 
+    /// 주변 호스트 탐색 시작에 실패했을 때 호출된다.
     func browser(
         _ browser: MCNearbyServiceBrowser,
         didNotStartBrowsingForPeers error: Error
