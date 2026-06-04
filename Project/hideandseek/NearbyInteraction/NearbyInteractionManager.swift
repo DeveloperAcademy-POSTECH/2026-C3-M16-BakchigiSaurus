@@ -139,9 +139,15 @@ extension NearbyInteractionManager: NISessionDelegate {
         state = .suspended
     }
     
-    // 세션중단이 종료되었을 때
+    // 세션 중단이 종료되었을 때 (= 재실행 가능 상태, 세션 재호출)
     func sessionSuspensionEnded(_ session: NISession) {
-        state = .ready
+        guard let peerDiscoveryToken else {
+            state = .ready
+            return
+        }
+        
+        let configuration = NINearbyPeerConfiguration(peerToken: peerDiscoveryToken)
+        session.run(configuration)
     }
 
     /// 오류  처리
