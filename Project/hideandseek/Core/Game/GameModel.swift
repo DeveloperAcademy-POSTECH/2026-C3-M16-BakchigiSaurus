@@ -11,7 +11,7 @@ import Observation
 // MARK: - Phase
 
 /// 게임 진행 단계.
-enum GamePhase: Hashable, Sendable {
+enum GamePhase: Hashable {
     /// 방 대기실. 참가자가 모이고 술래를 지정하는 단계.
     case lobby
     /// 숨는 시간 카운트다운 중. (settings.hideTimeSeconds)
@@ -25,7 +25,7 @@ enum GamePhase: Hashable, Sendable {
 // MARK: - Room Settings
 
 /// 방 설정값.
-struct RoomSettings: Hashable, Sendable {
+struct RoomSettings: Hashable {
     var name: String
     var maxCount: Int
     var hintCount: Int
@@ -33,7 +33,9 @@ struct RoomSettings: Hashable, Sendable {
     var gameMinutes: Int
 
     /// 게임 시간 총 초.
-    var gameTotalSeconds: Int { gameMinutes * 60 }
+    var gameTotalSeconds: Int {
+        gameMinutes * 60
+    }
 
     static let `default` = RoomSettings(
         name: "",
@@ -48,7 +50,7 @@ struct RoomSettings: Hashable, Sendable {
 
 /// 게임 참가자.
 /// 네트워크 식별자(PeerID)와 별개의 안정적인 UUID를 가진다.
-struct GameParticipant: Identifiable, Hashable, Sendable {
+struct GameParticipant: Identifiable, Hashable {
     let id: UUID
     let peerID: PeerID?
     let name: String
@@ -71,6 +73,7 @@ struct GameParticipant: Identifiable, Hashable, Sendable {
 }
 
 // MARK: - Model
+
 @Observable
 @MainActor
 final class GameModel {
