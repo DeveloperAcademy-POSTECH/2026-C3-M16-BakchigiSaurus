@@ -9,10 +9,17 @@ import SwiftUI
 
 struct TaggerSearchView: View {
     @State private var showHintAlert: Bool = false
+    let camera: CameraModel
+    let isHiderNearby: Bool
+    let isUsingHint: Bool
 
     var body: some View {
         ZStack {
-            //            TODO: CameraView 호출
+            GameCameraBackground(
+                camera: camera,
+                isRevealed: isHiderNearby && isUsingHint,
+                isRecording: isHiderNearby
+            )
             ZStack {
                 VStack {
                     GameTimer(timeLeft: 300)
@@ -60,5 +67,5 @@ struct TaggerSearchView: View {
 }
 
 #Preview {
-    TaggerSearchView()
+    TaggerSearchView(camera: CameraModel(), isHiderNearby: false, isUsingHint: false)
 }

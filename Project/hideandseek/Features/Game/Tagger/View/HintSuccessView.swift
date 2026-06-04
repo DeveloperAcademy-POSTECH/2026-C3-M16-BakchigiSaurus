@@ -8,9 +8,17 @@
 import SwiftUI
 
 struct HintSuccessView: View {
+    let camera: CameraModel
+    let isHiderNearby: Bool
+    let isUsingHint: Bool
+
     var body: some View {
         ZStack {
-//            TODO: CameraView 호출
+            GameCameraBackground(
+                camera: camera,
+                isRevealed: isHiderNearby && isUsingHint,
+                isRecording: isHiderNearby
+            )
             Color.appSuccess
                 .ignoresSafeArea()
                 .opacity(0.75)
@@ -49,11 +57,11 @@ struct HintSuccessView: View {
                     }
                 }
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, 36)
         }
     }
 }
 
 #Preview {
-    HintSuccessView()
+    HintSuccessView(camera: CameraModel(), isHiderNearby: false, isUsingHint: false)
 }
