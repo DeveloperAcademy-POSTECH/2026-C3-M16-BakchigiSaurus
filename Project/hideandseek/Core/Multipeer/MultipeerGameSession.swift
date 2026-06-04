@@ -9,7 +9,7 @@
 //
 
 import Foundation
-import MultipeerConnectivity
+@preconcurrency import MultipeerConnectivity
 import UIKit
 
 /// GameSession 프로토콜을 실제 MultipeerConnectivity로 구현하는 클래스.
@@ -40,8 +40,11 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
     /// 주변에서 광고 중인 호스트를 탐색하는 브라우저.
     private var browser: MCNearbyServiceBrowser?
 
-    /// 발견된 호스트를 Feature용 PeerID와 실제 MC용 MCPeerID로 매핑한다.
-    private var discoveredMCPeers: [PeerID: MCPeerID] = [:]
+    /// 발견된 호스트를 rawID 기준으로 저장한다.
+    private var discoveredPeersByRawID: [String: PeerID] = [:]
+
+    /// 발견된 호스트의 rawID와 실제 MC용 MCPeerID를 매핑한다.
+    private var discoveredMCPeersByRawID: [String: MCPeerID] = [:]
 
     /// displayName 기준으로 이미 확인한 PeerID를 저장한다.
     /// 연결 이후에도 discoveryInfo에서 얻은 안정적인 rawID를 재사용하기 위해 사용한다.
@@ -66,7 +69,7 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
     /// 현재 GameSession 프로토콜에는 포함되어 있지 않은 구현체 전용 상태다.
     var discoveredPeers: [PeerID] {
         stateQueue.sync {
-            discoveredMCPeers.keys.sorted { $0.displayName < $1.displayName }
+            discoveredPeersByRawID.values.sorted { $0.displayName < $1.displayName }
         }
     }
 
@@ -115,15 +118,10 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
 private extension MultipeerGameSession {
     /// currentPeers에 같은 PeerID가 중복으로 들어가지 않도록 정리한다.
     func uniquePeers(_ peers: [PeerID]) -> [PeerID] {
-        var seen = Set<PeerID>()
+        var seenRawIDs = Set<String>()
 
         return peers.filter { peer in
-            if seen.contains(peer) {
-                return false
-            } else {
-                seen.insert(peer)
-                return true
-            }
+            seenRawIDs.insert(peer.rawID).inserted
         }
     }
 
@@ -139,7 +137,8 @@ private extension MultipeerGameSession {
         browser?.stopBrowsingForPeers()
         browser?.delegate = nil
         browser = nil
-        discoveredMCPeers.removeAll()
+        discoveredPeersByRawID.removeAll()
+        discoveredMCPeersByRawID.removeAll()
     }
 
     func makeKnownPeerID(from mcPeerID: MCPeerID) -> PeerID {
@@ -232,9 +231,7 @@ extension MultipeerGameSession {
     /// 호스트가 주변 기기에 자신의 세션을 광고하기 시작한다.
     /// 방 만들기 플로우에서 호출되는 함수다.
     func startHosting() {
-        stateQueue.async {
-            self.stopHostingOnStateQueue()
-
+        Task { @MainActor in
             let discoveryInfo = [
                 "hostRawID": self.localPeer.rawID,
                 "hostDisplayName": self.localPeer.displayName
@@ -247,8 +244,12 @@ extension MultipeerGameSession {
             )
 
             advertiser.delegate = self
-            self.advertiser = advertiser
-            advertiser.startAdvertisingPeer()
+
+            self.stateQueue.async {
+                self.stopHostingOnStateQueue()
+                self.advertiser = advertiser
+                advertiser.startAdvertisingPeer()
+            }
         }
     }
 
@@ -263,16 +264,19 @@ extension MultipeerGameSession {
     /// 주변에서 광고 중인 호스트 탐색을 시작한다.
     /// 방 찾기 플로우에서 호출되는 함수다.
     func startBrowsing() {
-        stateQueue.async {
-            self.stopBrowsingOnStateQueue()
-
+        Task { @MainActor in
             let browser = MCNearbyServiceBrowser(
                 peer: self.localMCPeerID,
                 serviceType: self.serviceType
             )
+
             browser.delegate = self
-            self.browser = browser
-            browser.startBrowsingForPeers()
+
+            self.stateQueue.async {
+                self.stopBrowsingOnStateQueue()
+                self.browser = browser
+                browser.startBrowsingForPeers()
+            }
         }
     }
 
@@ -286,7 +290,7 @@ extension MultipeerGameSession {
     /// 발견된 호스트에게 참가 요청을 보낸다.
     func invite(_ peer: PeerID, timeout: TimeInterval = 10) {
         stateQueue.async {
-            guard let mcPeerID = self.discoveredMCPeers[peer] else {
+            guard let mcPeerID = self.discoveredMCPeersByRawID[peer.rawID] else {
                 print("Failed to invite peer. MCPeerID not found:", peer.displayName)
                 return
             }
@@ -337,7 +341,8 @@ extension MultipeerGameSession: MCNearbyServiceBrowserDelegate {
         stateQueue.async {
             guard peer.rawID != self.localPeer.rawID else { return }
 
-            self.discoveredMCPeers[peer] = peerID
+            self.discoveredPeersByRawID[peer.rawID] = peer
+            self.discoveredMCPeersByRawID[peer.rawID] = peerID
             self.knownPeerIDsByDisplayName[peerID.displayName] = peer
         }
     }
@@ -347,8 +352,23 @@ extension MultipeerGameSession: MCNearbyServiceBrowserDelegate {
         lostPeer peerID: MCPeerID
     ) {
         stateQueue.async {
-            self.discoveredMCPeers = self.discoveredMCPeers.filter { _, storedPeerID in
-                storedPeerID.displayName != peerID.displayName
+            if let knownPeer = self.knownPeerIDsByDisplayName[peerID.displayName] {
+                self.discoveredPeersByRawID.removeValue(forKey: knownPeer.rawID)
+                self.discoveredMCPeersByRawID.removeValue(forKey: knownPeer.rawID)
+                return
+            }
+
+            let rawIDs = self.discoveredMCPeersByRawID
+                .filter { _, storedPeerID in
+                    storedPeerID.displayName == peerID.displayName
+                }
+                .map { rawID, _ in
+                    rawID
+                }
+
+            for rawID in rawIDs {
+                self.discoveredPeersByRawID.removeValue(forKey: rawID)
+                self.discoveredMCPeersByRawID.removeValue(forKey: rawID)
             }
         }
     }
