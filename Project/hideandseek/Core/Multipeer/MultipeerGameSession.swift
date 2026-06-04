@@ -133,6 +133,14 @@ private extension MultipeerGameSession {
         advertiser?.delegate = nil
         advertiser = nil
     }
+
+    /// stateQueue 안에서만 호출되는 주변 호스트 탐색 정리 함수.
+    func stopBrowsingOnStateQueue() {
+        browser?.stopBrowsingForPeers()
+        browser?.delegate = nil
+        browser = nil
+        discoveredMCPeers.removeAll()
+    }
 }
 
 private extension PeerID {
@@ -235,6 +243,30 @@ extension MultipeerGameSession {
     func stopHosting() {
         stateQueue.async {
             self.stopHostingOnStateQueue()
+        }
+    }
+
+    /// 주변에서 광고 중인 호스트 탐색을 시작한다.
+    /// 방 찾기 플로우에서 호출되는 함수다.
+    func startBrowsing() {
+        stateQueue.async {
+            self.stopBrowsingOnStateQueue()
+
+            let browser = MCNearbyServiceBrowser(
+                peer: self.localMCPeerID,
+                serviceType: self.serviceType
+            )
+
+            self.browser = browser
+            browser.startBrowsingForPeers()
+        }
+    }
+
+    /// 주변 호스트 탐색을 중지한다.
+    /// 방 찾기 화면 이탈, 연결 완료, 세션 초기화 시 호출할 수 있다.
+    func stopBrowsing() {
+        stateQueue.async {
+            self.stopBrowsingOnStateQueue()
         }
     }
 }
