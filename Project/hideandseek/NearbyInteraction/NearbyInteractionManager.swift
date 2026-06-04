@@ -14,6 +14,7 @@ final class NearbyInteractionManager: NSObject {
 
     private(set) var state: NearbyInteractionState = .idle
     private(set) var sharedTokenWithPeer = false
+    private var peerDiscoveryToken: NIDiscoveryToken? // 상대방의 discovery token을 저장해두는 변수
 
     /// 초기화 함수
     override init() {
@@ -62,7 +63,22 @@ final class NearbyInteractionManager: NSObject {
         return token
     }
     
-    /// 세션 종료 함수
+    // NI Session 실행 함수
+    func run(with peerToken: NIDiscoveryToken) { // NI에서 부르는 상대토큰 변수명: peerToken
+        
+        guard session != nil else {
+            state = .failed(.missingSession)
+            return
+        }
+        
+        peerDiscoveryToken = peerToken // NIDiscoveryToken에 저장한 변수를 peerDiscoveryToken에 저장함
+        
+        let configuration = NINearbyPeerConfiguration(peerToken: peerToken) // 위에서 받은 상대의 token? peerToken 이 이름이 맞는지
+        session?.run(configuration)
+    }
+    
+    
+    /// 세션  종료  함수
     func invalidateSession() {
         session?.invalidate()
         session = nil
@@ -71,8 +87,9 @@ final class NearbyInteractionManager: NSObject {
     }
 }
 
+    // NI가 주변 기기 정보를 업데이트 했을 때 자동으로 호출되는 함수
 extension NearbyInteractionManager: NISessionDelegate {
-    /// 시스템 호출 콜백
+    /// 시스템  호출  콜백
     func sessionDidStartRunning(_ session: NISession) {
         state = .running
     }
