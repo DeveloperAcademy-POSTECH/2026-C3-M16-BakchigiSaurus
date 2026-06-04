@@ -25,17 +25,17 @@ struct HiderModeView: View {
     @ViewBuilder // 여러 종류 View를 조건에 따라 반환
     private var screenContent: some View {
         switch viewModel.state {
-            // view 모델이 가지고 있는 현재 상태 확인
+        // view 모델이 가지고 있는 현재 상태 확인
         case .idle, .hiding:
             HiderSearchView(
                 remainingSeconds: viewModel.remainingSeconds
             )
-            
+
         case .taggerNearby:
             TaggerWarningView(
                 remainingSeconds: viewModel.remainingSeconds
             )
-            
+
         case .recording:
             CameraRecordingView(
                 camera: camera,
@@ -46,7 +46,7 @@ struct HiderModeView: View {
                     viewModel.finishRecording()
                 }
             )
-            
+
         case .taggedCheck:
             // 술래에게 잡혔는지 묻는 화면
             TaggedCheckView(
@@ -58,7 +58,7 @@ struct HiderModeView: View {
                     viewModel.selectTaggedAnswer(.no)
                 }
             )
-            
+
         case let .taggedConfirm(answer):
             // 1차 선택 답변 한번 더 확인
             TaggedCheckView(
@@ -82,13 +82,13 @@ struct HiderModeView: View {
                     }
                 )
             }
-            
+
         case .tagged:
             HiderStatusView(state: .tagged)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color.black)
                 .ignoresSafeArea()
-            
+
         case .gameEnded:
             TaggedOverlayView(
                 onConfirm: {
