@@ -115,25 +115,36 @@ extension NearbyInteractionManager: NISessionDelegate {
 
             onReadingUpdated?(reading) // 만든 값을 외부로 전달
     }
-
+    
+    // 세션이 추적하던 nearbyObject를 더이상 추적하지 못하게 되었을 때
     func session(
         _ session: NISession,
         didRemove nearbyObjects: [NINearbyObject],
         reason: NINearbyObject.RemovalReason
     ) {
-        // feat/ni-error에서 timeout.peerEnded 처리
+        switch reason {
+        case .peerEnded:
+            state = .peerEnded
+            
+        case .timeout:
+            state = .peerLost
+            
+        default :
+            state = .failed(.peerRemoved(reason))
+        }
     }
 
-    /// 중단 관리
+    // 세션이 일시중단 되었을 때
     func sessionWasSuspended(_ session: NISession) {
         state = .suspended
     }
-
+    
+    // 세션중단이 종료되었을 때
     func sessionSuspensionEnded(_ session: NISession) {
         state = .ready
     }
 
-    /// 오류 처리
+    /// 오류  처리
     func session(_ session: NISession, didInvalidateWith error: Error) {
         self.session = nil
         sharedTokenWithPeer = false
