@@ -88,10 +88,10 @@ struct HiderStatusView: View {
     private var titleColor: Color {
         switch state {
         case .taggerNearby, .recording, .tagged:
-                .secondary
+            .secondary
 
         case .idle, .hiding, .taggedCheck, .taggedConfirm, .gameEnded:
-                .primary
+            .primary
         }
     }
 }
