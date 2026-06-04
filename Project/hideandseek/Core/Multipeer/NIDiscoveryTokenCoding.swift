@@ -4,6 +4,7 @@
 //
 //  Created by 서혜린 on 6/5/26.
 //
+//
 //  NIDiscoveryTokenCoding.swift
 //  hideandseek
 //
@@ -18,6 +19,7 @@ enum NIDiscoveryTokenCoding {
         case invalidTokenData
     }
 
+    /// NIDiscoveryToken을 MCSession으로 전송 가능한 Data로 변환한다.
     static func encode(_ token: NIDiscoveryToken) throws -> Data {
         try NSKeyedArchiver.archivedData(
             withRootObject: token,
@@ -25,6 +27,7 @@ enum NIDiscoveryTokenCoding {
         )
     }
 
+    /// 수신한 Data를 다시 NIDiscoveryToken으로 복원한다.
     static func decode(from data: Data) throws -> NIDiscoveryToken {
         guard let token = try NSKeyedUnarchiver.unarchivedObject(
             ofClass: NIDiscoveryToken.self,

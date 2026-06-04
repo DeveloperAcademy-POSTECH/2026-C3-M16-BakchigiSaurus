@@ -9,9 +9,8 @@
 //
 
 import Foundation
-import MultipeerConnectivity
-import NearbyInteraction
 @preconcurrency import MultipeerConnectivity
+import NearbyInteraction
 import UIKit
 
 /// MC를 통해 수신한 NI DiscoveryToken 이벤트.
@@ -183,6 +182,7 @@ private extension MultipeerGameSession {
     }
 
     /// 연결된 peer 목록에서 Feature용 PeerID와 매칭되는 MCPeerID를 찾는다.
+    /// MCSession.send는 MCPeerID를 요구하므로, PeerID를 내부 MC 타입으로 다시 매핑한다.
     func connectedMCPeer(for peer: PeerID) -> MCPeerID? {
         connectedMCPeers.first { mcPeerID in
             makeKnownPeerID(from: mcPeerID).rawID == peer.rawID
@@ -240,8 +240,8 @@ extension MultipeerGameSession: MCSessionDelegate {
         }
     }
 
-    /// 현재 브랜치에서는 데이터 수신을 구현하지 않는다.
-    /// 실제 클립/영상 송수신은 후속 브랜치에서 확장한다.
+    /// MCSession으로 수신한 data를 앱 내부 메시지로 해석한다.
+    /// 현재는 NI DiscoveryToken 메시지를 복원해 수신 스트림으로 전달한다.
     func session(
         _ session: MCSession,
         didReceive data: Data,
