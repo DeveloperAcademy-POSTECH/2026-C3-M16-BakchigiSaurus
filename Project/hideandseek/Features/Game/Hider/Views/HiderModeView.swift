@@ -43,7 +43,7 @@ struct HiderModeView: View {
                 remainingSeconds: viewModel.remainingSeconds,
                 isTaggerNearby: true, // 술래가 가까운 상태라고 알려줌
                 onRecordingFinished: {
-                    viewModel.receiveTaggerSignal(.near)
+                    viewModel.finishRecording()
                 }
             )
 
