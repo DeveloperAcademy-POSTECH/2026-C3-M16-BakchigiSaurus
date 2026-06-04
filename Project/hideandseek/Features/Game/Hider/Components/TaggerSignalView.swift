@@ -30,11 +30,11 @@ struct TaggerSignalView: View {
             VStack(spacing: 4) {
                 Text(signalTitle)
                     .font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
 
                 Text(signalDescription)
                     .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.55))
+                    .foregroundStyle(.secondary)
             }
             .multilineTextAlignment(.center)
         }

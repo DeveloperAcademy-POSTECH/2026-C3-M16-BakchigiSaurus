@@ -12,6 +12,7 @@ struct CameraRecordingView: View {
     let camera: CameraModel // 카메라 기능을 관리하는 객체. 상위View에서 받은 카메라 사용
     let remainingSeconds: Int // 남은 게임 시간. 초단위
     let isTaggerNearby: Bool // 술래가 가까운지 여부
+    let onRecordingFinished: () -> Void // 녹화가 끝난 뒤 상위View에 알려주기 위한 클로저
 
     var body: some View {
         ZStack {
@@ -23,19 +24,32 @@ struct CameraRecordingView: View {
 
             VStack {
                 GameTimer(timeLeft: remainingSeconds)
-                    .padding(.top, 58)
+                    .padding(.top, 50)
 
                 Spacer()
 
                 Text("녹화중이에요")
                     .font(.system(size: 34, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 32)
-                    .padding(.bottom, 48)
+                    .padding(.horizontal, 36)
+                    .padding(.bottom, 54)
             }
         }
         .ignoresSafeArea()
+        // 화면이 나타나면 .task 실행
+        .task {
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            await camera.setRecording(false)
+            onRecordingFinished()
+            
+        }
+        .onDisappear {
+            Task {
+                await camera.setRecording(false)
+                // 2초 후 녹화를 멈춤
+            }
+        }
     }
 }
 
@@ -43,6 +57,7 @@ struct CameraRecordingView: View {
     CameraRecordingView(
         camera: CameraModel(),
         remainingSeconds: 180,
-        isTaggerNearby: true // 카메라 공개되고 녹화테스트
+        isTaggerNearby: true,
+        onRecordingFinished: {}
     )
 }

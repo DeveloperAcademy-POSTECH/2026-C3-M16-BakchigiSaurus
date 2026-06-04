@@ -32,21 +32,19 @@ struct TaggedCheckView: View {
                 VStack(spacing: 18) {
                     Text("술래에게 잡혔나요?")
                         .font(.system(size: 30, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.primary)
 
                     HStack(spacing: 16) {
                         Button("아니요", action: onNo)
                             .buttonStyle(
                                 AnswerButtonStyle(
-                                    color: Color(red: 1.000, green: 0.259, blue: 0.271)
-                                )
+                                    color: .appDanger)
                             )
-
+                        
                         Button("네", action: onYes)
                             .buttonStyle(
                                 AnswerButtonStyle(
-                                    color: Color(red: 0.427, green: 0.486, blue: 1.000)
-                                )
+                                    color: .accentColor)
                             )
                     }
                 }

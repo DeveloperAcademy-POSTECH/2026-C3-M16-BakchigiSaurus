@@ -15,11 +15,11 @@ struct HiderStatusView: View {
         VStack(spacing: 8) {
             Text(eyebrowText)
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.55))
+                .foregroundStyle(.secondary)
 
             Text(titleText)
                 .font(.system(size: 30, weight: .bold))
-                .foregroundStyle(titleColor)
+                .foregroundStyle(.primary)
                 .multilineTextAlignment(.center)
         }
     }

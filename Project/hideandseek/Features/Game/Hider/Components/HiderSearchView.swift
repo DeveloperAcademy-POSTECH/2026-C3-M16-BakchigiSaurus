@@ -45,10 +45,10 @@ struct HiderSearchView: View {
     private var bottomMessage: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("주변에")
-                .foregroundStyle(.white.opacity(0.55))
+                .foregroundStyle(.secondary)
 
-            Text("\(Text("술래").foregroundStyle(.white))를 찾는중")
-                .foregroundStyle(.white.opacity(0.55))
+            Text("\(Text("술래").foregroundStyle(.primary))를 탐지중")
+                .foregroundStyle(.secondary)
         }
         .font(.system(size: 32, weight: .bold))
         .frame(maxWidth: .infinity, alignment: .leading)

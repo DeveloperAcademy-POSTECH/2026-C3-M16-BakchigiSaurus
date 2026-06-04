@@ -22,11 +22,11 @@ struct TaggedOverlayView: View {
                 VStack(spacing: 16) {
                     Text("게임이 종료되었습니다")
                         .font(.system(size: 36, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.primary)
 
                     Text("처음 장소로 모여주세요")
                         .font(.system(size: 28, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.55))
+                        .foregroundStyle(.secondary)
                 }
 
                 Spacer()
@@ -34,10 +34,10 @@ struct TaggedOverlayView: View {
                 Button(action: onConfirm) {
                     Text("확인")
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.primary)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
-                        .background(Color(red: 0.388, green: 0.400, blue: 1.000))
+                        .background(.accent)
                         .clipShape(Capsule())
                 }
                 .padding(.horizontal, 32)

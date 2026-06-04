@@ -15,30 +15,29 @@ struct TaggedConfirmDialogView: View {
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.45)
+            Color.appBackground
                 .ignoresSafeArea() // 화면전체 : 반투명 검정
 
             VStack(alignment: .leading, spacing: 18) {
                 Text(title)
                     .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
 
                 Text(message)
                     .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.75))
+                    .foregroundStyle(.secondary)
                     .lineSpacing(4)
 
                 HStack(spacing: 10) {
                     Button("아니요", action: onCancel)
                         .buttonStyle(
-                            DialogButtonStyle(textColor: .white)
+                            DialogButtonStyle(textColor: .primary)
                         )
 
                     Button("네", action: onConfirm)
                         .buttonStyle(
                             DialogButtonStyle(
-                                textColor: Color(red: 1.000, green: 0.259, blue: 0.271)
-                            )
+                                textColor: .appDanger)
                         )
                 }
             }
