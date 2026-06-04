@@ -51,33 +51,10 @@ struct HiderModeView: View {
             // 술래에게 잡혔는지 묻는 화면
             TaggedCheckView(
                 remainingSeconds: viewModel.remainingSeconds,
-                onYes: {
-                    viewModel.selectTaggedAnswer(.yes)
-                },
-                onNo: {
-                    viewModel.selectTaggedAnswer(.no)
+                onConfirmAnswer: { answer in
+                    viewModel.confirmTaggedAnswer(answer)
                 }
             )
-
-        case let .taggedConfirm(answer):
-            // 1차 선택 답변 한번 더 확인
-            TaggedCheckView(
-                remainingSeconds: viewModel.remainingSeconds,
-                onYes: {},
-                onNo: {}
-            )
-            .allowsHitTesting(false)
-            .overlay {
-                TaggedConfirmDialogView(
-                    answer: answer,
-                    onCancel: {
-                        viewModel.cancelTaggedConfirm()
-                    },
-                    onConfirm: {
-                        viewModel.confirmTaggedAnswer(answer)
-                    }
-                )
-            }
 
         case .tagged:
             HiderStatusView(state: .tagged)
