@@ -43,6 +43,7 @@ struct GameFlowMessage {
     let targetPeerDisplayName: String?
     let winner: GameFlowWinner?
 
+    /// 게임 시작 메시지를 만든다.
     static func gameStarted() -> GameFlowMessage {
         GameFlowMessage(
             kind: .gameStarted,
@@ -54,6 +55,7 @@ struct GameFlowMessage {
         )
     }
 
+    /// 역할 배정 메시지를 만든다.
     static func roleAssigned(_ role: GameFlowRole) -> GameFlowMessage {
         GameFlowMessage(
             kind: .roleAssigned,
@@ -65,6 +67,7 @@ struct GameFlowMessage {
         )
     }
 
+    /// 카운트다운 시작 메시지를 만든다.
     static func countdownStarted(seconds: Int) -> GameFlowMessage {
         GameFlowMessage(
             kind: .countdownStarted,
@@ -76,6 +79,7 @@ struct GameFlowMessage {
         )
     }
 
+    /// 탐색 시작 메시지를 만든다.
     static func searchStarted() -> GameFlowMessage {
         GameFlowMessage(
             kind: .searchStarted,
@@ -87,6 +91,7 @@ struct GameFlowMessage {
         )
     }
 
+    /// 특정 peer를 찾았다는 메시지를 만든다.
     static func playerFound(_ peer: PeerID) -> GameFlowMessage {
         GameFlowMessage(
             kind: .playerFound,
@@ -98,6 +103,7 @@ struct GameFlowMessage {
         )
     }
 
+    /// 게임 종료 메시지를 만든다.
     static func gameEnded(winner: GameFlowWinner) -> GameFlowMessage {
         GameFlowMessage(
             kind: .gameEnded,
@@ -120,6 +126,8 @@ extension GameFlowMessage: Codable {
         case winner
     }
 
+    /// 수신한 Data를 GameFlowMessage로 복원한다.
+    /// 메시지 종류, 역할, 승리자 값은 rawValue를 검증해 안전하게 변환한다.
     nonisolated init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
@@ -185,6 +193,7 @@ extension GameFlowMessage: Codable {
         self.winner = winner
     }
 
+    /// GameFlowMessage를 MCSession으로 전송 가능한 Data로 변환하기 위해 인코딩한다.
     nonisolated func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
 
