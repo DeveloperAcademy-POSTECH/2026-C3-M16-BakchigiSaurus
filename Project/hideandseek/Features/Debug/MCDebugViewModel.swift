@@ -102,10 +102,10 @@ final class MCDebugViewModel: ObservableObject {
 
     private func handleSessionEvent(_ event: SessionEvent) {
         switch event {
-        case .peerConnected(let peer):
+        case let .peerConnected(peer):
             appendLog("연결됨: \(peer.displayName)")
 
-        case .peerDisconnected(let peer):
+        case let .peerDisconnected(peer):
             appendLog("연결 끊김: \(peer.displayName)")
         }
 
