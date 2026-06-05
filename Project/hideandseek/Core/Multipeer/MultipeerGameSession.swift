@@ -10,7 +10,15 @@
 
 import Foundation
 @preconcurrency import MultipeerConnectivity
+import NearbyInteraction
 import UIKit
+
+/// MC를 통해 수신한 NI DiscoveryToken 이벤트.
+/// 어떤 peer에게서 받은 token인지 함께 전달한다.
+struct NIDiscoveryTokenEvent {
+    let peer: PeerID
+    let token: NIDiscoveryToken
+}
 
 /// GameSession 프로토콜을 실제 MultipeerConnectivity로 구현하는 클래스.
 /// Feature 쪽은 이 구현체가 아니라 GameSession 인터페이스에 의존한다.
@@ -33,6 +41,9 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
 
     /// 연결/끊김 이벤트를 Feature로 전달하기 위한 AsyncStream continuation.
     private var eventContinuation: AsyncStream<SessionEvent>.Continuation?
+
+    /// MC로 수신한 NI DiscoveryToken을 외부로 전달하기 위한 AsyncStream continuation.
+    private var niTokenContinuation: AsyncStream<NIDiscoveryTokenEvent>.Continuation?
 
     /// 호스트 광고를 담당하는 advertiser.
     private var advertiser: MCNearbyServiceAdvertiser?
@@ -107,10 +118,33 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
         }
     }
 
-    /// GameSession 요구사항: 연결 변화 이벤트 스트림 생성.
     func makeEventStream() -> AsyncStream<SessionEvent> {
         AsyncStream { continuation in
-            self.eventContinuation = continuation
+            stateQueue.async {
+                self.eventContinuation = continuation
+            }
+
+            continuation.onTermination = { [weak self] _ in
+                self?.stateQueue.async {
+                    self?.eventContinuation = nil
+                }
+            }
+        }
+    }
+
+    /// MCSession을 통해 수신한 상대방의 NIDiscoveryToken 이벤트 스트림을 생성한다.
+    /// NI 담당 객체는 이 스트림을 구독해 NINearbyPeerConfiguration에 사용할 token을 받을 수 있다.
+    func makeNIDiscoveryTokenStream() -> AsyncStream<NIDiscoveryTokenEvent> {
+        AsyncStream { continuation in
+            stateQueue.async {
+                self.niTokenContinuation = continuation
+            }
+
+            continuation.onTermination = { [weak self] _ in
+                self?.stateQueue.async {
+                    self?.niTokenContinuation = nil
+                }
+            }
         }
     }
 }
@@ -145,6 +179,14 @@ private extension MultipeerGameSession {
     /// 없으면 MCPeerID의 displayName을 기반으로 fallback PeerID를 만든다.
     func makeKnownPeerID(from mcPeerID: MCPeerID) -> PeerID {
         knownPeerIDsByDisplayName[mcPeerID.displayName] ?? PeerID(mcPeerID: mcPeerID)
+    }
+
+    /// 연결된 peer 목록에서 Feature용 PeerID와 매칭되는 MCPeerID를 찾는다.
+    /// MCSession.send는 MCPeerID를 요구하므로, PeerID를 내부 MC 타입으로 다시 매핑한다.
+    func connectedMCPeer(for peer: PeerID) -> MCPeerID? {
+        connectedMCPeers.first { mcPeerID in
+            makeKnownPeerID(from: mcPeerID).rawID == peer.rawID
+        }
     }
 
     /// 호스트가 광고한 discoveryInfo를 기반으로 Feature용 PeerID를 만든다.
@@ -198,13 +240,39 @@ extension MultipeerGameSession: MCSessionDelegate {
         }
     }
 
-    /// 현재 브랜치에서는 데이터 수신을 구현하지 않는다.
-    /// 실제 클립/영상 송수신은 후속 브랜치에서 확장한다.
+    /// MCSession으로 수신한 data를 앱 내부 메시지로 해석한다.
+    /// 현재는 NI DiscoveryToken 메시지를 복원해 수신 스트림으로 전달한다.
     func session(
         _ session: MCSession,
         didReceive data: Data,
         fromPeer peerID: MCPeerID
-    ) {}
+    ) {
+        stateQueue.async {
+            do {
+                let message = try JSONDecoder().decode(
+                    MultipeerMessage.self,
+                    from: data
+                )
+
+                switch message.kind {
+                case .niDiscoveryToken:
+                    let token = try NIDiscoveryTokenCoding.decode(
+                        from: message.payload
+                    )
+                    let peer = self.makeKnownPeerID(from: peerID)
+
+                    self.niTokenContinuation?.yield(
+                        NIDiscoveryTokenEvent(
+                            peer: peer,
+                            token: token
+                        )
+                    )
+                }
+            } catch {
+                print("Failed to handle received multipeer data:", error.localizedDescription)
+            }
+        }
+    }
 
     /// 스트림 수신 콜백. 현재 브랜치에서는 사용하지 않는다.
     func session(
@@ -308,6 +376,49 @@ extension MultipeerGameSession {
                 withContext: nil,
                 timeout: timeout
             )
+        }
+    }
+
+    /// NI 담당 코드에서 생성한 localDiscoveryToken을 연결된 peer에게 전송한다.
+    /// peer를 지정하지 않으면 현재 연결된 모든 peer에게 전송한다.
+    func sendNIDiscoveryToken(
+        _ token: NIDiscoveryToken,
+        to peer: PeerID? = nil
+    ) {
+        stateQueue.async {
+            do {
+                let tokenData = try NIDiscoveryTokenCoding.encode(token)
+                let message = MultipeerMessage(
+                    kind: .niDiscoveryToken,
+                    payload: tokenData
+                )
+                let messageData = try JSONEncoder().encode(message)
+
+                let targetPeers: [MCPeerID]
+                if let peer {
+                    guard let targetPeer = self.connectedMCPeer(for: peer) else {
+                        print("Failed to send NI token. MCPeerID not found:", peer.displayName)
+                        return
+                    }
+
+                    targetPeers = [targetPeer]
+                } else {
+                    targetPeers = self.session.connectedPeers
+                }
+
+                guard !targetPeers.isEmpty else {
+                    print("Failed to send NI token. No connected peers.")
+                    return
+                }
+
+                try self.session.send(
+                    messageData,
+                    toPeers: targetPeers,
+                    with: .reliable
+                )
+            } catch {
+                print("Failed to send NI token:", error.localizedDescription)
+            }
         }
     }
 }
