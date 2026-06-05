@@ -22,7 +22,6 @@ struct HiderStatusView: View {
                 .foregroundStyle(.primary)
         }
         .multilineTextAlignment(.center)
-
     }
 
     private var eyebrowText: String {

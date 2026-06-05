@@ -14,12 +14,12 @@ struct HiderSearchView: View {
     var body: some View {
         ZStack {
             searchBackground // 배경
-            
+
             GameTimer(timeLeft: timeLeft)
                 .frame(width: 171, height: 67)
                 .padding(.top, 84)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            
+
             bottomMessage
                 .padding(.leading, 36)
                 .padding(.bottom, 121)
@@ -50,7 +50,6 @@ struct HiderSearchView: View {
                 .foregroundStyle(.secondary)
         }
         .font(.largeTitle.bold())
-
     }
 }
 
