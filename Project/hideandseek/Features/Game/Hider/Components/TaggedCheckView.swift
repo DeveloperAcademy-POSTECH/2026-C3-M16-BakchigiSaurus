@@ -18,17 +18,17 @@ struct TaggedCheckView: View {
     var body: some View {
         ZStack {
             blurredBackground
-            
+
             GameTimer(timeLeft: timeLeft)
                 .frame(width: 171, height: 67)
                 .padding(.top, 84)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            
+
             Text("!")
                 .font(.system(size: 200, weight: .bold))
                 .foregroundStyle(.appDanger)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-            
+
             answerArea
                 .padding(.bottom, 141)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
@@ -41,12 +41,12 @@ struct TaggedCheckView: View {
             Button("아니요", role: .cancel) {
                 pendingAnswer = nil
             }
-            
+
             Button("네", role: .destructive) {
                 guard let pendingAnswer else {
                     return
                 }
-                
+
                 onConfirmAnswer(pendingAnswer)
                 self.pendingAnswer = nil
             }
@@ -54,13 +54,13 @@ struct TaggedCheckView: View {
             Text(confirmMessage)
         }
     }
-                
+
     private var answerArea: some View {
         VStack(spacing: 18) {
             Text("술래에게 잡혔나요?")
                 .font(.largeTitle.bold())
                 .foregroundStyle(.primary)
-            
+
             HStack(spacing: 16) {
                 Button("아니요") {
                     pendingAnswer = .no
@@ -69,7 +69,7 @@ struct TaggedCheckView: View {
                 .buttonStyle(
                     AnswerButtonStyle(color: .appDanger)
                 )
-                
+
                 Button("네") {
                     pendingAnswer = .yes
                     isShowingConfirmAlert = true
@@ -80,7 +80,7 @@ struct TaggedCheckView: View {
             }
         }
     }
-    
+
     private var confirmTitle: String {
         switch pendingAnswer {
         case .yes:
@@ -91,7 +91,7 @@ struct TaggedCheckView: View {
             ""
         }
     }
-    
+
     private var confirmMessage: String {
         switch pendingAnswer {
         case .yes:

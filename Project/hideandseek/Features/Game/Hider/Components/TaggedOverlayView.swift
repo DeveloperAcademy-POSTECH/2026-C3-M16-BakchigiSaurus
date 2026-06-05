@@ -35,8 +35,6 @@ struct TaggedOverlayView: View {
                     Text("확인")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(.primary)
-                    
-
                 }
                 .buttonStyle(.borderedProminent)
                 .padding(.horizontal, 32)

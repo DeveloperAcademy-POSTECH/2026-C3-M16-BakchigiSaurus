@@ -25,7 +25,6 @@ struct TaggerWarningView: View {
 
                 bottomMessage
             }
-
         }
         .ignoresSafeArea()
     }

@@ -21,12 +21,12 @@ struct CameraRecordingView: View {
                 isRevealed: isTaggerNearby, // 카메라 화면 공개
                 isRecording: isTaggerNearby // 녹화 시작
             )
-            
+
             GameTimer(timeLeft: timeLeft)
                 .frame(width: 171, height: 67)
                 .padding(.top, 84)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            
+
             Text("녹화중이에요")
                 .font(.largeTitle.bold())
                 .foregroundStyle(.secondary)
@@ -38,11 +38,11 @@ struct CameraRecordingView: View {
         // 화면이 나타나면 .task 실행
         .task {
             try? await Task.sleep(nanoseconds: 2_000_000_000)
-            
+
             guard !Task.isCancelled else {
-                            return
-                        }
-            
+                return
+            }
+
             await camera.setRecording(false)
             onRecordingFinished()
         }
