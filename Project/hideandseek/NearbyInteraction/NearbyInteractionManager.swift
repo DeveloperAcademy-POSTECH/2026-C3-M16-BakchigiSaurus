@@ -66,7 +66,17 @@ final class NearbyInteractionManager: NSObject {
         return token
     }
     
-    // NI Session 실행 함수
+    /// MC가 받은 상대방 token data를 NI 세션 실행 함수에 이어줄때 사용하는 함수
+    func run(with peerTokenData: Data) {
+        do {
+            let peerToken = try decodeDiscoveryToken(from: peerTokenData)
+            run(with: peerToken)
+        } catch {
+            state = .failed(.invalidDiscoveryToken)
+        }
+    }
+    
+    /// NI Session 실행 함수
     func run(with peerToken: NIDiscoveryToken) { // NI에서 부르는 상대토큰 변수명: peerToken
         
         guard session != nil else {
