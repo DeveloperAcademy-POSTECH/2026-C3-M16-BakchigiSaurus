@@ -11,24 +11,20 @@ struct TaggerDetectedVeiw: View {
     let camera: CameraModel
     let isHiderNearby: Bool
     let isUsingHint: Bool
-
-    func checkDetection(distance: Double, duration: Int) {
-        if distance <= 5.0, duration >= 5 {
-            LiveActivityManager.shared.startLiveActivity(roomName: "캄초의 숨바꼭질", isTagger: true)
-        } else {
-            LiveActivityManager.shared.stopLiveActivity()
-        }
-    }
-
+    let timeLeft: Int
+    @State private var isHiderDetected: Bool = true
+    
     var body: some View {
-        ZStack {
+        ZStack(alignment: .top) {
             GameCameraBackground(
                 camera: camera,
                 isRevealed: isHiderNearby && isUsingHint,
                 isRecording: isHiderNearby
             )
+            .ignoresSafeArea()
+            
             VStack {
-                GameTimer(timeLeft: 300)
+                GameTimer(timeLeft: timeLeft)
                 Spacer()
                 Text("녹화중이에요")
                     .font(.largeTitle.bold())
@@ -37,10 +33,21 @@ struct TaggerDetectedVeiw: View {
                     .padding(.bottom, 7)
             }
             .padding(.horizontal, 36)
+            
+            if isHiderDetected {
+                FakeDynamicIslandView(isExpanded: true) {
+                    IslandCompactContent()
+                } expanded: {
+                    IslandExpandedContent(timeLeft: 180, type: .hiderNearby)
+                }
+                .padding(.top, 12)
+                .ignoresSafeArea()
+            }
         }
     }
 }
 
+
 #Preview {
-    TaggerDetectedVeiw(camera: CameraModel(), isHiderNearby: true, isUsingHint: false)
+    TaggerDetectedVeiw(camera: CameraModel(), isHiderNearby: true, isUsingHint: false, timeLeft: 300)
 }

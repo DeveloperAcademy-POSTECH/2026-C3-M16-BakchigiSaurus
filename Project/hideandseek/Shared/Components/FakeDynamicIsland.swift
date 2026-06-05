@@ -44,7 +44,7 @@ struct FakeDynamicIslandView<Compact: View, Expanded: View>: View {
     }
 }
 
-private struct IslandCompactContent: View {
+struct IslandCompactContent: View {
     var body: some View {
         EmptyView()
     }
@@ -76,7 +76,7 @@ enum IslandAlertType {
     }
 }
 
-private struct IslandExpandedContent: View {
+struct IslandExpandedContent: View {
     let timeLeft: Int
     let type: IslandAlertType
 
