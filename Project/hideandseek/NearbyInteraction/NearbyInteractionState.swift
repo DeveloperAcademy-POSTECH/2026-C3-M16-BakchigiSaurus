@@ -28,6 +28,8 @@ enum NearbyInteractionState {
     case suspended // 세션 일시 중단
     case invalidated // 세션 완전 종료
     case unsupported // 기기 지원 안함
+    case peerLost // 상대방을 잃어버림
+    case peerEnded // 상대방이 종료함
     case failed(NearbyInteractionError) // 처리중 에러 발생
 }
 
@@ -40,6 +42,8 @@ enum NearbyInteractionError: Error {
     // 토큰 변환 실패 case 추가
     case missingDiscoveryToken
     case invalidDiscoveryToken
+
+    case peerRemoved(NINearbyObject.RemovalReason)
 }
 
 /// NI가 측정한 거리/ 방향 값

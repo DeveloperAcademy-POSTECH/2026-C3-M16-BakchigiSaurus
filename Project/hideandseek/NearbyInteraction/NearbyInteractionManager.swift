@@ -46,6 +46,7 @@ final class NearbyInteractionManager: NSObject {
     /// 내 token을 MC가 보낼 수있는 Data로 변환
     func makeLocalDiscoveryTokenData() throws -> Data {
         guard let discoveryToken = session?.discoveryToken else {
+            state = .failed(.missingDiscoveryToken)
             throw NearbyInteractionError.missingDiscoveryToken
         }
 
@@ -58,10 +59,21 @@ final class NearbyInteractionManager: NSObject {
             ofClass: NIDiscoveryToken.self,
             from: data
         ) else {
+            state = .failed(.invalidDiscoveryToken)
             throw NearbyInteractionError.invalidDiscoveryToken
         }
 
         return token
+    }
+
+    /// MC가 받은 상대방 token data를 NI 세션 실행 함수에 이어줄때 사용하는 함수
+    func run(with peerTokenData: Data) {
+        do {
+            let peerToken = try decodeDiscoveryToken(from: peerTokenData)
+            run(with: peerToken)
+        } catch {
+            state = .failed(.invalidDiscoveryToken)
+        }
     }
 
     /// NI Session 실행 함수
@@ -115,26 +127,44 @@ extension NearbyInteractionManager: NISessionDelegate {
         onReadingUpdated?(reading) // 만든 값을 외부로 전달
     }
 
+    /// 세션이 추적하던 nearbyObject를 더이상 추적하지 못하게 되었을 때
     func session(
         _ session: NISession,
         didRemove nearbyObjects: [NINearbyObject],
         reason: NINearbyObject.RemovalReason
     ) {
-        // feat/ni-error에서 timeout.peerEnded 처리
+        switch reason {
+        case .peerEnded:
+            state = .peerEnded
+
+        case .timeout:
+            state = .peerLost
+
+        default:
+            state = .failed(.peerRemoved(reason))
+        }
     }
 
-    /// 중단 관리
+    /// 세션이 일시중단 되었을 때
     func sessionWasSuspended(_ session: NISession) {
         state = .suspended
     }
 
+    /// 세션 중단이 종료되었을 때 (= 재실행 가능 상태, 세션 재호출)
     func sessionSuspensionEnded(_ session: NISession) {
-        state = .ready
+        guard let peerDiscoveryToken else {
+            state = .ready
+            return
+        }
+
+        let configuration = NINearbyPeerConfiguration(peerToken: peerDiscoveryToken)
+        session.run(configuration)
     }
 
-    /// 오류 처리
+    /// 세션이 에러와 함께 완전 종료되었을 때
     func session(_ session: NISession, didInvalidateWith error: Error) {
         self.session = nil
+        peerDiscoveryToken = nil // 재사용 불가한 peer token 정리
         sharedTokenWithPeer = false
         state = .failed(.sessionInvalidated(error))
     }
