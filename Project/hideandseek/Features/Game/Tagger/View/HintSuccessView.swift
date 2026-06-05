@@ -11,6 +11,7 @@ struct HintSuccessView: View {
     let camera: CameraModel
     let isHiderNearby: Bool
     let isUsingHint: Bool
+    let timeLeft: Int
 
     @State var rotation: Double = 30.0
     @Environment(\.dismiss) private var dismiss
@@ -27,7 +28,7 @@ struct HintSuccessView: View {
                 .opacity(0.75)
             ZStack {
                 VStack {
-                    GameTimer(timeLeft: 300)
+                    GameTimer(timeLeft: timeLeft)
                     Spacer()
                     Image(systemName: "arrow.up")
                         .font(.system(size: 200))
@@ -65,5 +66,5 @@ struct HintSuccessView: View {
 }
 
 #Preview {
-    HintSuccessView(camera: CameraModel(), isHiderNearby: false, isUsingHint: false)
+    HintSuccessView(camera: CameraModel(), isHiderNearby: false, isUsingHint: false, timeLeft: 300)
 }

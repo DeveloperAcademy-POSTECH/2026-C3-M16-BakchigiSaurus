@@ -20,6 +20,7 @@ struct TaggerSearchView: View {
     let camera: CameraModel
     let isHiderNearby: Bool
     let isUsingHint: Bool
+    let timeLeft: Int
     @State var hintCount = 1
     @State private var activeHintView: HintViewType? = nil
 
@@ -32,7 +33,7 @@ struct TaggerSearchView: View {
             )
             ZStack {
                 VStack {
-                    GameTimer(timeLeft: 300)
+                    GameTimer(timeLeft: timeLeft)
                     Spacer()
                     HStack {
                         VStack(alignment: .leading) {
@@ -81,9 +82,9 @@ struct TaggerSearchView: View {
             .fullScreenCover(item: $activeHintView) { hintType in
                 switch hintType {
                 case .success:
-                    HintSuccessView(camera: camera, isHiderNearby: isHiderNearby, isUsingHint: true)
+                    HintSuccessView(camera: camera, isHiderNearby: isHiderNearby, isUsingHint: true, timeLeft: timeLeft)
                 case .failure:
-                    HintFailureView(camera: camera, isHiderNearby: isHiderNearby, isUsingHint: true)
+                    HintFailureView(camera: camera, isHiderNearby: isHiderNearby, isUsingHint: true, timeLeft: timeLeft)
                 }
             }
             .padding(.horizontal, 36)
@@ -92,5 +93,5 @@ struct TaggerSearchView: View {
 }
 
 #Preview {
-    TaggerSearchView(camera: CameraModel(), isHiderNearby: true, isUsingHint: false)
+    TaggerSearchView(camera: CameraModel(), isHiderNearby: true, isUsingHint: false, timeLeft: 300)
 }
