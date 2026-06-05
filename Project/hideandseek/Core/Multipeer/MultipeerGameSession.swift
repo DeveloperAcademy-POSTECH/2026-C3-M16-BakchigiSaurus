@@ -293,6 +293,9 @@ extension MultipeerGameSession: MCSessionDelegate {
                             token: token
                         )
                     )
+
+                case .gameFlowMessage:
+                    break
                 }
             } catch {
                 print("Failed to handle received multipeer data:", error.localizedDescription)
@@ -444,6 +447,49 @@ extension MultipeerGameSession {
                 )
             } catch {
                 print("Failed to send NI token:", error.localizedDescription)
+            }
+        }
+    }
+
+    /// 게임 진행 메시지를 연결된 peer에게 전송한다.
+    /// peer를 지정하지 않으면 현재 연결된 모든 peer에게 전송한다.
+    func sendGameFlowMessage(
+        _ gameFlowMessage: GameFlowMessage,
+        to peer: PeerID? = nil
+    ) {
+        stateQueue.async {
+            do {
+                let payload = try JSONEncoder().encode(gameFlowMessage)
+                let message = MultipeerMessage(
+                    kind: .gameFlowMessage,
+                    payload: payload
+                )
+                let messageData = try JSONEncoder().encode(message)
+
+                let targetPeers: [MCPeerID]
+                if let peer {
+                    guard let targetPeer = self.connectedMCPeer(for: peer) else {
+                        print("Failed to send game flow message. MCPeerID not found:", peer.displayName)
+                        return
+                    }
+
+                    targetPeers = [targetPeer]
+                } else {
+                    targetPeers = self.session.connectedPeers
+                }
+
+                guard !targetPeers.isEmpty else {
+                    print("Failed to send game flow message. No connected peers.")
+                    return
+                }
+
+                try self.session.send(
+                    messageData,
+                    toPeers: targetPeers,
+                    with: .reliable
+                )
+            } catch {
+                print("Failed to send game flow message:", error.localizedDescription)
             }
         }
     }

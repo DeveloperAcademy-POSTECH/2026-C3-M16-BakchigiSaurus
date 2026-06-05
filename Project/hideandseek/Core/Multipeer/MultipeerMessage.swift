@@ -15,6 +15,7 @@ import Foundation
 /// 수신 측은 kind를 보고 payload를 어떤 방식으로 해석할지 결정한다.
 enum MultipeerMessageKind: String {
     case niDiscoveryToken
+    case gameFlowMessage
 }
 
 extension MultipeerMessageKind: Codable {
