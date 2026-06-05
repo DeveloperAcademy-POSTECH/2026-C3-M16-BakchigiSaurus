@@ -23,20 +23,43 @@ final class mcniConnection {
         observeNITokenEvents()
     }
     
-    /// MC 연결 이벤트 구독 예정
+    /// MC 연결 상태 지켜보는 함수
     private func observeSessionEvents() {
-        niTokenEventTask = Task { [weak self] in
-            guard let self else { return}
-            // 아직 브랜치 머지를 못해서 못 불러옴
-            //for await event in mcSession.makeNIDiscoveryTokenStream() {
-            //    niManager.run(with: event.token)
-            //}
+        sessionEventTask = Task { [weak self] in
+            guard let self else { return }
+            
+            for await event in mcSession.makeEventStream() {
+                switch event {
+                case let .peerConnected(peerID):
+                    startNITokenExchange(with: peerID)
+                    
+                default :
+                    break
+                }
+            }
+        }
+    }
+    
+    /// 내 NI token 을 상대에게 보내는 함수
+    /// NI 세션 시작 후 내 discoveryToken 을 가져와서 MC 를 통해 상대 peer 에게 내 token 보낸다
+    private func startNITokenExchange(with peer: PeerID) {
+        niManager.startSession()
+        
+        guard let localToken = niManager.getMyDiscoveryToken() else {
+            return
         }
     }
     
     /// NI token 이벤트 구독 예정
+    /// 상대가 보내준 NI Token 을 기다리는 함수
     private func observeNITokenEvents() {
-        
+        niTokenEventTask = Task { [weak self] in
+            guard let self else { return }
+            
+            for await event in mcSession.makeNIDiscoveryTokenStream() {
+                niManager.run(with: event.token)
+            }
+        }
     }
     
     deinit {
