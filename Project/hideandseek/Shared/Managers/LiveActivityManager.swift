@@ -24,7 +24,7 @@ class LiveActivityManager {
             remainingTime: 300,
             caughtCount: 0,
             isTagger: isTagger,
-            isTargetNear: true
+            isHiderNearby: true
         )
 
         do {

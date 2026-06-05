@@ -19,6 +19,6 @@ struct HideAndSeekLiveActivityAttributes: ActivityAttributes {
         var remainingTime: Int
         var caughtCount: Int
         var isTagger: Bool
-        var isTargetNear: Bool
+        var isHiderNearby: Bool
     }
 }
