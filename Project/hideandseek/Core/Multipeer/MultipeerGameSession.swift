@@ -33,50 +33,50 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
     /// 주변 기기 탐색에 사용할 MC 서비스 이름.
     /// Info.plist의 Bonjour 서비스 이름과 맞아야 한다.
     private let serviceType = "hide-seek"
-    
+
     /// MC 내부에서 사용하는 내 기기 식별자.
     private let localMCPeerID: MCPeerID
-    
+
     /// 기기 간 연결과 추후 데이터 송수신을 담당하는 MC 세션.
     private let session: MCSession
-    
+
     /// 연결 상태 변경을 순서대로 처리하기 위한 큐.
     private let stateQueue = DispatchQueue(label: "hideandseek.multipeer.session.state")
-    
+
     /// 현재 MCSession에 연결된 peer 목록.
     private var connectedMCPeers: [MCPeerID] = []
-    
+
     /// 연결/끊김 이벤트를 Feature로 전달하기 위한 AsyncStream continuation.
     private var eventContinuation: AsyncStream<SessionEvent>.Continuation?
-    
+
     /// MC로 수신한 NI DiscoveryToken을 외부로 전달하기 위한 AsyncStream continuation.
     private var niTokenContinuation: AsyncStream<NIDiscoveryTokenEvent>.Continuation?
-    
+
     /// MC로 수신한 게임 진행 메시지를 외부로 전달하기 위한 AsyncStream continuation.
     private var gameFlowMessageContinuation: AsyncStream<GameFlowMessageEvent>.Continuation?
-    
+
     /// 호스트 광고를 담당하는 advertiser.
     private var advertiser: MCNearbyServiceAdvertiser?
-    
+
     /// 주변에서 광고 중인 호스트를 탐색하는 브라우저.
     private var browser: MCNearbyServiceBrowser?
-    
+
     /// 발견된 호스트를 rawID 기준으로 저장한다.
     private var discoveredPeersByRawID: [String: PeerID] = [:]
-    
+
     /// 발견된 호스트의 rawID와 실제 MC용 MCPeerID를 매핑한다.
     private var discoveredMCPeersByRawID: [String: MCPeerID] = [:]
-    
+
     /// displayName 기준으로 이미 확인한 PeerID를 저장한다.
     /// 연결 이후에도 discoveryInfo에서 얻은 안정적인 rawID를 재사용하기 위해 사용한다.
     private var knownPeerIDsByDisplayName: [String: PeerID] = [:]
-    
+
     /// GameSession 요구사항: 이 기기의 추상화된 식별자.
     let localPeer: PeerID
-    
+
     /// GameSession 요구사항: 게임을 만든 호스트.
     private(set) var hostPeer: PeerID
-    
+
     /// GameSession 요구사항: 현재 연결된 피어 목록.
     /// Feature에는 MCPeerID 대신 PeerID로 변환해서 제공한다.
     var currentPeers: [PeerID] {
@@ -85,7 +85,7 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
             return uniquePeers([localPeer] + connectedPeers)
         }
     }
-    
+
     /// 주변에서 발견된 호스트 목록.
     /// 현재 GameSession 프로토콜에는 포함되어 있지 않은 구현체 전용 상태다.
     var discoveredPeers: [PeerID] {
@@ -93,7 +93,7 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
             discoveredPeersByRawID.values.sorted { $0.displayName < $1.displayName }
         }
     }
-    
+
     /// MultipeerGameSession 생성자.
     /// - Parameters:
     ///   - displayName: 주변 기기에 표시될 이름.
@@ -105,35 +105,35 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
     ) {
         let peer = peerIdentityStore.loadOrCreatePeerID(displayName: displayName)
         let mcPeerID = MCPeerID(displayName: peer.displayName)
-        
+
         self.localMCPeerID = mcPeerID
         self.session = MCSession(
             peer: mcPeerID,
             securityIdentity: nil,
             encryptionPreference: .required
         )
-        
+
         self.localPeer = peer
         self.hostPeer = peer
-        
+
         super.init()
-        
+
         self.knownPeerIDsByDisplayName[mcPeerID.displayName] = peer
-        
+
         // MCSession 연결 상태 변화를 이 클래스에서 받을 수 있게 설정한다.
         self.session.delegate = self
-        
+
         if isHost {
             self.hostPeer = self.localPeer
         }
     }
-    
+
     func makeEventStream() -> AsyncStream<SessionEvent> {
         AsyncStream { continuation in
             stateQueue.async {
                 self.eventContinuation = continuation
             }
-            
+
             continuation.onTermination = { [weak self] _ in
                 self?.stateQueue.async {
                     self?.eventContinuation = nil
@@ -141,7 +141,7 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
             }
         }
     }
-    
+
     /// MCSession을 통해 수신한 상대방의 NIDiscoveryToken 이벤트 스트림을 생성한다.
     /// NI 담당 객체는 이 스트림을 구독해 NINearbyPeerConfiguration에 사용할 token을 받을 수 있다.
     func makeNIDiscoveryTokenStream() -> AsyncStream<NIDiscoveryTokenEvent> {
@@ -149,7 +149,7 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
             stateQueue.async {
                 self.niTokenContinuation = continuation
             }
-            
+
             continuation.onTermination = { [weak self] _ in
                 self?.stateQueue.async {
                     self?.niTokenContinuation = nil
@@ -157,7 +157,7 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
             }
         }
     }
-    
+
     /// MCSession을 통해 수신한 게임 진행 메시지 이벤트 스트림을 생성한다.
     /// Feature는 이 스트림을 구독해 게임 시작, 역할 배정, 탐색 시작 등의 이벤트를 받을 수 있다.
     func makeGameFlowMessageStream() -> AsyncStream<GameFlowMessageEvent> {
@@ -165,7 +165,7 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
             stateQueue.async {
                 self.gameFlowMessageContinuation = continuation
             }
-            
+
             continuation.onTermination = { [weak self] _ in
                 self?.stateQueue.async {
                     self?.gameFlowMessageContinuation = nil
@@ -565,8 +565,6 @@ extension MultipeerGameSession {
         )
     }
 }
-
-
 
 extension MultipeerGameSession: MCNearbyServiceAdvertiserDelegate {
     /// 다른 peer가 이 호스트에게 참가 요청을 보냈을 때 호출된다.
