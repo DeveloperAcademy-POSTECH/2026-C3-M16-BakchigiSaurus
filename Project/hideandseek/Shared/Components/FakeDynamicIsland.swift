@@ -28,7 +28,6 @@ struct FakeDynamicIslandView<Compact: View, Expanded: View>: View {
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                 .fill(Color.black)
                 .frame(width: size.width, height: size.height)
-                .shadow(color: .black.opacity(0.22), radius: 14, y: 6)
 
             Group {
                 if isExpanded {
