@@ -148,30 +148,3 @@ private struct TransferRowView: View {
         }
     }
 }
-
-#Preview("시작 전") {
-    let mock = MockGameSession(asHost: true)
-    let session = CollectorSession(session: mock)
-    let transfer = ClipTransferService(transport: mock)
-    let viewModel = TransferStatusViewModel(
-        title: "박치기 사우루스 숨바꼭질",
-        session: session,
-        transfer: transfer,
-        seekerIDs: ["p1"]
-    )
-    return TransferStatusView(viewModel: viewModel, onStart: {})
-}
- 
-#Preview("전송 중") {
-    let mock = MockGameSession(asHost: true)
-    let session = CollectorSession(session: mock)
-    let transfer = ClipTransferService(transport: mock)
-    let viewModel = TransferStatusViewModel(
-        title: "박치기 사우루스 숨바꼭질",
-        session: session,
-        transfer: transfer,
-        seekerIDs: ["p1"]
-    )
-    viewModel.start()
-    return TransferStatusView(viewModel: viewModel, onStart: {})
-}
