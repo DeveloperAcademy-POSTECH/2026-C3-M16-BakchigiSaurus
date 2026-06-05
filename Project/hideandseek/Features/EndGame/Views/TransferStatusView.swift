@@ -6,13 +6,13 @@
 //
 
 import SwiftUI
- 
+
 /// 게임 종료 후 참가자별 영상 전송 현황을 보여주는 화면.
 struct TransferStatusView: View {
     let viewModel: TransferStatusViewModel
     /// "이대로 영상 만들기"/"다시시도" 탭 시 실제 전송을 시작하는 트리거.
     let onStart: () -> Void
- 
+
     var body: some View {
         VStack(spacing: 0) {
             header
@@ -23,14 +23,14 @@ struct TransferStatusView: View {
         .background(Color.black.ignoresSafeArea())
         .foregroundStyle(.white)
     }
- 
+
     private var header: some View {
         Text(viewModel.title)
             .font(.headline)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
     }
- 
+
     private var list: some View {
         ScrollView {
             LazyVStack(spacing: 10) {
@@ -41,8 +41,7 @@ struct TransferStatusView: View {
             .padding(.horizontal, 20)
         }
     }
- 
-    @ViewBuilder
+
     private var footer: some View {
         VStack(spacing: 16) {
             if !viewModel.isHostReachable {
@@ -65,7 +64,7 @@ struct TransferStatusView: View {
         }
         .padding(20)
     }
- 
+
     private var startButton: some View {
         Button {
             viewModel.start() // ✅ 탭하는 순간부터 전송 시작 → 프로그레스바로 전환
@@ -78,7 +77,7 @@ struct TransferStatusView: View {
         }
         .buttonStyle(.borderedProminent)
     }
- 
+
     private var transferringIndicator: some View {
         VStack(spacing: 6) {
             ProgressView(value: viewModel.overallProgress)
@@ -88,7 +87,7 @@ struct TransferStatusView: View {
                 .foregroundStyle(.secondary)
         }
     }
- 
+
     private var failedSection: some View {
         VStack(spacing: 12) {
             Text("영상 전송을 실패했어요")
@@ -108,11 +107,11 @@ struct TransferStatusView: View {
         }
     }
 }
- 
+
 /// 참가자 한 명의 전송 상태 행.
 private struct TransferRowView: View {
     let row: TransferStatusViewModel.Row
- 
+
     var body: some View {
         HStack(spacing: 12) {
             Text(row.peer.displayName)
@@ -131,7 +130,7 @@ private struct TransferRowView: View {
         .padding(.vertical, 14)
         .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
     }
- 
+
     @ViewBuilder
     private var statusIcon: some View {
         switch row.status {
