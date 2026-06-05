@@ -11,6 +11,15 @@ struct TaggerDetectedVeiw: View {
     let camera: CameraModel
     let isHiderNearby: Bool
     let isUsingHint: Bool
+    let timeLeft: Int
+
+    func checkDetection(distance: Double, duration: Int) {
+        if distance <= 5.0, duration >= 5 {
+            LiveActivityManager.shared.startLiveActivity(roomName: "캄초의 숨바꼭질", isTagger: true)
+        } else {
+            LiveActivityManager.shared.stopLiveActivity()
+        }
+    }
 
     var body: some View {
         ZStack {
@@ -20,7 +29,7 @@ struct TaggerDetectedVeiw: View {
                 isRecording: isHiderNearby
             )
             VStack {
-                GameTimer(timeLeft: 300)
+                GameTimer(timeLeft: timeLeft)
                 Spacer()
                 Text("녹화중이에요")
                     .font(.largeTitle.bold())
@@ -34,5 +43,5 @@ struct TaggerDetectedVeiw: View {
 }
 
 #Preview {
-    TaggerDetectedVeiw(camera: CameraModel(), isHiderNearby: true, isUsingHint: false)
+    TaggerDetectedVeiw(camera: CameraModel(), isHiderNearby: true, isUsingHint: false, timeLeft: 300)
 }
