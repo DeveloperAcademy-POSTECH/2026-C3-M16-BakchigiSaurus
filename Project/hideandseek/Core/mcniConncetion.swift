@@ -7,6 +7,7 @@
 
 import Foundation
 import NearbyInteraction
+import Combine
 
 final class mcniConnection {
     private let mcSession: MultipeerGameSession
@@ -72,3 +73,13 @@ final class mcniConnection {
     }
 }
 
+final class mcniConnectionHolder: ObservableObject {
+    let connection: mcniConnection
+    
+    init() {
+        let mcSession = MultipeerGameSession()
+        let niManager = NearbyInteractionManager()
+        
+        self.connection = mcniConnection(mcManager: mcSession, niManager: niManager)
+    }
+}
