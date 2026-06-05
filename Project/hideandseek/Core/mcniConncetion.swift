@@ -31,6 +31,7 @@ final class mcniConnection {
             for await event in mcSession.makeEventStream() {
                 switch event {
                 case let .peerConnected(peerID):
+                    print("MC peer Connected:", peerID)
                     startNITokenExchange(with: peerID)
                     
                 default :
@@ -48,6 +49,9 @@ final class mcniConnection {
         guard let localToken = niManager.getMyDiscoveryToken() else {
             return
         }
+        
+        mcSession.sendNIDiscoveryToken(localToken, to: peer)
+        print("Local NI token sent to peer:", peer)
     }
     
     /// NI token 이벤트 구독 예정
