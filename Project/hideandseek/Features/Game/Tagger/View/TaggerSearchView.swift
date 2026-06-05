@@ -82,9 +82,9 @@ struct TaggerSearchView: View {
             .fullScreenCover(item: $activeHintView) { hintType in
                 switch hintType {
                 case .success:
-                    HintSuccessView(camera: camera, isHiderNearby: isHiderNearby, isUsingHint: true)
+                    HintSuccessView(camera: camera, isHiderNearby: isHiderNearby, isUsingHint: true, timeLeft: timeLeft)
                 case .failure:
-                    HintFailureView(camera: camera, isHiderNearby: isHiderNearby, isUsingHint: true)
+                    HintFailureView(camera: camera, isHiderNearby: isHiderNearby, isUsingHint: true, timeLeft: timeLeft)
                 }
             }
             .padding(.horizontal, 36)
