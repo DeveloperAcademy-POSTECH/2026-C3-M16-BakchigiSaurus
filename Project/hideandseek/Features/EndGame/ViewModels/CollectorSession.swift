@@ -30,8 +30,12 @@ final class CollectorSession {
     /// - Parameter session: MC seam. 개발 땐 `MockGameSession`, 통합 땐 실제 구현 주입.
     init(session: any GameSession) {
         self.session = session
-        self.role = (session.localPeer == session.hostPeer) ? .host : .participant
+
+        let role: Role = (session.localPeer == session.hostPeer) ? .host : .participant
+        self.role = role
         self.connectedPeers = session.currentPeers
+
+        self.isHostReachable = role == .host || session.currentPeers.contains(session.hostPeer)
     }
 
     /// 편의 프로퍼티: 이 기기가 수집자인지.

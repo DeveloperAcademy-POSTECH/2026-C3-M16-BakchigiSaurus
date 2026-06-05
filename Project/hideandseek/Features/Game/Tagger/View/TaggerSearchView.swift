@@ -7,11 +7,21 @@
 
 import SwiftUI
 
+enum HintViewType: Identifiable {
+    case success
+    case failure
+    var id: HintViewType {
+        self
+    }
+}
+
 struct TaggerSearchView: View {
     @State private var showHintAlert: Bool = false
     let camera: CameraModel
     let isHiderNearby: Bool
     let isUsingHint: Bool
+    @State var hintCount = 1
+    @State private var activeHintView: HintViewType? = nil
 
     var body: some View {
         ZStack {
@@ -38,16 +48,16 @@ struct TaggerSearchView: View {
                                     .foregroundStyle(.secondary)
                             }
                             Button {
-                                // TODO: 힌트 갯수 연결
                                 showHintAlert = true
                             } label: {
-                                Label("힌트 (n개 남음)", systemImage: "magnifyingglass")
+                                Label("힌트 \(hintCount)개 남음", systemImage: "magnifyingglass")
                                     .padding(.vertical, 10)
                                     .font(.title3)
                             }
                             .buttonStyle(.glass)
                             .cornerRadius(20)
                             .padding(.bottom, 7)
+                            .disabled(hintCount == 0)
                         }
                         Spacer()
                     }
@@ -55,17 +65,32 @@ struct TaggerSearchView: View {
             }
             .alert("힌트를 사용할까요?", isPresented: $showHintAlert) {
                 Button("네", role: .none) {
-                    // TODO: HintSuccessView Or HintFailureView 로 이동함
+                    if hintCount > 0 {
+                        hintCount -= 1
+                        if isHiderNearby {
+                            activeHintView = .success
+                        } else {
+                            activeHintView = .failure
+                        }
+                    }
                 }
                 Button("아니요", role: .cancel) {}
             } message: {
                 Text("가장 가까운 사람의 방향이 잠시동안 표시됩니다")
             }
-            .padding(.horizontal, 24)
+            .fullScreenCover(item: $activeHintView) { hintType in
+                switch hintType {
+                case .success:
+                    HintSuccessView(camera: camera, isHiderNearby: isHiderNearby, isUsingHint: true)
+                case .failure:
+                    HintFailureView(camera: camera, isHiderNearby: isHiderNearby, isUsingHint: true)
+                }
+            }
+            .padding(.horizontal, 36)
         }
     }
 }
 
 #Preview {
-    TaggerSearchView(camera: CameraModel(), isHiderNearby: false, isUsingHint: false)
+    TaggerSearchView(camera: CameraModel(), isHiderNearby: true, isUsingHint: false)
 }

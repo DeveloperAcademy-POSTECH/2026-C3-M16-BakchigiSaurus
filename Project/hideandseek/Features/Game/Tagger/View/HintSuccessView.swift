@@ -12,6 +12,9 @@ struct HintSuccessView: View {
     let isHiderNearby: Bool
     let isUsingHint: Bool
 
+    @State var rotation: Double = 30.0
+    @Environment(\.dismiss) private var dismiss
+
     var body: some View {
         ZStack {
             GameCameraBackground(
@@ -28,6 +31,8 @@ struct HintSuccessView: View {
                     Spacer()
                     Image(systemName: "arrow.up")
                         .font(.system(size: 200))
+                        .rotationEffect(Angle(degrees: rotation))
+
                     Spacer()
                     HStack {
                         VStack(alignment: .leading) {
@@ -42,22 +47,19 @@ struct HintSuccessView: View {
                                     .font(.largeTitle.bold())
                                     .foregroundStyle(.secondary)
                             }
-                            Button {} label: {
-                                Label("힌트 (n개 남음)", systemImage: "magnifyingglass")
-                                    .padding(.vertical, 10)
-                                    .font(.title3)
-                            }
-                            .buttonStyle(.glass)
-                            .cornerRadius(20)
-                            .padding(.bottom, 7)
-                            .opacity(0)
-                            .disabled(true)
                         }
                         Spacer()
                     }
+                    .padding(.bottom)
                 }
             }
             .padding(.horizontal, 36)
+        }
+        .onAppear {
+            Task {
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                dismiss()
+            }
         }
     }
 }
