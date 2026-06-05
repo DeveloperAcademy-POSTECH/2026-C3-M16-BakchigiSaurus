@@ -152,3 +152,38 @@ swift let stream = session.makeEventStream()  Task {     for await event in stre
 - MCPeerID, MCSession 등 MC 내부 타입은 가능한 한 Feature 쪽에 직접 노출하지 않습니다.
 - Feature는 PeerID, SessionEvent, NIDiscoveryTokenEvent 중심으로 사용합니다.
 
+## 12. 디버그 화면 테스트 절차
+
+`MCDebugTestView`는 실제 게임 화면과 분리해서 MC 연결 흐름을 확인하기 위한 개발용 화면입니다.
+
+### 1. 호스트 기기
+
+1. `MCDebugTestView`를 실행합니다.
+2. `호스트 시작` 버튼을 누릅니다.
+3. 로그에 `호스트 광고 시작`이 표시되는지 확인합니다.
+
+### 2. 게스트 기기
+
+1. 다른 기기에서 `MCDebugTestView`를 실행합니다.
+2. `주변 호스트 탐색 시작` 버튼을 누릅니다.
+3. 발견된 호스트가 `Discovered Peers`에 표시되는지 확인합니다.
+4. 표시된 peer를 눌러 invite 요청을 보냅니다.
+
+### 3. 연결 확인
+
+1. 두 기기의 `Current Peers`에 상대 peer가 표시되는지 확인합니다.
+2. 로그에 `연결됨` 이벤트가 표시되는지 확인합니다.
+
+### 4. NI token 확인
+
+1. NI token 전송은 MC 연결이 완료된 이후에 테스트합니다.
+2. `makeNIDiscoveryTokenStream()`을 구독하면 상대 peer가 보낸 token 수신 이벤트를 받을 수 있습니다.
+3. 디버그 화면에서는 token 수신 시 로그에 `NI token 수신` 메시지를 표시합니다.
+
+## 13. 디버그 화면 사용 시 주의사항
+
+- 실제 기기 2대 이상에서 테스트하는 것을 권장합니다.
+- Local Network 권한 요청이 뜨면 허용해야 합니다.
+- 호스트와 게스트가 같은 근거리 네트워크 환경에 있어야 합니다.
+- 디버그 화면은 제품용 화면이 아니라 개발 검증용 화면입니다.
+- 실제 게임 화면과 연결할 때는 ViewModel 구조를 그대로 쓰기보다 필요한 함수만 각 Feature 흐름에 맞게 연결하는 것을 권장합니다.
