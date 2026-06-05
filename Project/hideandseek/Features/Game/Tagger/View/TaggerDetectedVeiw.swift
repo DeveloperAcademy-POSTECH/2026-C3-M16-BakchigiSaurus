@@ -13,7 +13,7 @@ struct TaggerDetectedVeiw: View {
     let isUsingHint: Bool
     let timeLeft: Int
     @State private var isHiderDetected: Bool = true
-    
+
     var body: some View {
         ZStack(alignment: .top) {
             GameCameraBackground(
@@ -22,7 +22,7 @@ struct TaggerDetectedVeiw: View {
                 isRecording: isHiderNearby
             )
             .ignoresSafeArea()
-            
+
             VStack {
                 GameTimer(timeLeft: timeLeft)
                 Spacer()
@@ -33,7 +33,7 @@ struct TaggerDetectedVeiw: View {
                     .padding(.bottom, 7)
             }
             .padding(.horizontal, 36)
-            
+
             if isHiderDetected {
                 FakeDynamicIslandView(isExpanded: true) {
                     IslandCompactContent()
@@ -46,7 +46,6 @@ struct TaggerDetectedVeiw: View {
         }
     }
 }
-
 
 #Preview {
     TaggerDetectedVeiw(camera: CameraModel(), isHiderNearby: true, isUsingHint: false, timeLeft: 300)
