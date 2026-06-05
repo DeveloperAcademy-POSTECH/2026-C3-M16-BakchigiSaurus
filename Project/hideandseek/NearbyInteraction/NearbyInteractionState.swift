@@ -22,23 +22,27 @@ import NearbyInteraction
 
 /// NI의 상태
 enum NearbyInteractionState {
-    case idle
-    case ready
-    case running
-    case suspended
-    case invalidated
-    case unsupported
-    case failed(NearbyInteractionError)
+    case idle // 아무것도 시작 안한 상태
+    case ready // NI 세션 만듦
+    case running // 상대 token 받아서 측정 시작
+    case suspended // 세션 일시 중단
+    case invalidated // 세션 완전 종료
+    case unsupported // 기기 지원 안함
+    case failed(NearbyInteractionError) // 처리중 에러 발생
 }
 
 /// NI에서 발생할 수 있는 에러 종류를 정의
 enum NearbyInteractionError: Error {
-    case unsupportedDevice
-    case missingSession
-    case sessionInvalidated(Error)
+    case unsupportedDevice // 기기 지원 안함
+    case missingSession // 세션 없는데 뭔가 하려고 함
+    case sessionInvalidated(Error) // 세션이 종료되면서 실제 에러를 감쌈
+
+    // 토큰 변환 실패 case 추가
+    case missingDiscoveryToken
+    case invalidDiscoveryToken
 }
 
-/// NI가 측정한 거리/방향 값
+/// NI가 측정한 거리/ 방향 값
 struct NearbyInteractionReading {
     let distance: Float?
     let direction: SIMD3<Float>?

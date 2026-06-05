@@ -10,10 +10,12 @@ import Foundation
 import NearbyInteraction
 
 final class NearbyInteractionManager: NSObject {
-    var session: NISession?
+    private var session: NISession?
+    var onReadingUpdated: ((NearbyInteractionReading) -> Void)? // 거리, 방향 값 들어왔을 때 외부에 콜백
 
     private(set) var state: NearbyInteractionState = .idle
     private(set) var sharedTokenWithPeer = false
+    private var peerDiscoveryToken: NIDiscoveryToken? // 상대방의 discovery token을 저장해두는 변수
 
     /// 초기화 함수
     override init() {
@@ -41,7 +43,42 @@ final class NearbyInteractionManager: NSObject {
         session?.discoveryToken
     }
 
-    /// 세션 종료 함수
+    /// 내 token을 MC가 보낼 수있는 Data로 변환
+    func makeLocalDiscoveryTokenData() throws -> Data {
+        guard let discoveryToken = session?.discoveryToken else {
+            throw NearbyInteractionError.missingDiscoveryToken
+        }
+
+        return try NSKeyedArchiver.archivedData(withRootObject: discoveryToken, requiringSecureCoding: true)
+    }
+
+    /// MC에게 받은 Data를 다시 token으로 바꿈
+    func decodeDiscoveryToken(from data: Data) throws -> NIDiscoveryToken {
+        guard let token = try NSKeyedUnarchiver.unarchivedObject(
+            ofClass: NIDiscoveryToken.self,
+            from: data
+        ) else {
+            throw NearbyInteractionError.invalidDiscoveryToken
+        }
+
+        return token
+    }
+
+    /// NI Session 실행 함수
+    func run(with peerToken: NIDiscoveryToken) { // NI에서 부르는 상대토큰 변수명: peerToken
+
+        guard session != nil else {
+            state = .failed(.missingSession)
+            return
+        }
+
+        peerDiscoveryToken = peerToken // NIDiscoveryToken에 저장한 변수를 peerDiscoveryToken에 저장함
+
+        let configuration = NINearbyPeerConfiguration(peerToken: peerToken) // 위에서 받은 상대의 token? peerToken 이 이름이 맞는지
+        session?.run(configuration)
+    }
+
+    /// 세션  종료  함수
     func invalidateSession() {
         session?.invalidate()
         session = nil
@@ -50,14 +87,32 @@ final class NearbyInteractionManager: NSObject {
     }
 }
 
+/// NI가 주변 기기 정보를 업데이트 했을 때 자동으로 호출되는 함수
 extension NearbyInteractionManager: NISessionDelegate {
-    /// 시스템 호출 콜백
+    /// 시스템  호출  콜백
     func sessionDidStartRunning(_ session: NISession) {
         state = .running
     }
 
+    /// 거리, 방향 값 들어왔을 때 업데이트 과정
     func session(_ session: NISession, didUpdate nearbyObjects: [NINearbyObject]) {
-        // 추후 브랜치 feat/ni-update에서 distance.direction 처리
+        guard let peerDiscoveryToken else {
+            return
+        }
+        // 배열 안에서 상대방 object 찾기
+        guard let nearbyObject = nearbyObjects.first(where: {
+            $0.discoveryToken == peerDiscoveryToken
+        }) else {
+            return
+        }
+        // 상대와의 거리, 방향, 시각을 하나의 모델로 정리
+        let reading = NearbyInteractionReading(
+            distance: nearbyObject.distance,
+            direction: nearbyObject.direction,
+            timestamp: Date()
+        )
+
+        onReadingUpdated?(reading) // 만든 값을 외부로 전달
     }
 
     func session(
