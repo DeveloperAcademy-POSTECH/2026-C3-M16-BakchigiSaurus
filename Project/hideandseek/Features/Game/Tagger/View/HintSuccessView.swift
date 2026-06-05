@@ -11,7 +11,7 @@ struct HintSuccessView: View {
     let camera: CameraModel
     let isHiderNearby: Bool
     let isUsingHint: Bool
-    
+
     @State var rotation: Double = 30.0
     @Environment(\.dismiss) private var dismiss
 
@@ -32,7 +32,7 @@ struct HintSuccessView: View {
                     Image(systemName: "arrow.up")
                         .font(.system(size: 200))
                         .rotationEffect(Angle(degrees: rotation))
-                    
+
                     Spacer()
                     HStack {
                         VStack(alignment: .leading) {

@@ -11,9 +11,9 @@ struct HintFailureView: View {
     let camera: CameraModel
     let isHiderNearby: Bool
     let isUsingHint: Bool
-    
+
     @Environment(\.dismiss) private var dismiss
-    
+
     var body: some View {
         ZStack {
             GameCameraBackground(

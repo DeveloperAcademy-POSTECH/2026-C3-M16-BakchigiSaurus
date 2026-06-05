@@ -10,7 +10,9 @@ import SwiftUI
 enum HintViewType: Identifiable {
     case success
     case failure
-    var id: HintViewType { self }
+    var id: HintViewType {
+        self
+    }
 }
 
 struct TaggerSearchView: View {
@@ -20,7 +22,7 @@ struct TaggerSearchView: View {
     let isUsingHint: Bool
     @State var hintCount = 1
     @State private var activeHintView: HintViewType? = nil
-    
+
     var body: some View {
         ZStack {
             GameCameraBackground(
@@ -78,9 +80,9 @@ struct TaggerSearchView: View {
             }
             .fullScreenCover(item: $activeHintView) { hintType in
                 switch hintType {
-                case.success:
+                case .success:
                     HintSuccessView(camera: camera, isHiderNearby: isHiderNearby, isUsingHint: true)
-                case.failure:
+                case .failure:
                     HintFailureView(camera: camera, isHiderNearby: isHiderNearby, isUsingHint: true)
                 }
             }

@@ -11,9 +11,9 @@ struct TaggerDetectedVeiw: View {
     let camera: CameraModel
     let isHiderNearby: Bool
     let isUsingHint: Bool
-    
+
     func checkDetection(distance: Double, duration: Int) {
-        if distance <= 5.0 && duration >= 5 {
+        if distance <= 5.0, duration >= 5 {
             LiveActivityManager.shared.startLiveActivity(roomName: "캄초의 숨바꼭질", isTagger: true)
         } else {
             LiveActivityManager.shared.stopLiveActivity()

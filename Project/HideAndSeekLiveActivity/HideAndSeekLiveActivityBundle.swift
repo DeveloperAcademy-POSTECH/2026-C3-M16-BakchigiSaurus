@@ -5,8 +5,8 @@
 //  Created by 캄초 on 6/3/26.
 //
 
-import WidgetKit
 import SwiftUI
+import WidgetKit
 
 @main
 struct HideAndSeekLiveActivityBundle: WidgetBundle {
