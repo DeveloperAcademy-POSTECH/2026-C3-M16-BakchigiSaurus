@@ -5,16 +5,15 @@
 //  Created by 캄초 on 6/3/26.
 //
 
-import Foundation
 import ActivityKit
+import Foundation
 
 struct HideAndSeekLiveActivityAttributes: ActivityAttributes {
-    
-    //고정되어 절대 안바뀌는 데이터
+    // 고정되어 절대 안바뀌는 데이터
     var roomName: String
     var totalPlayers: Int
-    
-    //변동 데이터
+
+    /// 변동 데이터
     struct ContentState: Codable, Hashable {
         var currentStatusMessage: String
         var remainingTime: Int
