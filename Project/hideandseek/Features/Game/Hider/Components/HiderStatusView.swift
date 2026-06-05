@@ -14,14 +14,15 @@ struct HiderStatusView: View {
     var body: some View {
         VStack(spacing: 8) {
             Text(eyebrowText)
-                .font(.system(size: 20, weight: .semibold))
+                .font(.title2.bold())
                 .foregroundStyle(.secondary)
 
             Text(titleText)
-                .font(.system(size: 34, weight: .bold))
+                .font(.largeTitle.bold())
                 .foregroundStyle(.primary)
-                .multilineTextAlignment(.center)
         }
+        .multilineTextAlignment(.center)
+
     }
 
     private var eyebrowText: String {

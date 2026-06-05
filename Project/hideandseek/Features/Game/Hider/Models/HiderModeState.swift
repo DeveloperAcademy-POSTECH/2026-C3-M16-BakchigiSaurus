@@ -14,5 +14,5 @@ enum HiderModeState {
     case recording // 카메라 켜지고 녹화됨
     case taggedCheck // 술래에게 잡혔나요? 화면
     case tagged // 최종적으로 잡힘
-    case gameEnded
+    case gameEnded // 게임 종료
 }

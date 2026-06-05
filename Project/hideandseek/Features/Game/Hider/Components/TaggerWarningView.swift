@@ -9,7 +9,7 @@ import SwiftUI
 
 /// 술래가 가까울때 보여주는 경고 화면
 struct TaggerWarningView: View {
-    let remainingSeconds: Int
+    let timeLeft: Int
 
     var body: some View {
         ZStack {
@@ -18,18 +18,14 @@ struct TaggerWarningView: View {
             VStack {
                 topWarningBar
 
-                Spacer()
-
                 Text("!")
                     .font(.system(size: 200, weight: .bold))
                     .foregroundStyle(.appDanger)
-
-                Spacer()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
 
                 bottomMessage
             }
-            .padding(.horizontal, 28)
-            .padding(.bottom, 70)
+
         }
         .ignoresSafeArea()
     }
@@ -48,26 +44,25 @@ struct TaggerWarningView: View {
     }
 
     private var topWarningBar: some View {
-        VStack(spacing: 10) {
-            GameTimer(timeLeft: remainingSeconds)
+        VStack {
+            GameTimer(timeLeft: timeLeft)
 
-            HStack(spacing: 8) {
+            HStack {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 28, weight: .bold))
+                    .font(.title.bold())
 
                 Text("주변에 술래가 있어요")
-                    .font(.system(size: 28, weight: .bold))
+                    .font(.title.bold())
             }
             .foregroundStyle(.appDanger)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 22)
+        .padding(.top, 30)
         .padding(.bottom, 28)
-        .background(Color.black)
+        .padding(.horizontal, 50)
+        .background(Color.appBackground)
         .clipShape(
             RoundedRectangle(cornerRadius: 34, style: .continuous)
         )
-        .padding(.top, 8)
     }
 
     private var bottomMessage: some View {
@@ -78,13 +73,13 @@ struct TaggerWarningView: View {
             Text("\(Text("술래").foregroundStyle(.primary))가 있어요!")
                 .foregroundStyle(.secondary)
         }
-        .font(.system(size: 34, weight: .bold))
+        .font(.largeTitle.bold())
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.leading, 8)
-        .padding(.bottom, 56)
+        .padding(.leading, 36)
+        .padding(.bottom, 121)
     }
 }
 
 #Preview {
-    TaggerWarningView(remainingSeconds: 180)
+    TaggerWarningView(timeLeft: 180)
 }
