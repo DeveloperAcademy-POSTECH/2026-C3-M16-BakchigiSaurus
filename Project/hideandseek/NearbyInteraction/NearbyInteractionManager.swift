@@ -46,6 +46,7 @@ final class NearbyInteractionManager: NSObject {
     // 내 token을 MC가 보낼 수있는 Data로 변환
     func makeLocalDiscoveryTokenData() throws -> Data {
         guard let discoveryToken = session?.discoveryToken else {
+            state = .failed(.missingDiscoveryToken)
             throw NearbyInteractionError.missingDiscoveryToken
         }
         
@@ -58,6 +59,7 @@ final class NearbyInteractionManager: NSObject {
     func decodeDiscoveryToken(from data: Data) throws -> NIDiscoveryToken {
         guard let token = try NSKeyedUnarchiver.unarchivedObject(ofClass: NIDiscoveryToken.self, from: data
         ) else {
+            state = .failed(.invalidDiscoveryToken)
             throw NearbyInteractionError.invalidDiscoveryToken
         }
         
@@ -116,7 +118,7 @@ extension NearbyInteractionManager: NISessionDelegate {
             onReadingUpdated?(reading) // 만든 값을 외부로 전달
     }
     
-    // 세션이 추적하던 nearbyObject를 더이상 추적하지 못하게 되었을 때
+    /// 세션이 추적하던 nearbyObject를 더이상 추적하지 못하게 되었을 때
     func session(
         _ session: NISession,
         didRemove nearbyObjects: [NINearbyObject],
@@ -134,12 +136,12 @@ extension NearbyInteractionManager: NISessionDelegate {
         }
     }
 
-    // 세션이 일시중단 되었을 때
+    /// 세션이 일시중단 되었을 때
     func sessionWasSuspended(_ session: NISession) {
         state = .suspended
     }
     
-    // 세션 중단이 종료되었을 때 (= 재실행 가능 상태, 세션 재호출)
+    /// 세션 중단이 종료되었을 때 (= 재실행 가능 상태, 세션 재호출)
     func sessionSuspensionEnded(_ session: NISession) {
         guard let peerDiscoveryToken else {
             state = .ready
@@ -150,9 +152,10 @@ extension NearbyInteractionManager: NISessionDelegate {
         session.run(configuration)
     }
 
-    /// 오류  처리
+    /// 세션이 에러와 함께 완전 종료되었을 때
     func session(_ session: NISession, didInvalidateWith error: Error) {
         self.session = nil
+        peerDiscoveryToken = nil // 재사용 불가한 peer token 정리
         sharedTokenWithPeer = false
         state = .failed(.sessionInvalidated(error))
     }
