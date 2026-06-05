@@ -267,7 +267,7 @@ extension MultipeerGameSession: MCSessionDelegate {
     }
 
     /// MCSession으로 수신한 data를 앱 내부 메시지로 해석한다.
-    /// 현재는 NI DiscoveryToken 메시지를 복원해 수신 스트림으로 전달한다.
+    /// 현재는 NI DiscoveryToken 메시지와 게임 플로우 메시지를 복원해 각각의 수신 스트림으로 전달한다.
     func session(
         _ session: MCSession,
         didReceive data: Data,
@@ -295,7 +295,18 @@ extension MultipeerGameSession: MCSessionDelegate {
                     )
 
                 case .gameFlowMessage:
-                    break
+                    let gameFlowMessage = try JSONDecoder().decode(
+                        GameFlowMessage.self,
+                        from: message.payload
+                    )
+                    let peer = self.makeKnownPeerID(from: peerID)
+
+                    self.gameFlowMessageContinuation?.yield(
+                        GameFlowMessageEvent(
+                            peer: peer,
+                            message: gameFlowMessage
+                        )
+                    )
                 }
             } catch {
                 print("Failed to handle received multipeer data:", error.localizedDescription)
