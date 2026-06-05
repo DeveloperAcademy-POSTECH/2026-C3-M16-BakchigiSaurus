@@ -11,6 +11,7 @@ struct HintFailureView: View {
     let camera: CameraModel
     let isHiderNearby: Bool
     let isUsingHint: Bool
+    let timeLeft: Int
 
     @Environment(\.dismiss) private var dismiss
 
@@ -26,7 +27,7 @@ struct HintFailureView: View {
                 .opacity(0.75)
             ZStack {
                 VStack {
-                    GameTimer(timeLeft: 300)
+                    GameTimer(timeLeft: timeLeft)
                     Spacer()
                     Image(systemName: "xmark")
                         .font(.system(size: 200))
@@ -62,5 +63,5 @@ struct HintFailureView: View {
 }
 
 #Preview {
-    HintFailureView(camera: CameraModel(), isHiderNearby: false, isUsingHint: false)
+    HintFailureView(camera: CameraModel(), isHiderNearby: false, isUsingHint: false, timeLeft: 300)
 }
