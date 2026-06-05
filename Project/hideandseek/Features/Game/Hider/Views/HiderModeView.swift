@@ -28,19 +28,19 @@ struct HiderModeView: View {
         // view 모델이 가지고 있는 현재 상태 확인
         case .idle, .hiding:
             HiderSearchView(
-                remainingSeconds: viewModel.remainingSeconds
+                timeLeft: viewModel.timeLeft
             )
 
         case .taggerNearby:
             TaggerWarningView(
-                remainingSeconds: viewModel.remainingSeconds
+                timeLeft: viewModel.timeLeft
             )
 
         case .recording:
             CameraRecordingView(
                 camera: camera,
                 // 상위 View에서 받은 카메라 객체를 CameraRecordingView에 넘김
-                remainingSeconds: viewModel.remainingSeconds,
+                timeLeft: viewModel.timeLeft,
                 isTaggerNearby: true, // 술래가 가까운 상태라고 알려줌
                 onRecordingFinished: {
                     viewModel.finishRecording()
@@ -50,7 +50,7 @@ struct HiderModeView: View {
         case .taggedCheck:
             // 술래에게 잡혔는지 묻는 화면
             TaggedCheckView(
-                remainingSeconds: viewModel.remainingSeconds,
+                timeLeft: viewModel.timeLeft,
                 onConfirmAnswer: { answer in
                     viewModel.confirmTaggedAnswer(answer)
                 }

@@ -9,22 +9,21 @@ import SwiftUI
 
 /// 숨는 사람이 처음 보는 기본 화면
 struct HiderSearchView: View {
-    let remainingSeconds: Int // 남은 게임 시간. 초단위
+    let timeLeft: Int // 남은 게임 시간. 초단위
 
     var body: some View {
         ZStack {
             searchBackground // 배경
-
-            VStack {
-                GameTimer(timeLeft: remainingSeconds)
-                    .padding(.top, 75)
-
-                Spacer()
-
-                bottomMessage
-            }
-            .padding(.horizontal, 32)
-            .padding(.bottom, 48)
+            
+            GameTimer(timeLeft: timeLeft)
+                .frame(width: 171, height: 67)
+                .padding(.top, 84)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            
+            bottomMessage
+                .padding(.leading, 36)
+                .padding(.bottom, 121)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
         }
         .ignoresSafeArea()
     }
@@ -43,20 +42,18 @@ struct HiderSearchView: View {
     }
 
     private var bottomMessage: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading) {
             Text("주변에")
                 .foregroundStyle(.secondary)
 
             Text("\(Text("술래").foregroundStyle(.primary))를 탐지중")
                 .foregroundStyle(.secondary)
         }
-        .font(.system(size: 34, weight: .bold))
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.leading, 8)
-        .padding(.bottom, 60)
+        .font(.largeTitle.bold())
+
     }
 }
 
 #Preview {
-    HiderSearchView(remainingSeconds: 180)
+    HiderSearchView(timeLeft: 180)
 }

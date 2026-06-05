@@ -19,13 +19,13 @@ struct TaggedOverlayView: View {
             VStack {
                 Spacer()
 
-                VStack(spacing: 16) {
+                VStack(spacing: 11) {
                     Text("게임이 종료되었습니다")
-                        .font(.system(size: 34, weight: .bold))
+                        .font(.largeTitle.bold())
                         .foregroundStyle(.primary)
 
                     Text("처음 장소로 모여주세요")
-                        .font(.system(size: 28, weight: .medium))
+                        .font(.title.bold())
                         .foregroundStyle(.secondary)
                 }
 
@@ -34,12 +34,11 @@ struct TaggedOverlayView: View {
                 Button(action: onConfirm) {
                     Text("확인")
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .background(.accent)
-                        .clipShape(Capsule())
+                        .foregroundStyle(.primary)
+                    
+
                 }
+                .buttonStyle(.borderedProminent)
                 .padding(.horizontal, 32)
                 .padding(.bottom, 48)
             }
