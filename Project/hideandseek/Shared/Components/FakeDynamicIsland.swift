@@ -82,7 +82,7 @@ private struct IslandExpandedContent: View {
     let type: IslandAlertType
 
     private var formattedTime: String {
-      String(format: "%d:%02d", timeLeft / 60, timeLeft % 60)
+        String(format: "%d:%02d", timeLeft / 60, timeLeft % 60)
     }
 
     var body: some View {
@@ -116,9 +116,9 @@ private struct IslandExpandedContent: View {
         Color(.white).ignoresSafeArea()
 
         FakeDynamicIslandView(isExpanded: true) {
-          IslandCompactContent()
+            IslandCompactContent()
         } expanded: {
-          IslandExpandedContent(timeLeft: 180, type: .taggerNearby)
+            IslandExpandedContent(timeLeft: 180, type: .taggerNearby)
         }
         .padding(.top, 12)
         .ignoresSafeArea()
@@ -130,9 +130,9 @@ private struct IslandExpandedContent: View {
         Color(.white).ignoresSafeArea()
 
         FakeDynamicIslandView(isExpanded: true) {
-          IslandCompactContent()
+            IslandCompactContent()
         } expanded: {
-          IslandExpandedContent(timeLeft: 180, type: .hiderNearby)
+            IslandExpandedContent(timeLeft: 180, type: .hiderNearby)
         }
         .padding(.top, 12)
         .ignoresSafeArea()
