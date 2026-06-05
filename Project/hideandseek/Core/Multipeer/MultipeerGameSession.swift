@@ -504,7 +504,69 @@ extension MultipeerGameSession {
             }
         }
     }
+
+    /// 게임 시작 메시지를 전송한다.
+    func sendGameStarted(to peer: PeerID? = nil) {
+        sendGameFlowMessage(
+            .gameStarted(),
+            to: peer
+        )
+    }
+
+    /// 역할 배정 메시지를 전송한다.
+    func sendRoleAssigned(
+        _ role: GameFlowRole,
+        to peer: PeerID? = nil
+    ) {
+        sendGameFlowMessage(
+            .roleAssigned(role),
+            to: peer
+        )
+    }
+
+    /// 카운트다운 시작 메시지를 전송한다.
+    func sendCountdownStarted(
+        seconds: Int,
+        to peer: PeerID? = nil
+    ) {
+        sendGameFlowMessage(
+            .countdownStarted(seconds: seconds),
+            to: peer
+        )
+    }
+
+    /// 탐색 시작 메시지를 전송한다.
+    func sendSearchStarted(to peer: PeerID? = nil) {
+        sendGameFlowMessage(
+            .searchStarted(),
+            to: peer
+        )
+    }
+
+    /// 특정 peer를 찾았다는 메시지를 전송한다.
+    func sendPlayerFound(
+        _ peer: PeerID,
+        to targetPeer: PeerID? = nil
+    ) {
+        sendGameFlowMessage(
+            .playerFound(peer),
+            to: targetPeer
+        )
+    }
+
+    /// 게임 종료 메시지를 전송한다.
+    func sendGameEnded(
+        winner: GameFlowWinner,
+        to peer: PeerID? = nil
+    ) {
+        sendGameFlowMessage(
+            .gameEnded(winner: winner),
+            to: peer
+        )
+    }
 }
+
+
 
 extension MultipeerGameSession: MCNearbyServiceAdvertiserDelegate {
     /// 다른 peer가 이 호스트에게 참가 요청을 보냈을 때 호출된다.
