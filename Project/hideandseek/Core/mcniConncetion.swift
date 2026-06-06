@@ -31,12 +31,12 @@ final class mcniConnection {
             
             for await event in mcSession.makeEventStream() {
                 switch event {
-                case let .peerConnected(peerID):
-                    print("MC peer Connected:", peerID)
-                    startNITokenExchange(with: peerID)
+                case let .peerConnected(peer):
+                    print("MC peer Connected:", peer)
+                    startNITokenExchange(with: peer)
                     
-                default :
-                    break
+                case .peerDisconnected:
+                    niManager.invalidateSession()
                 }
             }
         }
@@ -48,6 +48,7 @@ final class mcniConnection {
         niManager.startSession()
         
         guard let localToken = niManager.getMyDiscoveryToken() else {
+            print("Local NI token 생성 실패")
             return
         }
         
