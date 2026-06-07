@@ -20,6 +20,13 @@ struct NIDiscoveryTokenEvent {
     let token: NIDiscoveryToken
 }
 
+/// MC를 통해 수신한 게임 진행 메시지 이벤트.
+/// 어떤 peer에게서 받은 메시지인지 함께 전달한다.
+struct GameFlowMessageEvent {
+    let peer: PeerID
+    let message: GameFlowMessage
+}
+
 /// GameSession 프로토콜을 실제 MultipeerConnectivity로 구현하는 클래스.
 /// Feature 쪽은 이 구현체가 아니라 GameSession 인터페이스에 의존한다.
 final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
@@ -44,6 +51,9 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
 
     /// MC로 수신한 NI DiscoveryToken을 외부로 전달하기 위한 AsyncStream continuation.
     private var niTokenContinuation: AsyncStream<NIDiscoveryTokenEvent>.Continuation?
+
+    /// MC로 수신한 게임 진행 메시지를 외부로 전달하기 위한 AsyncStream continuation.
+    private var gameFlowMessageContinuation: AsyncStream<GameFlowMessageEvent>.Continuation?
 
     /// 호스트 광고를 담당하는 advertiser.
     private var advertiser: MCNearbyServiceAdvertiser?
@@ -147,6 +157,22 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
             }
         }
     }
+
+    /// MCSession을 통해 수신한 게임 진행 메시지 이벤트 스트림을 생성한다.
+    /// Feature는 이 스트림을 구독해 게임 시작, 역할 배정, 탐색 시작 등의 이벤트를 받을 수 있다.
+    func makeGameFlowMessageStream() -> AsyncStream<GameFlowMessageEvent> {
+        AsyncStream { continuation in
+            stateQueue.async {
+                self.gameFlowMessageContinuation = continuation
+            }
+
+            continuation.onTermination = { [weak self] _ in
+                self?.stateQueue.async {
+                    self?.gameFlowMessageContinuation = nil
+                }
+            }
+        }
+    }
 }
 
 private extension MultipeerGameSession {
@@ -241,7 +267,7 @@ extension MultipeerGameSession: MCSessionDelegate {
     }
 
     /// MCSession으로 수신한 data를 앱 내부 메시지로 해석한다.
-    /// 현재는 NI DiscoveryToken 메시지를 복원해 수신 스트림으로 전달한다.
+    /// 현재는 NI DiscoveryToken 메시지와 게임 플로우 메시지를 복원해 각각의 수신 스트림으로 전달한다.
     func session(
         _ session: MCSession,
         didReceive data: Data,
@@ -265,6 +291,20 @@ extension MultipeerGameSession: MCSessionDelegate {
                         NIDiscoveryTokenEvent(
                             peer: peer,
                             token: token
+                        )
+                    )
+
+                case .gameFlowMessage:
+                    let gameFlowMessage = try JSONDecoder().decode(
+                        GameFlowMessage.self,
+                        from: message.payload
+                    )
+                    let peer = self.makeKnownPeerID(from: peerID)
+
+                    self.gameFlowMessageContinuation?.yield(
+                        GameFlowMessageEvent(
+                            peer: peer,
+                            message: gameFlowMessage
                         )
                     )
                 }
@@ -420,6 +460,109 @@ extension MultipeerGameSession {
                 print("Failed to send NI token:", error.localizedDescription)
             }
         }
+    }
+
+    /// 게임 진행 메시지를 연결된 peer에게 전송한다.
+    /// peer를 지정하지 않으면 현재 연결된 모든 peer에게 전송한다.
+    func sendGameFlowMessage(
+        _ gameFlowMessage: GameFlowMessage,
+        to peer: PeerID? = nil
+    ) {
+        stateQueue.async {
+            do {
+                let payload = try JSONEncoder().encode(gameFlowMessage)
+                let message = MultipeerMessage(
+                    kind: .gameFlowMessage,
+                    payload: payload
+                )
+                let messageData = try JSONEncoder().encode(message)
+
+                let targetPeers: [MCPeerID]
+                if let peer {
+                    guard let targetPeer = self.connectedMCPeer(for: peer) else {
+                        print("Failed to send game flow message. MCPeerID not found:", peer.displayName)
+                        return
+                    }
+
+                    targetPeers = [targetPeer]
+                } else {
+                    targetPeers = self.session.connectedPeers
+                }
+
+                guard !targetPeers.isEmpty else {
+                    print("Failed to send game flow message. No connected peers.")
+                    return
+                }
+
+                try self.session.send(
+                    messageData,
+                    toPeers: targetPeers,
+                    with: .reliable
+                )
+            } catch {
+                print("Failed to send game flow message:", error.localizedDescription)
+            }
+        }
+    }
+
+    /// 게임 시작 메시지를 전송한다.
+    func sendGameStarted(to peer: PeerID? = nil) {
+        sendGameFlowMessage(
+            .gameStarted(),
+            to: peer
+        )
+    }
+
+    /// 역할 배정 메시지를 전송한다.
+    func sendRoleAssigned(
+        _ role: GameFlowRole,
+        to peer: PeerID? = nil
+    ) {
+        sendGameFlowMessage(
+            .roleAssigned(role),
+            to: peer
+        )
+    }
+
+    /// 카운트다운 시작 메시지를 전송한다.
+    func sendCountdownStarted(
+        seconds: Int,
+        to peer: PeerID? = nil
+    ) {
+        sendGameFlowMessage(
+            .countdownStarted(seconds: seconds),
+            to: peer
+        )
+    }
+
+    /// 탐색 시작 메시지를 전송한다.
+    func sendSearchStarted(to peer: PeerID? = nil) {
+        sendGameFlowMessage(
+            .searchStarted(),
+            to: peer
+        )
+    }
+
+    /// 특정 peer를 찾았다는 메시지를 전송한다.
+    func sendPlayerFound(
+        _ peer: PeerID,
+        to targetPeer: PeerID? = nil
+    ) {
+        sendGameFlowMessage(
+            .playerFound(peer),
+            to: targetPeer
+        )
+    }
+
+    /// 게임 종료 메시지를 전송한다.
+    func sendGameEnded(
+        winner: GameFlowWinner,
+        to peer: PeerID? = nil
+    ) {
+        sendGameFlowMessage(
+            .gameEnded(winner: winner),
+            to: peer
+        )
     }
 }
 
