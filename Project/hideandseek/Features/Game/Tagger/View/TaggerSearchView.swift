@@ -22,7 +22,7 @@ struct TaggerSearchView: View {
     let isUsingHint: Bool
     let timeLeft: Int
     @State var hintCount = 1
-    @State private var activeHintView: HintViewType? = nil
+    @State private var activeHintView: HintViewType?
 
     var body: some View {
         ZStack {
