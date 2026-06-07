@@ -11,7 +11,7 @@
 import Foundation
 
 /// 게임 참가자 식별자. (MC의 `MCPeerID`를 감싸는 추상 타입)
-struct PeerID: Hashable {
+struct PeerID: Codable, Hashable, Sendable {
     /// MCPeerID 매핑용 안정 식별자
     let rawID: String
     /// 예: "캄초의 iPhone"
