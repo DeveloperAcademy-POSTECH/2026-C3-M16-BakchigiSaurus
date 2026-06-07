@@ -25,17 +25,17 @@ struct HiderModeView: View {
     @ViewBuilder // 여러 종류 View를 조건에 따라 반환
     private var screenContent: some View {
         switch viewModel.state {
-            // view 모델이 가지고 있는 현재 상태 확인
+        // view 모델이 가지고 있는 현재 상태 확인
         case .hiding:
             HiderSearchView(
                 timeLeft: viewModel.timeLeft
             )
-            
+
         case .taggerNearby:
             TaggerWarningView(
                 timeLeft: viewModel.timeLeft
             )
-            
+
         case .recording:
             CameraRecordingView(
                 camera: camera,
@@ -46,7 +46,7 @@ struct HiderModeView: View {
                     viewModel.finishRecording()
                 }
             )
-            
+
         case .taggedCheck:
             TaggedCheckView(
                 timeLeft: viewModel.timeLeft,

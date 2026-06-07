@@ -44,18 +44,18 @@ final class HiderModeViewModel {
         // 현재 상태가 거리 업데이트를 무시해야 하는 상태인지 확인 (뒤늦은 거리값이 들어와도 화면이 바뀌면 안됨)
         taggerDistance = distance
         // 들어온 거리값 저장
-        
+
         guard let distance else {
             if state == .taggerNearby || state == .recording {
                 return
             }
-            
+
             state = .hiding
             activeNearbyTaggerID = nil
             cancelWarningToRecording()
             return
         }
-        
+
         // 잡힘 판정을 무시해야 하는 상태인지 확인
         if ignoresTaggedDistanceUntilSafe {
             if distance > taggedDistanceResetThresholdMeters {
@@ -63,7 +63,7 @@ final class HiderModeViewModel {
             }
             return
         }
-        
+
         // 0.2m 이내면 술래에게 잡힘 화면
         if distance <= taggedDistanceThresholdMeters {
             activeNearbyTaggerID = nil
@@ -71,24 +71,24 @@ final class HiderModeViewModel {
             showTaggedCheck()
             return
         }
-        
+
         // 주변 술래 경고 및 녹화 시, 5m 판정으로 화면을 다시 바꾸지 않음
         if state == .taggerNearby || state == .recording {
             return
         }
-        
+
         // 5m 이내면 주변 술래 경고 화면
         if distance <= nearbyDistanceThresholdMeters {
             guard canRunNearbyProcess(for: taggerID) else {
                 state = .hiding
                 return
             }
-            
+
             activeNearbyTaggerID = taggerID
             showTaggerWarning()
             return
         }
-        
+
         state = .hiding
         activeNearbyTaggerID = nil
         cancelWarningToRecording()
@@ -99,7 +99,7 @@ final class HiderModeViewModel {
         scheduleRecordingIfNeeded()
     }
 
-    // 녹화 전환 중복 방지
+    /// 녹화 전환 중복 방지
     private func scheduleRecordingIfNeeded() {
         guard warningToRecordingTask == nil else {
             return
