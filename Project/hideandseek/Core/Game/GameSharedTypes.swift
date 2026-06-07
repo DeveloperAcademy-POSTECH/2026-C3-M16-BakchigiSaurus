@@ -9,25 +9,25 @@ import Foundation
 
 // MARK: - Shared Session Types
 
-nonisolated enum GamePhase: String, Codable, Hashable, Sendable {
+nonisolated enum GamePhase: String, Codable, Hashable {
     case lobby
     case hiding
     case playing
     case ended
 }
 
-nonisolated enum TaggerSelectionPolicy: String, Codable, Hashable, Sendable {
+nonisolated enum TaggerSelectionPolicy: String, Codable, Hashable {
     case manual
     case random
 }
 
-nonisolated enum PlayerRole: String, Codable, Hashable, Sendable {
+nonisolated enum PlayerRole: String, Codable, Hashable {
     case unassigned
     case tagger
     case hider
 }
 
-nonisolated enum PlayerGameStatus: String, Codable, Hashable, Sendable {
+nonisolated enum PlayerGameStatus: String, Codable, Hashable {
     case waiting
     case waitingForHiders
     case hiding
@@ -36,27 +36,27 @@ nonisolated enum PlayerGameStatus: String, Codable, Hashable, Sendable {
     case finished
 }
 
-nonisolated enum GameEndReason: String, Codable, Hashable, Sendable {
+nonisolated enum GameEndReason: String, Codable, Hashable {
     case allHidersCaptured
     case timeExpired
     case hostEnded
     case aborted
 }
 
-nonisolated enum ParticipantConnectivity: String, Hashable, Sendable {
+nonisolated enum ParticipantConnectivity: String, Hashable {
     case disconnected
     case multipeerConnected
     case nearbyConnected
 }
 
-nonisolated enum ClipTransferState: String, Codable, Hashable, Sendable {
+nonisolated enum ClipTransferState: String, Codable, Hashable {
     case localOnly
     case queuedForCollector
     case transferredToCollector
     case merged
 }
 
-nonisolated struct RoomSettings: Codable, Hashable, Sendable {
+nonisolated struct RoomSettings: Codable, Hashable {
     var name: String
     var maxCount: Int
     var hintCount: Int
@@ -78,10 +78,12 @@ nonisolated struct RoomSettings: Codable, Hashable, Sendable {
     )
 }
 
-nonisolated struct PlayerID: Codable, Hashable, Sendable, Identifiable, Comparable {
+nonisolated struct PlayerID: Codable, Hashable, Identifiable, Comparable {
     let rawValue: UUID
 
-    var id: UUID { rawValue }
+    var id: UUID {
+        rawValue
+    }
 
     init(rawValue: UUID = UUID()) {
         self.rawValue = rawValue
@@ -92,7 +94,7 @@ nonisolated struct PlayerID: Codable, Hashable, Sendable, Identifiable, Comparab
     }
 }
 
-nonisolated struct DirectionVector: Codable, Hashable, Sendable {
+nonisolated struct DirectionVector: Codable, Hashable {
     var x: Float
     var y: Float
     var z: Float
@@ -112,7 +114,7 @@ nonisolated struct DirectionVector: Codable, Hashable, Sendable {
     }
 }
 
-nonisolated struct GameParticipant: Codable, Hashable, Sendable, Identifiable {
+nonisolated struct GameParticipant: Codable, Hashable, Identifiable {
     let id: PlayerID
     let peerID: PeerID?
     var name: String
@@ -137,7 +139,7 @@ nonisolated struct GameParticipant: Codable, Hashable, Sendable, Identifiable {
     }
 }
 
-nonisolated struct GameSessionDefinition: Codable, Hashable, Sendable {
+nonisolated struct GameSessionDefinition: Codable, Hashable {
     let id: UUID
     let createdAt: Date
     let hostID: PlayerID
@@ -156,13 +158,13 @@ nonisolated struct GameSessionDefinition: Codable, Hashable, Sendable {
     }
 }
 
-nonisolated struct HintCandidate: Hashable, Sendable {
+nonisolated struct HintCandidate: Hashable {
     let hiderID: PlayerID
     let direction: DirectionVector?
     let distance: Float?
 }
 
-nonisolated struct HintResolution: Codable, Hashable, Sendable {
+nonisolated struct HintResolution: Codable, Hashable {
     let taggerID: PlayerID
     let usedAt: Date
     let remainingCount: Int
@@ -170,7 +172,7 @@ nonisolated struct HintResolution: Codable, Hashable, Sendable {
     let direction: DirectionVector?
 }
 
-nonisolated struct ProximityState: Codable, Hashable, Sendable {
+nonisolated struct ProximityState: Codable, Hashable {
     var lastDistance: Float?
     var lastDirection: DirectionVector?
     var lastObservedAt: Date?
@@ -182,7 +184,7 @@ nonisolated struct ProximityState: Codable, Hashable, Sendable {
     static let empty = ProximityState()
 }
 
-nonisolated struct ClipRecord: Codable, Hashable, Sendable, Identifiable {
+nonisolated struct ClipRecord: Codable, Hashable, Identifiable {
     let id: UUID
     let ownerID: PlayerID
     var startedAt: Date
@@ -204,25 +206,25 @@ nonisolated struct ClipRecord: Codable, Hashable, Sendable, Identifiable {
     }
 }
 
-nonisolated struct PhaseState: Codable, Hashable, Sendable {
+nonisolated struct PhaseState: Codable, Hashable {
     var phase: GamePhase
     var startedAt: Date
     var hideDeadline: Date?
     var gameDeadline: Date?
 }
 
-nonisolated struct CaptureRequest: Codable, Hashable, Sendable {
+nonisolated struct CaptureRequest: Codable, Hashable {
     let taggerID: PlayerID
     let hiderID: PlayerID
     let requestedAt: Date
 }
 
-nonisolated struct GameConclusion: Codable, Hashable, Sendable {
+nonisolated struct GameConclusion: Codable, Hashable {
     let reason: GameEndReason
     let endedAt: Date
 }
 
-nonisolated struct GameState: Codable, Hashable, Sendable {
+nonisolated struct GameState: Codable, Hashable {
     let session: GameSessionDefinition
     var phase: GamePhase
     var phaseStartedAt: Date?
@@ -285,14 +287,13 @@ nonisolated struct GameState: Codable, Hashable, Sendable {
     }
 
     func remainingSeconds(at date: Date = .now) -> Int {
-        let deadline: Date?
-        switch phase {
+        let deadline: Date? = switch phase {
         case .hiding:
-            deadline = hideDeadline
+            hideDeadline
         case .playing:
-            deadline = gameDeadline
+            gameDeadline
         case .lobby, .ended:
-            deadline = nil
+            nil
         }
 
         guard let deadline else { return 0 }

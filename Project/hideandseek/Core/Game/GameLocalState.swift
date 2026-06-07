@@ -9,7 +9,7 @@ import Foundation
 
 // MARK: - Local Device State
 
-nonisolated struct LocalNearbyObservation: Hashable, Sendable {
+nonisolated struct LocalNearbyObservation: Hashable {
     var distance: Float?
     var direction: DirectionVector?
     var observedAt: Date?
@@ -25,7 +25,7 @@ nonisolated struct LocalNearbyObservation: Hashable, Sendable {
     }
 }
 
-nonisolated struct LocalParticipantState: Hashable, Sendable {
+nonisolated struct LocalParticipantState: Hashable {
     var connectivity: ParticipantConnectivity
     var lastSeenAt: Date?
     var lastSyncAt: Date?
@@ -44,7 +44,7 @@ nonisolated struct LocalParticipantState: Hashable, Sendable {
     }
 }
 
-nonisolated struct LocalDeviceState: Hashable, Sendable {
+nonisolated struct LocalDeviceState: Hashable {
     let localPlayerID: PlayerID
     let hostPlayerID: PlayerID
     var participantStates: [PlayerID: LocalParticipantState]

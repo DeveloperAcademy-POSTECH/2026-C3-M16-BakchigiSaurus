@@ -9,17 +9,17 @@ import Foundation
 
 // MARK: - Event Model
 
-nonisolated struct ParticipantStatusAssignment: Codable, Hashable, Sendable {
+nonisolated struct ParticipantStatusAssignment: Codable, Hashable {
     let playerID: PlayerID
     let status: PlayerGameStatus
 }
 
-nonisolated struct ClipTransferUpdate: Codable, Hashable, Sendable {
+nonisolated struct ClipTransferUpdate: Codable, Hashable {
     let clipID: UUID
     let transferState: ClipTransferState
 }
 
-nonisolated struct ProximityUpdate: Codable, Hashable, Sendable {
+nonisolated struct ProximityUpdate: Codable, Hashable {
     let hiderID: PlayerID
     let distance: Float?
     let direction: DirectionVector?
@@ -30,7 +30,7 @@ nonisolated struct ProximityUpdate: Codable, Hashable, Sendable {
     let captureRequestSentAt: Date?
 }
 
-nonisolated struct GameEventID: Codable, Hashable, Sendable, Comparable {
+nonisolated struct GameEventID: Codable, Hashable, Comparable {
     let sourcePlayerID: PlayerID
     let sequence: Int
 
@@ -42,7 +42,7 @@ nonisolated struct GameEventID: Codable, Hashable, Sendable, Comparable {
     }
 }
 
-nonisolated enum GameEvent: Codable, Hashable, Sendable {
+nonisolated enum GameEvent: Codable, Hashable {
     case participantUpserted(GameParticipant)
     case participantRemoved(PlayerID)
     case taggerAssigned(PlayerID)
@@ -58,19 +58,19 @@ nonisolated enum GameEvent: Codable, Hashable, Sendable {
     case gameFinished(GameConclusion)
 }
 
-nonisolated struct GameEventEnvelope: Codable, Hashable, Sendable {
+nonisolated struct GameEventEnvelope: Codable, Hashable {
     let id: GameEventID
     let sessionID: UUID
     let occurredAt: Date
     let event: GameEvent
 }
 
-nonisolated struct GameMutation: Sendable {
+nonisolated struct GameMutation {
     let sharedState: GameState
     let newEvents: [GameEventEnvelope]
 }
 
-nonisolated enum GameCommand: Sendable {
+nonisolated enum GameCommand {
     case upsertParticipant(GameParticipant)
     case removeParticipant(PlayerID)
     case assignTagger(PlayerID?)
