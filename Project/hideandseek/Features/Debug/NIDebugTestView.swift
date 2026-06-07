@@ -38,8 +38,22 @@ struct NIDebugTestView: View {
 
     private var niMeasurementSection: some View {
         Section("Nearby Interaction") {
-            LabeledContent("거리", value: viewModel.distanceText)
-            LabeledContent("방향", value: viewModel.directionText)
+//            LabeledContent("거리", value: viewModel.distanceText)
+//            LabeledContent("방향", value: viewModel.directionText)
+            
+            VStack(spacing: 16) {
+                Text("거리: \(viewModel.distanceText)")
+                Text("방향: \(viewModel.directionText)")
+
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 60))
+                    .rotationEffect(
+                        .radians(Double(viewModel.horizontalAngle ?? 0))
+                    )
+                    .foregroundStyle(
+                        viewModel.horizontalAngle == nil ? .gray : .blue
+                    )
+            }
         }
     }
 

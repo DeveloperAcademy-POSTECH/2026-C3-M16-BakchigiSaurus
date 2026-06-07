@@ -87,6 +87,9 @@ final class NearbyInteractionManager: NSObject {
         peerDiscoveryToken = peerToken // NIDiscoveryToken에 저장한 변수를 peerDiscoveryToken에 저장함
 
         let configuration = NINearbyPeerConfiguration(peerToken: peerToken) // 위에서 받은 상대의 token? peerToken 이 이름이 맞는지
+        
+        configuration.isCameraAssistanceEnabled = true
+        
         session?.run(configuration)
     }
 

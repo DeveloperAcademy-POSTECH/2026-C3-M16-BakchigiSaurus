@@ -22,6 +22,7 @@ final class NIDebugViewModel: ObservableObject {
 
     @Published private(set) var distanceText = "-"
     @Published private(set) var directionText = "-"
+    @Published var horizontalAngle: Float?
 
     init() {
         let session = MultipeerGameSession()
@@ -94,9 +95,20 @@ final class NIDebugViewModel: ObservableObject {
                     String(format: "%.2f m", $0)
                 } ?? "-"
 
-                self?.directionText = reading.direction.map {
-                    "x: \($0.x), y: \($0.y), z: \($0.z)"
-                } ?? "-"
+//                self?.directionText = reading.direction.map {
+//                    "x: \($0.x), y: \($0.y), z: \($0.z)"
+//                } ?? "-"
+                if let angle = reading.horizontalAngle {
+                    let degrees = angle * 180 / .pi
+                    self?.directionText = String(
+                        format: "%.1f°",
+                        degrees
+                    )
+                    self?.horizontalAngle = angle
+                } else {
+                    self?.directionText = "-"
+                    self?.horizontalAngle = nil
+                }
 
                 self?.appendLog("NI 거리/방향 업데이트")
             }
