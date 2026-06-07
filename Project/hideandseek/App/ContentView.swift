@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct ContentView: View {
+    @StateObject private var connectionHolder = McniConnectionHolder()
+
     var body: some View {
         StoryPlayerView(story: Story(scenes: [StoryScene]())) {
             print("")
