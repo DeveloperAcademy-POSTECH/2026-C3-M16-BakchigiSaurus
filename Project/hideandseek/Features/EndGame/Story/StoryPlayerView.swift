@@ -110,7 +110,7 @@ private struct StorySceneView: View {
                 if let item = note.object as? AVPlayerItem, item === leaderItem { onFinished() }
             }
             .task {
-                guard !hasClips else { return }   // 전부 미수신이면 3초 후 자동 전환
+                guard !hasClips else { return } // 전부 미수신이면 3초 후 자동 전환
                 try? await Task.sleep(for: .seconds(3))
                 onFinished()
             }
@@ -127,14 +127,14 @@ private struct StorySceneView: View {
                 tileView(at: 1)
             }
         case .grid:
-            gridLayout   // ✅ 타일 수에 맞춰 NxM 적응형 (3~7명+)
+            gridLayout // ✅ 타일 수에 맞춰 NxM 적응형 (3~7명+)
         }
     }
 
     /// 타일 수에 맞춰 거의 정사각형 그리드로 배치. 빈 칸은 검은 화면.
     private var gridLayout: some View {
         let count = max(scene.tiles.count, 1)
-        let columns = Int(Double(count).squareRoot().rounded(.up))   // 3·4→2, 5·6→3, 7~9→3
+        let columns = Int(Double(count).squareRoot().rounded(.up)) // 3·4→2, 5·6→3, 7~9→3
         let rows = Int((Double(count) / Double(columns)).rounded(.up))
         return VStack(spacing: 0) {
             ForEach(0 ..< rows, id: \.self) { row in
@@ -160,7 +160,7 @@ private struct StorySceneView: View {
         case let .missing(peer):
             MissingTileView(name: peer.displayName)
         case nil:
-            Color.black   // grid 빈 칸 = 검은 화면
+            Color.black // grid 빈 칸 = 검은 화면
         }
     }
 
@@ -210,6 +210,11 @@ private struct PlayerLayerView: UIViewRepresentable {
 }
 
 private final class PlayerContainer: UIView {
-    override class var layerClass: AnyClass { AVPlayerLayer.self }
-    var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
+    override class var layerClass: AnyClass {
+        AVPlayerLayer.self
+    }
+
+    var playerLayer: AVPlayerLayer {
+        layer as! AVPlayerLayer
+    }
 }

@@ -45,9 +45,9 @@ enum SceneTile: Identifiable {
 
 /// 타일 수에 따른 레이아웃. (2분할은 N=2인 특수 케이스)
 enum SceneLayout {
-    case full   // 1
-    case split  // 2
-    case grid   // 3명 이상 (적응형 NxM)
+    case full // 1
+    case split // 2
+    case grid // 3명 이상 (적응형 NxM)
 }
 
 /// 스토리 한 장면. 동시에 보여줄 타일 묶음.
@@ -68,5 +68,7 @@ struct StoryScene: Identifiable {
 /// 전체 스토리 = Scene 순서열. Player/Export 공용 단일 진실원.
 struct Story {
     let scenes: [StoryScene]
-    var isEmpty: Bool { scenes.isEmpty }
+    var isEmpty: Bool {
+        scenes.isEmpty
+    }
 }

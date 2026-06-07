@@ -13,7 +13,7 @@ import CoreGraphics
 ///
 /// ⚠️ 이 파일은 #6의 long-pole — 실기기 검증 필수. 아래 caveat 참고.
 enum StoryComposer {
-    static let renderSize = CGSize(width: 1080, height: 1920)   // portrait
+    static let renderSize = CGSize(width: 1080, height: 1920) // portrait
 
     enum ComposeError: Error {
         case exportInitFailed
@@ -34,7 +34,7 @@ enum StoryComposer {
             let frames = cellFrames(for: scene.layout, count: scene.tiles.count)
 
             for (tileIndex, tile) in scene.tiles.enumerated() {
-                guard case let .clip(clip) = tile else { continue }   // 미수신=검정
+                guard case let .clip(clip) = tile else { continue } // 미수신=검정
                 let asset = AVURLAsset(url: clip.url)
                 guard let source = try await asset.loadTracks(withMediaType: .video).first else { continue }
                 let duration = try await asset.load(.duration)
@@ -60,7 +60,7 @@ enum StoryComposer {
                     preferred.concatenating(transform(from: naturalSize, to: frame)),
                     at: cursor
                 )
-                layer.setCropRectangle(frame, at: cursor)   // 셀 밖으로 안 넘치게
+                layer.setCropRectangle(frame, at: cursor) // 셀 밖으로 안 넘치게
                 layerInstructions.append(layer)
             }
 
@@ -96,7 +96,7 @@ enum StoryComposer {
         case .split:
             return [
                 CGRect(x: 0, y: 0, width: w, height: h / 2),
-                CGRect(x: 0, y: h / 2, width: w, height: h / 2),
+                CGRect(x: 0, y: h / 2, width: w, height: h / 2)
             ]
         case .grid:
             // ✅ 거의 정사각형 그리드: 3·4→2열, 5·6→3열, 7~9→3열
