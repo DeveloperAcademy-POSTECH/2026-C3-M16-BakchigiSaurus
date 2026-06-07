@@ -94,6 +94,7 @@ nonisolated struct PlayerID: Codable, Hashable, Identifiable, Comparable {
     }
 }
 
+// swiftlint:disable identifier_name
 nonisolated struct DirectionVector: Codable, Hashable {
     var x: Float
     var y: Float
@@ -113,6 +114,7 @@ nonisolated struct DirectionVector: Codable, Hashable {
         SIMD3(x, y, z)
     }
 }
+// swiftlint:enable identifier_name
 
 nonisolated struct GameParticipant: Codable, Hashable, Identifiable {
     let id: PlayerID

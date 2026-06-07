@@ -9,17 +9,17 @@ import Foundation
 
 // MARK: - Event Model
 
-nonisolated struct ParticipantStatusAssignment: Codable, Hashable {
+nonisolated struct ParticipantStatusAssignment: Codable, Hashable, Sendable {
     let playerID: PlayerID
     let status: PlayerGameStatus
 }
 
-nonisolated struct ClipTransferUpdate: Codable, Hashable {
+nonisolated struct ClipTransferUpdate: Codable, Hashable, Sendable {
     let clipID: UUID
     let transferState: ClipTransferState
 }
 
-nonisolated struct ProximityUpdate: Codable, Hashable {
+nonisolated struct ProximityUpdate: Codable, Hashable, Sendable {
     let hiderID: PlayerID
     let distance: Float?
     let direction: DirectionVector?
@@ -30,7 +30,7 @@ nonisolated struct ProximityUpdate: Codable, Hashable {
     let captureRequestSentAt: Date?
 }
 
-nonisolated struct GameEventID: Codable, Hashable, Comparable {
+nonisolated struct GameEventID: Codable, Hashable, Comparable, Sendable {
     let sourcePlayerID: PlayerID
     let sequence: Int
 
@@ -42,7 +42,7 @@ nonisolated struct GameEventID: Codable, Hashable, Comparable {
     }
 }
 
-nonisolated enum GameEvent: Codable, Hashable {
+nonisolated enum GameEvent: Codable, Hashable, Sendable {
     case participantUpserted(GameParticipant)
     case participantRemoved(PlayerID)
     case taggerAssigned(PlayerID)
@@ -58,30 +58,30 @@ nonisolated enum GameEvent: Codable, Hashable {
     case gameFinished(GameConclusion)
 }
 
-nonisolated struct GameEventEnvelope: Codable, Hashable {
+nonisolated struct GameEventEnvelope: Codable, Hashable, Sendable {
     let id: GameEventID
     let sessionID: UUID
     let occurredAt: Date
     let event: GameEvent
 }
 
-nonisolated struct GameMutation {
+nonisolated struct GameMutation: Sendable {
     let sharedState: GameState
     let newEvents: [GameEventEnvelope]
 }
 
-nonisolated enum GameCommand {
+nonisolated enum GameCommand: Sendable {
     case upsertParticipant(GameParticipant)
     case removeParticipant(PlayerID)
     case assignTagger(PlayerID?)
-    case startHiding(at: Date = .now)
-    case startPlaying(at: Date = .now)
-    case useHint(candidates: [HintCandidate], at: Date = .now)
-    case observeProximity(hiderID: PlayerID, distance: Float?, direction: DirectionVector?, at: Date = .now)
-    case confirmCapture(hiderID: PlayerID, at: Date = .now)
-    case startClip(ownerID: PlayerID, clipID: UUID = UUID(), at: Date = .now)
-    case finishClip(clipID: UUID, at: Date = .now)
+    case startHiding(startedAt: Date = .now)
+    case startPlaying(startedAt: Date = .now)
+    case useHint(candidates: [HintCandidate], usedAt: Date = .now)
+    case observeProximity(hiderID: PlayerID, distance: Float?, direction: DirectionVector?, observedAt: Date = .now)
+    case confirmCapture(hiderID: PlayerID, confirmedAt: Date = .now)
+    case startClip(ownerID: PlayerID, clipID: UUID = UUID(), startedAt: Date = .now)
+    case finishClip(clipID: UUID, endedAt: Date = .now)
     case updateClipTransfer(clipID: UUID, state: ClipTransferState)
-    case evaluateDeadlines(at: Date = .now)
-    case finishGame(reason: GameEndReason, at: Date = .now)
+    case evaluateDeadlines(evaluatedAt: Date = .now)
+    case finishGame(reason: GameEndReason, endedAt: Date = .now)
 }
