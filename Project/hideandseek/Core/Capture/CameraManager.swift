@@ -279,7 +279,7 @@ final class CameraModel {
             isRecording = true
         } else if !desiredRecording, isRecording {
             do {
-                lastSavedURL = try await service.stopRecording()
+                lastSaved = try await service.stopRecording()
             } catch {
                 print("record error:", error)
             }
@@ -295,17 +295,6 @@ final class CameraModel {
         return video && audio
     }
     
-    func toggleRecording() async {
-        if isRecording {
-            do {
-                lastSaved = try await service.stopRecording()   // ✅
-            } catch { print("record error:", error) }
-            isRecording = false
-        } else {
-            await service.startRecording()
-            isRecording = true
-        }
-    }
 }
 
 struct RecordedClip {
