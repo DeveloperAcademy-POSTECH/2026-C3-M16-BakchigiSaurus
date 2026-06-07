@@ -51,4 +51,5 @@ struct NearbyInteractionReading {
     let distance: Float?
     let direction: SIMD3<Float>?
     let timestamp: Date
+    let horizontalAngle: Float?
 }
