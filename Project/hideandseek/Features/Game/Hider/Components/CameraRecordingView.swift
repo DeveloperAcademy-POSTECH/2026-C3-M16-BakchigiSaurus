@@ -43,13 +43,14 @@ struct CameraRecordingView: View {
                 return
             }
 
+            // 카메라 녹화 멈춤
             await camera.setRecording(false)
-            onRecordingFinished()
+            onRecordingFinished() // 녹화가 끝났다는 사실 상위View에 알려줌
         }
+        // 카메라 뷰가 화면에서 사라지는 순간, 카메라 녹화 종료
         .onDisappear {
             Task {
                 await camera.setRecording(false)
-                // 2초 후 녹화를 멈춤
             }
         }
     }
