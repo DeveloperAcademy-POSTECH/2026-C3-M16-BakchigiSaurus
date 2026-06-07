@@ -18,14 +18,14 @@ extension GameEngine {
     func isAuthorizedRemoteEvent(_ envelope: GameEventEnvelope) -> Bool {
         switch envelope.event {
         case .participantUpserted, .participantRemoved, .taggerAssigned:
-            return isAuthorizedParticipantEvent(envelope)
+            isAuthorizedParticipantEvent(envelope)
         case .phaseChanged, .participantStatusesSet, .hintConsumed,
              .proximityUpdated, .captureRequested, .captureConfirmed:
-            return isAuthorizedGameplayEvent(envelope)
+            isAuthorizedGameplayEvent(envelope)
         case .clipStarted, .clipEnded, .clipTransferUpdated:
-            return isAuthorizedClipEvent(envelope)
+            isAuthorizedClipEvent(envelope)
         case let .gameFinished(conclusion):
-            return isAuthorizedGameFinished(conclusion, sourcePlayerID: envelope.id.sourcePlayerID)
+            isAuthorizedGameFinished(conclusion, sourcePlayerID: envelope.id.sourcePlayerID)
         }
     }
 
@@ -109,11 +109,11 @@ extension GameEngine {
     ) -> Bool {
         switch conclusion.reason {
         case .allHidersCaptured:
-            return sourcePlayerID == state.taggerID || sourcePlayerID == state.session.hostID
+            sourcePlayerID == state.taggerID || sourcePlayerID == state.session.hostID
         case .timeExpired, .aborted:
-            return state.participants[sourcePlayerID] != nil
+            state.participants[sourcePlayerID] != nil
         case .hostEnded:
-            return sourcePlayerID == state.session.hostID
+            sourcePlayerID == state.session.hostID
         }
     }
 }

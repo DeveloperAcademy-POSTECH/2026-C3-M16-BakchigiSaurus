@@ -114,6 +114,7 @@ nonisolated struct DirectionVector: Codable, Hashable {
         SIMD3(x, y, z)
     }
 }
+
 // swiftlint:enable identifier_name
 
 nonisolated struct GameParticipant: Codable, Hashable, Identifiable {

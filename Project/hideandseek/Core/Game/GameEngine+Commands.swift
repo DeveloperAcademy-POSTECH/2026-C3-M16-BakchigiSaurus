@@ -14,11 +14,11 @@ extension GameEngine {
     ) -> [GameEventEnvelope] {
         switch command {
         case .upsertParticipant, .removeParticipant, .assignTagger:
-            return makeParticipantEvents(for: command, sourcePlayerID: sourcePlayerID)
+            makeParticipantEvents(for: command, sourcePlayerID: sourcePlayerID)
         case .startHiding, .startPlaying, .useHint, .observeProximity, .confirmCapture, .evaluateDeadlines, .finishGame:
-            return makeGameplayEvents(for: command, sourcePlayerID: sourcePlayerID)
+            makeGameplayEvents(for: command, sourcePlayerID: sourcePlayerID)
         case .startClip, .finishClip, .updateClipTransfer:
-            return makeClipEvents(for: command, sourcePlayerID: sourcePlayerID)
+            makeClipEvents(for: command, sourcePlayerID: sourcePlayerID)
         }
     }
 
@@ -47,13 +47,13 @@ extension GameEngine {
     ) -> [GameEventEnvelope] {
         switch command {
         case let .startHiding(startedAt):
-            return makeStartHidingEvents(startedAt: startedAt, sourcePlayerID: sourcePlayerID)
+            makeStartHidingEvents(startedAt: startedAt, sourcePlayerID: sourcePlayerID)
         case let .startPlaying(startedAt):
-            return makeStartPlayingEvents(startedAt: startedAt, sourcePlayerID: sourcePlayerID)
+            makeStartPlayingEvents(startedAt: startedAt, sourcePlayerID: sourcePlayerID)
         case let .useHint(candidates, usedAt):
-            return makeHintEvents(candidates: candidates, usedAt: usedAt, sourcePlayerID: sourcePlayerID)
+            makeHintEvents(candidates: candidates, usedAt: usedAt, sourcePlayerID: sourcePlayerID)
         case let .observeProximity(hiderID, distance, direction, observedAt):
-            return makeProximityEvents(
+            makeProximityEvents(
                 hiderID: hiderID,
                 distance: distance,
                 direction: direction,
@@ -61,17 +61,17 @@ extension GameEngine {
                 sourcePlayerID: sourcePlayerID
             )
         case let .confirmCapture(hiderID, confirmedAt):
-            return makeCaptureConfirmationEvents(
+            makeCaptureConfirmationEvents(
                 hiderID: hiderID,
                 confirmedAt: confirmedAt,
                 sourcePlayerID: sourcePlayerID
             )
         case let .evaluateDeadlines(evaluatedAt):
-            return makeDeadlineEvents(evaluatedAt: evaluatedAt, sourcePlayerID: sourcePlayerID)
+            makeDeadlineEvents(evaluatedAt: evaluatedAt, sourcePlayerID: sourcePlayerID)
         case let .finishGame(reason, endedAt):
-            return makeFinishGameEvents(reason: reason, endedAt: endedAt, sourcePlayerID: sourcePlayerID)
+            makeFinishGameEvents(reason: reason, endedAt: endedAt, sourcePlayerID: sourcePlayerID)
         default:
-            return []
+            []
         }
     }
 

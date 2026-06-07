@@ -171,7 +171,8 @@ extension GameEngine {
             }
             if let enteredAt = next.enteredWarningRadiusAt,
                observedAt.timeIntervalSince(enteredAt) >= 5,
-               next.taggerConfirmationSentAt == nil {
+               next.taggerConfirmationSentAt == nil
+            {
                 next.taggerConfirmationSentAt = observedAt
             }
         } else {
