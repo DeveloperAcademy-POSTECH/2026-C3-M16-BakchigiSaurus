@@ -10,25 +10,25 @@ import Observation
 
 // MARK: - Shared Session Types
 
-nonisolated enum GamePhase: String, Codable, Hashable, Sendable {
+nonisolated enum GamePhase: String, Codable, Hashable {
     case lobby
     case hiding
     case playing
     case ended
 }
 
-nonisolated enum TaggerSelectionPolicy: String, Codable, Hashable, Sendable {
+nonisolated enum TaggerSelectionPolicy: String, Codable, Hashable {
     case manual
     case random
 }
 
-nonisolated enum PlayerRole: String, Codable, Hashable, Sendable {
+nonisolated enum PlayerRole: String, Codable, Hashable {
     case unassigned
     case tagger
     case hider
 }
 
-nonisolated enum PlayerGameStatus: String, Codable, Hashable, Sendable {
+nonisolated enum PlayerGameStatus: String, Codable, Hashable {
     case waiting
     case hiding
     case seeking
@@ -36,27 +36,27 @@ nonisolated enum PlayerGameStatus: String, Codable, Hashable, Sendable {
     case finished
 }
 
-nonisolated enum GameEndReason: String, Codable, Hashable, Sendable {
+nonisolated enum GameEndReason: String, Codable, Hashable {
     case allHidersCaptured
     case timeExpired
     case hostEnded
     case aborted
 }
 
-nonisolated enum ParticipantConnectivity: String, Hashable, Sendable {
+nonisolated enum ParticipantConnectivity: String, Hashable {
     case disconnected
     case multipeerConnected
     case nearbyConnected
 }
 
-nonisolated enum ClipTransferState: String, Codable, Hashable, Sendable {
+nonisolated enum ClipTransferState: String, Codable, Hashable {
     case localOnly
     case queuedForCollector
     case transferredToCollector
     case merged
 }
 
-nonisolated struct RoomSettings: Codable, Hashable, Sendable {
+nonisolated struct RoomSettings: Codable, Hashable {
     var name: String
     var maxCount: Int
     var hintCount: Int
@@ -78,10 +78,12 @@ nonisolated struct RoomSettings: Codable, Hashable, Sendable {
     )
 }
 
-nonisolated struct PlayerID: Codable, Hashable, Sendable, Identifiable, Comparable {
+nonisolated struct PlayerID: Codable, Hashable, Identifiable, Comparable {
     let rawValue: UUID
 
-    var id: UUID { rawValue }
+    var id: UUID {
+        rawValue
+    }
 
     init(rawValue: UUID = UUID()) {
         self.rawValue = rawValue
@@ -92,7 +94,7 @@ nonisolated struct PlayerID: Codable, Hashable, Sendable, Identifiable, Comparab
     }
 }
 
-nonisolated struct DirectionVector: Codable, Hashable, Sendable {
+nonisolated struct DirectionVector: Codable, Hashable {
     var x: Float
     var y: Float
     var z: Float
@@ -112,7 +114,7 @@ nonisolated struct DirectionVector: Codable, Hashable, Sendable {
     }
 }
 
-nonisolated struct GameParticipant: Codable, Hashable, Sendable, Identifiable {
+nonisolated struct GameParticipant: Codable, Hashable, Identifiable {
     let id: PlayerID
     let peerID: PeerID?
     var name: String
@@ -137,7 +139,7 @@ nonisolated struct GameParticipant: Codable, Hashable, Sendable, Identifiable {
     }
 }
 
-nonisolated struct GameSessionDefinition: Codable, Hashable, Sendable {
+nonisolated struct GameSessionDefinition: Codable, Hashable {
     let id: UUID
     let createdAt: Date
     let hostID: PlayerID
@@ -156,13 +158,13 @@ nonisolated struct GameSessionDefinition: Codable, Hashable, Sendable {
     }
 }
 
-nonisolated struct HintCandidate: Hashable, Sendable {
+nonisolated struct HintCandidate: Hashable {
     let hiderID: PlayerID
     let direction: DirectionVector?
     let distance: Float?
 }
 
-nonisolated struct HintResolution: Codable, Hashable, Sendable {
+nonisolated struct HintResolution: Codable, Hashable {
     let taggerID: PlayerID
     let usedAt: Date
     let remainingCount: Int
@@ -170,7 +172,7 @@ nonisolated struct HintResolution: Codable, Hashable, Sendable {
     let direction: DirectionVector?
 }
 
-nonisolated struct ProximityState: Codable, Hashable, Sendable {
+nonisolated struct ProximityState: Codable, Hashable {
     var lastDistance: Float?
     var lastDirection: DirectionVector?
     var lastObservedAt: Date?
@@ -182,7 +184,7 @@ nonisolated struct ProximityState: Codable, Hashable, Sendable {
     static let empty = ProximityState()
 }
 
-nonisolated struct ClipRecord: Codable, Hashable, Sendable, Identifiable {
+nonisolated struct ClipRecord: Codable, Hashable, Identifiable {
     let id: UUID
     let ownerID: PlayerID
     var startedAt: Date
@@ -204,25 +206,25 @@ nonisolated struct ClipRecord: Codable, Hashable, Sendable, Identifiable {
     }
 }
 
-nonisolated struct PhaseState: Codable, Hashable, Sendable {
+nonisolated struct PhaseState: Codable, Hashable {
     var phase: GamePhase
     var startedAt: Date
     var hideDeadline: Date?
     var gameDeadline: Date?
 }
 
-nonisolated struct CaptureRequest: Codable, Hashable, Sendable {
+nonisolated struct CaptureRequest: Codable, Hashable {
     let taggerID: PlayerID
     let hiderID: PlayerID
     let requestedAt: Date
 }
 
-nonisolated struct GameConclusion: Codable, Hashable, Sendable {
+nonisolated struct GameConclusion: Codable, Hashable {
     let reason: GameEndReason
     let endedAt: Date
 }
 
-nonisolated struct GameState: Codable, Hashable, Sendable {
+nonisolated struct GameState: Codable, Hashable {
     let session: GameSessionDefinition
     var phase: GamePhase
     var phaseStartedAt: Date?
@@ -285,14 +287,13 @@ nonisolated struct GameState: Codable, Hashable, Sendable {
     }
 
     func remainingSeconds(at date: Date = .now) -> Int {
-        let deadline: Date?
-        switch phase {
+        let deadline: Date? = switch phase {
         case .hiding:
-            deadline = hideDeadline
+            hideDeadline
         case .playing:
-            deadline = gameDeadline
+            gameDeadline
         case .lobby, .ended:
-            deadline = nil
+            nil
         }
 
         guard let deadline else { return 0 }
@@ -306,7 +307,7 @@ nonisolated struct GameState: Codable, Hashable, Sendable {
 
 // MARK: - Local Device State
 
-nonisolated struct LocalNearbyObservation: Hashable, Sendable {
+nonisolated struct LocalNearbyObservation: Hashable {
     var distance: Float?
     var direction: DirectionVector?
     var observedAt: Date?
@@ -322,7 +323,7 @@ nonisolated struct LocalNearbyObservation: Hashable, Sendable {
     }
 }
 
-nonisolated struct LocalParticipantState: Hashable, Sendable {
+nonisolated struct LocalParticipantState: Hashable {
     var connectivity: ParticipantConnectivity
     var lastSeenAt: Date?
     var lastSyncAt: Date?
@@ -341,7 +342,7 @@ nonisolated struct LocalParticipantState: Hashable, Sendable {
     }
 }
 
-nonisolated struct LocalDeviceState: Hashable, Sendable {
+nonisolated struct LocalDeviceState: Hashable {
     let localPlayerID: PlayerID
     let hostPlayerID: PlayerID
     var participantStates: [PlayerID: LocalParticipantState]
@@ -362,17 +363,17 @@ nonisolated struct LocalDeviceState: Hashable, Sendable {
 
 // MARK: - Event Model
 
-nonisolated struct ParticipantStatusAssignment: Codable, Hashable, Sendable {
+nonisolated struct ParticipantStatusAssignment: Codable, Hashable {
     let playerID: PlayerID
     let status: PlayerGameStatus
 }
 
-nonisolated struct ClipTransferUpdate: Codable, Hashable, Sendable {
+nonisolated struct ClipTransferUpdate: Codable, Hashable {
     let clipID: UUID
     let transferState: ClipTransferState
 }
 
-nonisolated struct ProximityUpdate: Codable, Hashable, Sendable {
+nonisolated struct ProximityUpdate: Codable, Hashable {
     let hiderID: PlayerID
     let distance: Float?
     let direction: DirectionVector?
@@ -383,7 +384,7 @@ nonisolated struct ProximityUpdate: Codable, Hashable, Sendable {
     let captureRequestSentAt: Date?
 }
 
-nonisolated struct GameEventID: Codable, Hashable, Sendable, Comparable {
+nonisolated struct GameEventID: Codable, Hashable, Comparable {
     let sourcePlayerID: PlayerID
     let sequence: Int
 
@@ -395,7 +396,7 @@ nonisolated struct GameEventID: Codable, Hashable, Sendable, Comparable {
     }
 }
 
-nonisolated enum GameEvent: Codable, Hashable, Sendable {
+nonisolated enum GameEvent: Codable, Hashable {
     case participantUpserted(GameParticipant)
     case participantRemoved(PlayerID)
     case taggerAssigned(PlayerID)
@@ -411,19 +412,19 @@ nonisolated enum GameEvent: Codable, Hashable, Sendable {
     case gameFinished(GameConclusion)
 }
 
-nonisolated struct GameEventEnvelope: Codable, Hashable, Sendable {
+nonisolated struct GameEventEnvelope: Codable, Hashable {
     let id: GameEventID
     let sessionID: UUID
     let occurredAt: Date
     let event: GameEvent
 }
 
-nonisolated struct GameMutation: Sendable {
+nonisolated struct GameMutation {
     let sharedState: GameState
     let newEvents: [GameEventEnvelope]
 }
 
-nonisolated enum GameCommand: Sendable {
+nonisolated enum GameCommand {
     case upsertParticipant(GameParticipant)
     case removeParticipant(PlayerID)
     case assignTagger(PlayerID?)
@@ -478,19 +479,19 @@ private extension GameEngine {
         sourcePlayerID: PlayerID
     ) -> [GameEventEnvelope] {
         switch command {
-        case .upsertParticipant(let participant):
+        case let .upsertParticipant(participant):
             return [makeEnvelope(.participantUpserted(participant), by: sourcePlayerID, at: .now)]
 
-        case .removeParticipant(let participantID):
+        case let .removeParticipant(participantID):
             return [makeEnvelope(.participantRemoved(participantID), by: sourcePlayerID, at: .now)]
 
-        case .assignTagger(let preferredTaggerID):
+        case let .assignTagger(preferredTaggerID):
             guard let taggerID = resolveTaggerID(preferredTaggerID: preferredTaggerID) else {
                 return []
             }
             return [makeEnvelope(.taggerAssigned(taggerID), by: sourcePlayerID, at: .now)]
 
-        case .startHiding(let startedAt):
+        case let .startHiding(startedAt):
             guard state.phase == .lobby || state.phase == .ended else { return [] }
             guard let taggerID = resolveTaggerID(preferredTaggerID: state.taggerID) else { return [] }
 
@@ -512,7 +513,7 @@ private extension GameEngine {
                 makeEnvelope(.phaseChanged(phaseState), by: sourcePlayerID, at: startedAt)
             ]
 
-        case .startPlaying(let startedAt):
+        case let .startPlaying(startedAt):
             guard state.phase == .hiding else { return [] }
             guard let taggerID = state.taggerID else { return [] }
 
@@ -534,7 +535,7 @@ private extension GameEngine {
                 makeEnvelope(.phaseChanged(phaseState), by: sourcePlayerID, at: startedAt)
             ]
 
-        case .useHint(let candidates, let usedAt):
+        case let .useHint(candidates, usedAt):
             guard state.canUseHint(by: sourcePlayerID) else { return [] }
             let availableCandidates = candidates.filter { candidate in
                 guard let participant = state.participants[candidate.hiderID] else { return false }
@@ -550,7 +551,7 @@ private extension GameEngine {
             )
             return [makeEnvelope(.hintConsumed(resolution), by: sourcePlayerID, at: usedAt)]
 
-        case .observeProximity(let hiderID, let distance, let direction, let observedAt):
+        case let .observeProximity(hiderID, distance, direction, observedAt):
             guard state.phase == .playing else { return [] }
             guard sourcePlayerID == state.taggerID else { return [] }
             guard let participant = state.participants[hiderID], participant.role == .hider else { return [] }
@@ -589,7 +590,7 @@ private extension GameEngine {
 
             return events
 
-        case .confirmCapture(let hiderID, let confirmedAt):
+        case let .confirmCapture(hiderID, confirmedAt):
             guard state.phase == .playing else { return [] }
             guard sourcePlayerID == hiderID else { return [] }
             guard state.activeCaptureRequests[hiderID] != nil else { return [] }
@@ -609,26 +610,26 @@ private extension GameEngine {
 
             return events
 
-        case .startClip(let ownerID, let clipID, let startedAt):
+        case let .startClip(ownerID, clipID, startedAt):
             let clip = ClipRecord(id: clipID, ownerID: ownerID, startedAt: startedAt)
             return [makeEnvelope(.clipStarted(clip), by: sourcePlayerID, at: startedAt)]
 
-        case .finishClip(let clipID, let endedAt):
+        case let .finishClip(clipID, endedAt):
             guard state.clips[clipID] != nil else { return [] }
             return [makeEnvelope(.clipEnded(clipID: clipID, endedAt: endedAt), by: sourcePlayerID, at: endedAt)]
 
-        case .updateClipTransfer(let clipID, let transferState):
+        case let .updateClipTransfer(clipID, transferState):
             guard state.clips[clipID] != nil else { return [] }
             let update = ClipTransferUpdate(clipID: clipID, transferState: transferState)
             return [makeEnvelope(.clipTransferUpdated(update), by: sourcePlayerID, at: .now)]
 
-        case .evaluateDeadlines(let now):
+        case let .evaluateDeadlines(now):
             guard state.phase == .playing else { return [] }
             guard let gameDeadline = state.gameDeadline, now >= gameDeadline else { return [] }
             let conclusion = GameConclusion(reason: .timeExpired, endedAt: now)
             return [makeEnvelope(.gameFinished(conclusion), by: sourcePlayerID, at: now)]
 
-        case .finishGame(let reason, let endedAt):
+        case let .finishGame(reason, endedAt):
             guard state.phase != .ended else { return [] }
             let conclusion = GameConclusion(reason: reason, endedAt: endedAt)
             return [makeEnvelope(.gameFinished(conclusion), by: sourcePlayerID, at: endedAt)]
@@ -649,14 +650,14 @@ private extension GameEngine {
 
     func reduce(_ event: GameEvent) {
         switch event {
-        case .participantUpserted(let participant):
+        case let .participantUpserted(participant):
             state.participants[participant.id] = participant
             if !state.participantOrder.contains(participant.id) {
                 state.participantOrder.append(participant.id)
             }
             normalizeRolesAndStatuses()
 
-        case .participantRemoved(let participantID):
+        case let .participantRemoved(participantID):
             state.participants.removeValue(forKey: participantID)
             state.participantOrder.removeAll { $0 == participantID }
             state.proximityByHiderID.removeValue(forKey: participantID)
@@ -666,11 +667,11 @@ private extension GameEngine {
             }
             normalizeRolesAndStatuses()
 
-        case .taggerAssigned(let taggerID):
+        case let .taggerAssigned(taggerID):
             state.taggerID = taggerID
             normalizeRolesAndStatuses()
 
-        case .phaseChanged(let phaseState):
+        case let .phaseChanged(phaseState):
             state.phase = phaseState.phase
             state.phaseStartedAt = phaseState.startedAt
             state.hideDeadline = phaseState.hideDeadline
@@ -688,18 +689,18 @@ private extension GameEngine {
 
             normalizeRolesAndStatuses()
 
-        case .participantStatusesSet(let assignments):
+        case let .participantStatusesSet(assignments):
             for assignment in assignments {
                 guard var participant = state.participants[assignment.playerID] else { continue }
                 participant.status = assignment.status
                 state.participants[assignment.playerID] = participant
             }
 
-        case .hintConsumed(let resolution):
+        case let .hintConsumed(resolution):
             state.lastHint = resolution
             state.hintCountRemaining = resolution.remainingCount
 
-        case .proximityUpdated(let update):
+        case let .proximityUpdated(update):
             state.proximityByHiderID[update.hiderID] = ProximityState(
                 lastDistance: update.distance,
                 lastDirection: update.direction,
@@ -710,30 +711,30 @@ private extension GameEngine {
                 captureRequestSentAt: update.captureRequestSentAt
             )
 
-        case .captureRequested(let request):
+        case let .captureRequested(request):
             state.activeCaptureRequests[request.hiderID] = request
 
-        case .captureConfirmed(let hiderID, _):
+        case let .captureConfirmed(hiderID, _):
             state.activeCaptureRequests.removeValue(forKey: hiderID)
             state.proximityByHiderID.removeValue(forKey: hiderID)
             guard var participant = state.participants[hiderID] else { return }
             participant.status = .captured
             state.participants[hiderID] = participant
 
-        case .clipStarted(let clip):
+        case let .clipStarted(clip):
             state.clips[clip.id] = clip
 
-        case .clipEnded(let clipID, let endedAt):
+        case let .clipEnded(clipID, endedAt):
             guard var clip = state.clips[clipID] else { return }
             clip.endedAt = endedAt
             state.clips[clipID] = clip
 
-        case .clipTransferUpdated(let update):
+        case let .clipTransferUpdated(update):
             guard var clip = state.clips[update.clipID] else { return }
             clip.transferState = update.transferState
             state.clips[update.clipID] = clip
 
-        case .gameFinished(let conclusion):
+        case let .gameFinished(conclusion):
             state.phase = .ended
             state.endedAt = conclusion.endedAt
             state.endReason = conclusion.reason
@@ -797,20 +798,20 @@ private extension GameEngine {
         let sourcePlayerID = envelope.id.sourcePlayerID
 
         switch envelope.event {
-        case .participantUpserted(let participant):
+        case let .participantUpserted(participant):
             guard participant.id == sourcePlayerID else { return false }
             if participant.isHost {
                 return participant.id == state.session.hostID
             }
             return true
 
-        case .participantRemoved(let participantID):
+        case let .participantRemoved(participantID):
             return participantID == sourcePlayerID || sourcePlayerID == state.session.hostID
 
-        case .taggerAssigned(let taggerID):
+        case let .taggerAssigned(taggerID):
             return sourcePlayerID == state.session.hostID && state.participants[taggerID] != nil
 
-        case .phaseChanged(let phaseState):
+        case let .phaseChanged(phaseState):
             guard sourcePlayerID == state.session.hostID else { return false }
 
             switch phaseState.phase {
@@ -824,37 +825,37 @@ private extension GameEngine {
                 return false
             }
 
-        case .participantStatusesSet(let assignments):
+        case let .participantStatusesSet(assignments):
             guard sourcePlayerID == state.session.hostID else { return false }
             let knownPlayers = Set(state.participantOrder)
             return assignments.allSatisfy { assignment in
                 knownPlayers.contains(assignment.playerID)
             }
 
-        case .hintConsumed(let resolution):
+        case let .hintConsumed(resolution):
             return sourcePlayerID == state.taggerID && resolution.taggerID == sourcePlayerID
 
-        case .proximityUpdated(let update):
+        case let .proximityUpdated(update):
             guard sourcePlayerID == state.taggerID else { return false }
             guard let participant = state.participants[update.hiderID] else { return false }
             return participant.role == .hider
 
-        case .captureRequested(let request):
+        case let .captureRequested(request):
             return sourcePlayerID == state.taggerID && request.taggerID == sourcePlayerID
 
-        case .captureConfirmed(let hiderID, _):
+        case let .captureConfirmed(hiderID, _):
             return sourcePlayerID == hiderID && state.activeCaptureRequests[hiderID] != nil
 
-        case .clipStarted(let clip):
+        case let .clipStarted(clip):
             return clip.ownerID == sourcePlayerID
 
-        case .clipEnded(let clipID, _):
+        case let .clipEnded(clipID, _):
             return state.clips[clipID]?.ownerID == sourcePlayerID
 
-        case .clipTransferUpdated(let update):
+        case let .clipTransferUpdated(update):
             return sourcePlayerID == state.session.hostID || state.clips[update.clipID]?.ownerID == sourcePlayerID
 
-        case .gameFinished(let conclusion):
+        case let .gameFinished(conclusion):
             switch conclusion.reason {
             case .allHidersCaptured:
                 return sourcePlayerID == state.taggerID || sourcePlayerID == state.session.hostID

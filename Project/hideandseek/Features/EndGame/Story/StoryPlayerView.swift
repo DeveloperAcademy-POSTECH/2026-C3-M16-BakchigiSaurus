@@ -53,9 +53,9 @@ struct StoryPlayerView: View {
 
     private var progressBar: some View {
         HStack(spacing: 4) {
-            ForEach(story.scenes.indices, id: \.self) { i in
+            ForEach(story.scenes.indices, id: \.self) { segmentIndex in
                 Capsule()
-                    .fill(.white.opacity(i <= index ? 0.9 : 0.3))
+                    .fill(.white.opacity(segmentIndex <= index ? 0.9 : 0.3))
                     .frame(height: 3)
             }
         }
@@ -148,8 +148,8 @@ private struct StorySceneView: View {
     }
 
     @ViewBuilder
-    private func tileView(at i: Int) -> some View {
-        let tile = scene.tiles.indices.contains(i) ? scene.tiles[i] : nil
+    private func tileView(at index: Int) -> some View {
+        let tile = scene.tiles.indices.contains(index) ? scene.tiles[index] : nil
         switch tile {
         case let .clip(clip):
             if let player = players[clip.id.uuidString] {
