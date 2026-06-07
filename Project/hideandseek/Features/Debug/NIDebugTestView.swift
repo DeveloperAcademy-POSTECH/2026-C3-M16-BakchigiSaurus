@@ -40,7 +40,7 @@ struct NIDebugTestView: View {
         Section("Nearby Interaction") {
 //            LabeledContent("거리", value: viewModel.distanceText)
 //            LabeledContent("방향", value: viewModel.directionText)
-            
+
             VStack(spacing: 16) {
                 Text("거리: \(viewModel.distanceText)")
                 Text("방향: \(viewModel.directionText)")
