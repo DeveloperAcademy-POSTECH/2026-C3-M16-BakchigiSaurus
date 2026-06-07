@@ -1,5 +1,5 @@
 //
-//  mcniConncetion.swift
+//  McniConncetion.swift
 //  hideandseek
 //
 //  Created by 허지우 on 6/5/26.
@@ -9,7 +9,7 @@ import Combine
 import Foundation
 import NearbyInteraction
 
-final class mcniConnection {
+final class McniConnection {
     private let mcSession: MultipeerGameSession
     private let niManager: NearbyInteractionManager
 
@@ -74,13 +74,13 @@ final class mcniConnection {
     }
 }
 
-final class mcniConnectionHolder: ObservableObject {
-    let connection: mcniConnection
+final class McniConnectionHolder: ObservableObject {
+    let connection: McniConnection
 
     init() {
         let mcSession = MultipeerGameSession()
         let niManager = NearbyInteractionManager()
 
-        self.connection = mcniConnection(mcManager: mcSession, niManager: niManager)
+        self.connection = McniConnection(mcManager: mcSession, niManager: niManager)
     }
 }

@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var connectionHolder = mcniConnectionHolder()
+    @StateObject private var connectionHolder = McniConnectionHolder()
 
     var body: some View {
         VStack {

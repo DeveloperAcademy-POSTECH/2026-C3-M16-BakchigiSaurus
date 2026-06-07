@@ -12,7 +12,7 @@ import Foundation
 final class NIDebugViewModel: ObservableObject {
     private let session: MultipeerGameSession
     private let niManager: NearbyInteractionManager
-    private let connection: mcniConnection
+    private let connection: McniConnection
 
     @Published private(set) var localPeer: PeerID
     @Published private(set) var hostPeer: PeerID
@@ -30,7 +30,7 @@ final class NIDebugViewModel: ObservableObject {
 
         self.session = session
         self.niManager = niManager
-        self.connection = mcniConnection(
+        self.connection = McniConnection(
             mcManager: session,
             niManager: niManager
         )
