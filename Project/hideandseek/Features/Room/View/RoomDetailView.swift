@@ -37,9 +37,9 @@ struct RoomDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-              Button(action: model.leaveActiveRoom) {
-                  Label("goback", systemImage: "chevron.left")
-              }
+                Button(action: model.leaveActiveRoom) {
+                    Label("goback", systemImage: "chevron.left")
+                }
             }
         }
         .toolbarBackground(.black, for: .navigationBar)
@@ -49,11 +49,11 @@ struct RoomDetailView: View {
     private var header: some View {
         VStack(spacing: 0) {
             HStack {
-              Spacer()
-              Label("\(room.currentCount)/\(room.maxCount)", systemImage: "person.2")
-                  .labelStyle(.titleAndIcon)
-                  .font(.headline)
-                  .foregroundStyle(.white)
+                Spacer()
+                Label("\(room.currentCount)/\(room.maxCount)", systemImage: "person.2")
+                    .labelStyle(.titleAndIcon)
+                    .font(.headline)
+                    .foregroundStyle(.white)
             }
         }
         .padding(.horizontal, 20)
@@ -63,32 +63,32 @@ struct RoomDetailView: View {
 
     private var footer: some View {
         VStack(spacing: 12) {
-          if model.canStartGame {
-            Text("참여자를 선택해 술래로 지정하세요. 선택하지 않으면 시작 시 랜덤으로 정해집니다")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+            if model.canStartGame {
+                Text("참여자를 선택해 술래로 지정하세요. 선택하지 않으면 시작 시 랜덤으로 정해집니다")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+                Button {
+                    model.startGame()
+                } label: {
+                    Text(buttonTitle)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                }
+                .tint(.accent)
+                .buttonStyle(.glassProminent)
+                .disabled(!model.canStartGame || model.gameStarted || !model.isHostInActiveRoom)
                 .padding(.horizontal, 20)
-            Button {
-              model.startGame()
-            } label: {
-              Text(buttonTitle)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
+                .padding(.bottom, 20)
+            } else {
+                ProgressView()
+                Text("방장이 게임을 시작하길 기다리는중")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
             }
-            .tint(.accent)
-            .buttonStyle(.glassProminent)
-            .disabled(!model.canStartGame || model.gameStarted || !model.isHostInActiveRoom)
-            .padding(.horizontal, 20)
-            .padding(.bottom, 20)
-          } else {
-            ProgressView()
-            Text("방장이 게임을 시작하길 기다리는중")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 20)
-          }
         }
     }
 

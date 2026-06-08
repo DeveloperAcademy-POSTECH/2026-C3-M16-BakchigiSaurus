@@ -141,7 +141,7 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
     ///   - displayName: 주변 기기에 표시될 이름.
     ///   - isHost: 현재 기기가 호스트인지 여부.
     init(
-        displayName: String = UIDevice.current.name,
+        displayName: String? = nil,
         isHost: Bool = true,
         peerIdentityStore: LocalPeerIdentityStore = LocalPeerIdentityStore()
     ) {
