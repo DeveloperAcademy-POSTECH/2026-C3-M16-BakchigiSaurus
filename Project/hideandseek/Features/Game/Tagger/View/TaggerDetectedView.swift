@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct TaggerDetectedVeiw: View {
+struct TaggerDetectedView: View {
     let camera: CameraModel
     let isHiderNearby: Bool
     let isUsingHint: Bool
@@ -48,5 +48,5 @@ struct TaggerDetectedVeiw: View {
 }
 
 #Preview {
-    TaggerDetectedVeiw(camera: CameraModel(), isHiderNearby: true, isUsingHint: false, timeLeft: 300)
+    TaggerDetectedView(camera: CameraModel(), isHiderNearby: true, isUsingHint: false, timeLeft: 300)
 }
