@@ -145,7 +145,7 @@ final class HiderModeViewModel {
         case .yes:
             state = .taggedCheck
 
-        case .no:
+        case .negative:
             ignoresTaggedDistanceUntilSafe = true
             activeNearbyTaggerID = nil
             cancelWarningToRecording()
