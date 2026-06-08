@@ -45,6 +45,10 @@ final class HiderModeViewModel {
         taggerDistance = distance
         // 들어온 거리값 저장
 
+        guard state != .taggedCheck, state != .captured else {
+            return
+        }
+
         guard let distance else {
             if state == .taggerNearby || state == .recording {
                 return
@@ -140,16 +144,19 @@ final class HiderModeViewModel {
     }
 
     /// 한번 더 확인
-    func confirmTaggedAnswer(_ answer: TaggedAnswer) {
+    @discardableResult
+    func confirmTaggedAnswer(_ answer: TaggedAnswer) -> Bool {
         switch answer {
         case .yes:
-            state = .taggedCheck
+            state = .captured
+            return true
 
         case .negative:
             ignoresTaggedDistanceUntilSafe = true
             activeNearbyTaggerID = nil
             cancelWarningToRecording()
             state = .hiding
+            return false
         }
     }
 

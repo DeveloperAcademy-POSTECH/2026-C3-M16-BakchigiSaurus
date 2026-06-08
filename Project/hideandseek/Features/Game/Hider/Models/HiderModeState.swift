@@ -12,4 +12,5 @@ enum HiderModeState {
     case taggerNearby // 술래가 가까움, 경고 표시
     case recording // 카메라 켜지고 녹화됨
     case taggedCheck // 술래에게 잡혔는지 확인 화면
+    case captured // 잡힘 확정
 }

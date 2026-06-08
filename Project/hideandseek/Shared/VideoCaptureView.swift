@@ -75,7 +75,8 @@ import SwiftUI
 /// `layerClass`를 오버라이드해 레이어를 뷰의 backing layer로 직접 쓰므로
 /// 프레임 동기화를 수동으로 할 필요가 없다.
 final class PreviewView: UIView {
-    override static var layerClass: AnyClass {
+    // swiftlint:disable:next static_over_final_class
+    override class var layerClass: AnyClass {
         AVCaptureVideoPreviewLayer.self
     }
 

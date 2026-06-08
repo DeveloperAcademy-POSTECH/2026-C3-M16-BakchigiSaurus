@@ -10,6 +10,7 @@ import SwiftUI
 /// 숨는 사람이 보는 전체  화면 흐름 관리하는 메인 화면
 struct HiderModeView: View {
     let camera: CameraModel
+    var onCaptureConfirmed: () -> Void = {}
     // 상위 View에서 만든 camera를 받아서 사용
 
     /// HiderModeViewModel을 생성
@@ -51,9 +52,31 @@ struct HiderModeView: View {
             TaggedCheckView(
                 timeLeft: viewModel.timeLeft,
                 onConfirmAnswer: { answer in
-                    viewModel.confirmTaggedAnswer(answer)
+                    if viewModel.confirmTaggedAnswer(answer) {
+                        onCaptureConfirmed()
+                    }
                 }
             )
+
+        case .captured:
+            capturedContent
+        }
+    }
+
+    private var capturedContent: some View {
+        ZStack {
+            Color.appBackground
+                .ignoresSafeArea()
+
+            VStack(spacing: 16) {
+                Text("잡혔습니다")
+                    .font(.largeTitle.bold())
+                    .foregroundStyle(.primary)
+
+                Text("게임 결과를 확인하는 중입니다")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 }
