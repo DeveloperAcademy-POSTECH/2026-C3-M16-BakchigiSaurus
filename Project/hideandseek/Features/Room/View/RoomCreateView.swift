@@ -58,11 +58,11 @@ struct RoomCreateView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-              Button {
-                dismiss()
-              }label: {
-                Label("goback", systemImage: "chevron.left")
-              }
+                Button {
+                    dismiss()
+                } label: {
+                    Label("goback", systemImage: "chevron.left")
+                }
             }
         }
         .toolbarBackground(.black, for: .navigationBar)
@@ -174,4 +174,3 @@ struct RoomCreateView: View {
     }
     .preferredColorScheme(.dark)
 }
-
