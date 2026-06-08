@@ -51,10 +51,7 @@ import SwiftUI
 /// `continuation` 접근은 `NSLock`으로 직접 보호하므로 `@unchecked Sendable`로 표시한다.
 ///
 /// - Important: 직접 쓰지 말고 ``CaptureService``를 통해서만 사용한다.
-final nonisolated class RecorderDelegate: NSObject,
-    AVCaptureFileOutputRecordingDelegate,
-    @unchecked Sendable
-{
+final nonisolated class RecorderDelegate: NSObject, @unchecked Sendable {
     private let output: AVCaptureMovieFileOutput
     private let lock = NSLock()
     private var continuation: CheckedContinuation<URL, Error>?
@@ -103,6 +100,8 @@ final nonisolated class RecorderDelegate: NSObject,
         }
     }
 }
+
+extension RecorderDelegate: AVCaptureFileOutputRecordingDelegate {}
 
 // =====================================================================
 // MARK: - CaptureService
