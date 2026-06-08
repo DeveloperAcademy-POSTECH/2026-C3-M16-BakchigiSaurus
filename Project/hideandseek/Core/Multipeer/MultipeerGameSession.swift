@@ -27,6 +27,22 @@ struct GameFlowMessageEvent {
     let message: GameFlowMessage
 }
 
+/// 방 목록과 대기실 UI에서 사용하는 광고 스냅샷.
+struct RoomLobbySnapshot: Identifiable, Hashable {
+    let id: String
+    let host: PeerID
+    let name: String
+    let currentCount: Int
+    let maxCount: Int
+    let hintCount: Int
+    let hideTimeSeconds: Int
+    let gameMinutes: Int
+
+    var isFull: Bool {
+        currentCount >= maxCount
+    }
+}
+
 /// GameSession 프로토콜을 실제 MultipeerConnectivity로 구현하는 클래스.
 /// Feature 쪽은 이 구현체가 아니라 GameSession 인터페이스에 의존한다.
 final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
@@ -46,14 +62,14 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
     /// 현재 MCSession에 연결된 peer 목록.
     private var connectedMCPeers: [MCPeerID] = []
 
-    /// 연결/끊김 이벤트를 Feature로 전달하기 위한 AsyncStream continuation.
-    private var eventContinuation: AsyncStream<SessionEvent>.Continuation?
+    /// 연결/끊김 이벤트를 여러 consumer가 동시에 구독할 수 있도록 continuation을 저장한다.
+    private var eventContinuations: [UUID: AsyncStream<SessionEvent>.Continuation] = [:]
 
-    /// MC로 수신한 NI DiscoveryToken을 외부로 전달하기 위한 AsyncStream continuation.
-    private var niTokenContinuation: AsyncStream<NIDiscoveryTokenEvent>.Continuation?
+    /// MC로 수신한 NI DiscoveryToken 이벤트 구독자들.
+    private var niTokenContinuations: [UUID: AsyncStream<NIDiscoveryTokenEvent>.Continuation] = [:]
 
-    /// MC로 수신한 게임 진행 메시지를 외부로 전달하기 위한 AsyncStream continuation.
-    private var gameFlowMessageContinuation: AsyncStream<GameFlowMessageEvent>.Continuation?
+    /// MC로 수신한 게임 진행 메시지 이벤트 구독자들.
+    private var gameFlowMessageContinuations: [UUID: AsyncStream<GameFlowMessageEvent>.Continuation] = [:]
 
     /// 호스트 광고를 담당하는 advertiser.
     private var advertiser: MCNearbyServiceAdvertiser?
@@ -67,9 +83,15 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
     /// 발견된 호스트의 rawID와 실제 MC용 MCPeerID를 매핑한다.
     private var discoveredMCPeersByRawID: [String: MCPeerID] = [:]
 
+    /// 발견된 방 광고를 rawID 기준으로 저장한다.
+    private var discoveredRoomsByID: [String: RoomLobbySnapshot] = [:]
+
     /// displayName 기준으로 이미 확인한 PeerID를 저장한다.
     /// 연결 이후에도 discoveryInfo에서 얻은 안정적인 rawID를 재사용하기 위해 사용한다.
     private var knownPeerIDsByDisplayName: [String: PeerID] = [:]
+
+    /// 현재 기기가 호스트일 때 외부에 광고할 방 설정이다.
+    private var hostedRoomSettings: RoomSettings?
 
     /// GameSession 요구사항: 이 기기의 추상화된 식별자.
     let localPeer: PeerID
@@ -91,6 +113,26 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
     var discoveredPeers: [PeerID] {
         stateQueue.sync {
             discoveredPeersByRawID.values.sorted { $0.displayName < $1.displayName }
+        }
+    }
+
+    /// 주변에서 발견된 방 목록이다.
+    var discoveredRooms: [RoomLobbySnapshot] {
+        stateQueue.sync {
+            discoveredRoomsByID.values.sorted { lhs, rhs in
+                if lhs.name == rhs.name {
+                    return lhs.host.displayName < rhs.host.displayName
+                }
+
+                return lhs.name < rhs.name
+            }
+        }
+    }
+
+    /// 현재 기기가 호스트일 때의 방 스냅샷이다.
+    var hostedRoom: RoomLobbySnapshot {
+        stateQueue.sync {
+            makeHostedRoomSnapshot()
         }
     }
 
@@ -130,13 +172,15 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
 
     func makeEventStream() -> AsyncStream<SessionEvent> {
         AsyncStream { continuation in
+            let subscriberID = UUID()
+
             stateQueue.async {
-                self.eventContinuation = continuation
+                self.eventContinuations[subscriberID] = continuation
             }
 
             continuation.onTermination = { [weak self] _ in
                 self?.stateQueue.async {
-                    self?.eventContinuation = nil
+                    self?.eventContinuations.removeValue(forKey: subscriberID)
                 }
             }
         }
@@ -146,13 +190,15 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
     /// NI 담당 객체는 이 스트림을 구독해 NINearbyPeerConfiguration에 사용할 token을 받을 수 있다.
     func makeNIDiscoveryTokenStream() -> AsyncStream<NIDiscoveryTokenEvent> {
         AsyncStream { continuation in
+            let subscriberID = UUID()
+
             stateQueue.async {
-                self.niTokenContinuation = continuation
+                self.niTokenContinuations[subscriberID] = continuation
             }
 
             continuation.onTermination = { [weak self] _ in
                 self?.stateQueue.async {
-                    self?.niTokenContinuation = nil
+                    self?.niTokenContinuations.removeValue(forKey: subscriberID)
                 }
             }
         }
@@ -162,13 +208,15 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
     /// Feature는 이 스트림을 구독해 게임 시작, 역할 배정, 탐색 시작 등의 이벤트를 받을 수 있다.
     func makeGameFlowMessageStream() -> AsyncStream<GameFlowMessageEvent> {
         AsyncStream { continuation in
+            let subscriberID = UUID()
+
             stateQueue.async {
-                self.gameFlowMessageContinuation = continuation
+                self.gameFlowMessageContinuations[subscriberID] = continuation
             }
 
             continuation.onTermination = { [weak self] _ in
                 self?.stateQueue.async {
-                    self?.gameFlowMessageContinuation = nil
+                    self?.gameFlowMessageContinuations.removeValue(forKey: subscriberID)
                 }
             }
         }
@@ -176,6 +224,17 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
 }
 
 private extension MultipeerGameSession {
+    enum DiscoveryKey {
+        static let hostRawID = "hostRawID"
+        static let hostDisplayName = "hostDisplayName"
+        static let roomName = "roomName"
+        static let currentCount = "roomCurrentCount"
+        static let maxCount = "roomMaxCount"
+        static let hintCount = "roomHintCount"
+        static let hideTimeSeconds = "roomHideTimeSeconds"
+        static let gameMinutes = "roomGameMinutes"
+    }
+
     /// currentPeers에 같은 PeerID가 중복으로 들어가지 않도록 정리한다.
     func uniquePeers(_ peers: [PeerID]) -> [PeerID] {
         var seenRawIDs = Set<String>()
@@ -199,6 +258,46 @@ private extension MultipeerGameSession {
         browser = nil
         discoveredPeersByRawID.removeAll()
         discoveredMCPeersByRawID.removeAll()
+        discoveredRoomsByID.removeAll()
+        yieldSessionEvent(.discoveredRoomsChanged)
+    }
+
+    func makeHostedRoomSnapshot() -> RoomLobbySnapshot {
+        let fallbackName = "\(localPeer.displayName)의 방"
+        let settings = hostedRoomSettings ?? RoomSettings(
+            name: fallbackName,
+            maxCount: RoomSettings.default.maxCount,
+            hintCount: RoomSettings.default.hintCount,
+            hideTimeSeconds: RoomSettings.default.hideTimeSeconds,
+            gameMinutes: RoomSettings.default.gameMinutes,
+            taggerSelectionPolicy: RoomSettings.default.taggerSelectionPolicy
+        )
+        let roomName = settings.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedName = roomName.isEmpty ? fallbackName : roomName
+
+        return RoomLobbySnapshot(
+            id: localPeer.rawID,
+            host: localPeer,
+            name: normalizedName,
+            currentCount: min(settings.maxCount, max(1, connectedMCPeers.count + 1)),
+            maxCount: settings.maxCount,
+            hintCount: settings.hintCount,
+            hideTimeSeconds: settings.hideTimeSeconds,
+            gameMinutes: settings.gameMinutes
+        )
+    }
+
+    func makeDiscoveryInfo(for room: RoomLobbySnapshot) -> [String: String] {
+        [
+            DiscoveryKey.hostRawID: room.host.rawID,
+            DiscoveryKey.hostDisplayName: room.host.displayName,
+            DiscoveryKey.roomName: room.name,
+            DiscoveryKey.currentCount: String(room.currentCount),
+            DiscoveryKey.maxCount: String(room.maxCount),
+            DiscoveryKey.hintCount: String(room.hintCount),
+            DiscoveryKey.hideTimeSeconds: String(room.hideTimeSeconds),
+            DiscoveryKey.gameMinutes: String(room.gameMinutes)
+        ]
     }
 
     /// 이미 discoveryInfo를 통해 알고 있는 PeerID가 있으면 해당 값을 사용한다.
@@ -222,9 +321,59 @@ private extension MultipeerGameSession {
         discoveryInfo: [String: String]?
     ) -> PeerID {
         PeerID(
-            rawID: discoveryInfo?["hostRawID"] ?? peerID.displayName,
-            displayName: discoveryInfo?["hostDisplayName"] ?? peerID.displayName
+            rawID: discoveryInfo?[DiscoveryKey.hostRawID] ?? peerID.displayName,
+            displayName: discoveryInfo?[DiscoveryKey.hostDisplayName] ?? peerID.displayName
         )
+    }
+
+    func makeDiscoveredRoom(
+        from peerID: MCPeerID,
+        discoveryInfo: [String: String]?
+    ) -> RoomLobbySnapshot {
+        let host = makeDiscoveredPeerID(
+            from: peerID,
+            discoveryInfo: discoveryInfo
+        )
+        let fallbackName = "\(host.displayName)의 방"
+
+        return RoomLobbySnapshot(
+            id: host.rawID,
+            host: host,
+            name: discoveryInfo?[DiscoveryKey.roomName] ?? fallbackName,
+            currentCount: Int(
+                discoveryInfo?[DiscoveryKey.currentCount] ?? ""
+            ) ?? 1,
+            maxCount: Int(
+                discoveryInfo?[DiscoveryKey.maxCount] ?? ""
+            ) ?? RoomSettings.default.maxCount,
+            hintCount: Int(
+                discoveryInfo?[DiscoveryKey.hintCount] ?? ""
+            ) ?? RoomSettings.default.hintCount,
+            hideTimeSeconds: Int(
+                discoveryInfo?[DiscoveryKey.hideTimeSeconds] ?? ""
+            ) ?? RoomSettings.default.hideTimeSeconds,
+            gameMinutes: Int(
+                discoveryInfo?[DiscoveryKey.gameMinutes] ?? ""
+            ) ?? RoomSettings.default.gameMinutes
+        )
+    }
+
+    func yieldSessionEvent(_ event: SessionEvent) {
+        for continuation in eventContinuations.values {
+            continuation.yield(event)
+        }
+    }
+
+    func yieldNITokenEvent(_ event: NIDiscoveryTokenEvent) {
+        for continuation in niTokenContinuations.values {
+            continuation.yield(event)
+        }
+    }
+
+    func yieldGameFlowMessageEvent(_ event: GameFlowMessageEvent) {
+        for continuation in gameFlowMessageContinuations.values {
+            continuation.yield(event)
+        }
     }
 }
 
@@ -252,10 +401,16 @@ extension MultipeerGameSession: MCSessionDelegate {
             case .connected:
                 self.knownPeerIDsByDisplayName[peerID.displayName] = peer
                 self.stopBrowsingOnStateQueue()
-                self.eventContinuation?.yield(.peerConnected(peer))
+                self.yieldSessionEvent(.peerConnected(peer))
+                Task { @MainActor in
+                    self.refreshHostingAdvertisementIfNeeded()
+                }
 
             case .notConnected:
-                self.eventContinuation?.yield(.peerDisconnected(peer))
+                self.yieldSessionEvent(.peerDisconnected(peer))
+                Task { @MainActor in
+                    self.refreshHostingAdvertisementIfNeeded()
+                }
 
             case .connecting:
                 break
@@ -287,7 +442,7 @@ extension MultipeerGameSession: MCSessionDelegate {
                     )
                     let peer = self.makeKnownPeerID(from: peerID)
 
-                    self.niTokenContinuation?.yield(
+                    self.yieldNITokenEvent(
                         NIDiscoveryTokenEvent(
                             peer: peer,
                             token: token
@@ -301,7 +456,7 @@ extension MultipeerGameSession: MCSessionDelegate {
                     )
                     let peer = self.makeKnownPeerID(from: peerID)
 
-                    self.gameFlowMessageContinuation?.yield(
+                    self.yieldGameFlowMessageEvent(
                         GameFlowMessageEvent(
                             peer: peer,
                             message: gameFlowMessage
@@ -341,18 +496,39 @@ extension MultipeerGameSession: MCSessionDelegate {
 }
 
 extension MultipeerGameSession {
-    /// 호스트가 주변 기기에 자신의 세션을 광고하기 시작한다.
-    /// 방 만들기 플로우에서 호출되는 함수다.
-    func startHosting() {
-        Task { @MainActor in
-            let discoveryInfo = [
-                "hostRawID": self.localPeer.rawID,
-                "hostDisplayName": self.localPeer.displayName
-            ]
+    func configureHostedRoom(with settings: RoomSettings) {
+        stateQueue.sync {
+            self.hostedRoomSettings = settings
+        }
 
+        refreshHostingAdvertisementIfNeeded()
+    }
+
+    func disconnect() {
+        stateQueue.async {
+            self.stopHostingOnStateQueue()
+            self.stopBrowsingOnStateQueue()
+            self.session.disconnect()
+            self.connectedMCPeers.removeAll()
+            self.hostPeer = self.localPeer
+            self.hostedRoomSettings = nil
+        }
+    }
+
+    private func refreshHostingAdvertisementIfNeeded(force: Bool = false) {
+        let shouldRefresh = stateQueue.sync {
+            force || self.advertiser != nil
+        }
+
+        guard shouldRefresh else { return }
+
+        Task { @MainActor in
+            let hostedRoom = self.stateQueue.sync {
+                self.makeHostedRoomSnapshot()
+            }
             let advertiser = MCNearbyServiceAdvertiser(
                 peer: self.localMCPeerID,
-                discoveryInfo: discoveryInfo,
+                discoveryInfo: self.makeDiscoveryInfo(for: hostedRoom),
                 serviceType: self.serviceType
             )
 
@@ -364,6 +540,12 @@ extension MultipeerGameSession {
                 advertiser.startAdvertisingPeer()
             }
         }
+    }
+
+    /// 호스트가 주변 기기에 자신의 세션을 광고하기 시작한다.
+    /// 방 만들기 플로우에서 호출되는 함수다.
+    func startHosting() {
+        refreshHostingAdvertisementIfNeeded(force: true)
     }
 
     /// 호스트 광고를 중지한다.
@@ -601,13 +783,19 @@ extension MultipeerGameSession: MCNearbyServiceBrowserDelegate {
             from: peerID,
             discoveryInfo: info
         )
+        let room = makeDiscoveredRoom(
+            from: peerID,
+            discoveryInfo: info
+        )
 
         stateQueue.async {
             guard peer.rawID != self.localPeer.rawID else { return }
 
             self.discoveredPeersByRawID[peer.rawID] = peer
             self.discoveredMCPeersByRawID[peer.rawID] = peerID
+            self.discoveredRoomsByID[room.id] = room
             self.knownPeerIDsByDisplayName[peerID.displayName] = peer
+            self.yieldSessionEvent(.discoveredRoomsChanged)
         }
     }
 
@@ -621,6 +809,8 @@ extension MultipeerGameSession: MCNearbyServiceBrowserDelegate {
             if let knownPeer = self.knownPeerIDsByDisplayName[peerID.displayName] {
                 self.discoveredPeersByRawID.removeValue(forKey: knownPeer.rawID)
                 self.discoveredMCPeersByRawID.removeValue(forKey: knownPeer.rawID)
+                self.discoveredRoomsByID.removeValue(forKey: knownPeer.rawID)
+                self.yieldSessionEvent(.discoveredRoomsChanged)
                 return
             }
 
@@ -635,7 +825,10 @@ extension MultipeerGameSession: MCNearbyServiceBrowserDelegate {
             for rawID in rawIDs {
                 self.discoveredPeersByRawID.removeValue(forKey: rawID)
                 self.discoveredMCPeersByRawID.removeValue(forKey: rawID)
+                self.discoveredRoomsByID.removeValue(forKey: rawID)
             }
+
+            self.yieldSessionEvent(.discoveredRoomsChanged)
         }
     }
 

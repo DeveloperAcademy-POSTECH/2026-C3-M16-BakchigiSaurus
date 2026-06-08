@@ -29,12 +29,18 @@ final class NearbyInteractionManager: NSObject {
             return
         }
 
+        if let session {
+            session.pause()
+            session.invalidate()
+        }
+
         // NI 세션 생성
         let newSession = NISession()
         newSession.delegate = self
 
         session = newSession
         sharedTokenWithPeer = false
+        peerDiscoveryToken = nil
         state = .ready
     }
 
@@ -91,14 +97,22 @@ final class NearbyInteractionManager: NSObject {
         configuration.isCameraAssistanceEnabled = true
 
         session?.run(configuration)
+        sharedTokenWithPeer = true
     }
 
     /// 세션  종료  함수
     func invalidateSession() {
+        session?.pause()
         session?.invalidate()
         session = nil
+        peerDiscoveryToken = nil
         sharedTokenWithPeer = false
         state = .invalidated
+    }
+
+    deinit {
+        session?.pause()
+        session?.invalidate()
     }
 }
 
