@@ -63,7 +63,7 @@ struct TaggedCheckView: View {
 
             HStack(spacing: 16) {
                 Button("아니요") {
-                    pendingAnswer = .no
+                    pendingAnswer = .negative
                     isShowingConfirmAlert = true
                 }
                 .buttonStyle(
@@ -85,7 +85,7 @@ struct TaggedCheckView: View {
         switch pendingAnswer {
         case .yes:
             "정말로 잡혔나요?"
-        case .no:
+        case .negative:
             "정말로 잡히지 않았나요?"
         case nil:
             ""
@@ -96,7 +96,7 @@ struct TaggedCheckView: View {
         switch pendingAnswer {
         case .yes:
             "술래에게 들켰을 경우에만 '네'를 눌러주세요"
-        case .no:
+        case .negative:
             "술래에게 들키지 않은 경우에만 '네'를 눌러주세요"
         case nil:
             ""

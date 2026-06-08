@@ -9,5 +9,5 @@ import Foundation
 
 enum TaggedAnswer {
     case yes
-    case no
+    case negative
 }
