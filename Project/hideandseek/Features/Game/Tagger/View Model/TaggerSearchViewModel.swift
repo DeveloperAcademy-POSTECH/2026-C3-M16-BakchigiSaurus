@@ -37,32 +37,48 @@ final class TaggerSearchViewModel {
         setupNearbyInteractionCallbacks()
     }
     
-    // 4. NI 읽기값 콜백 설정 수정 (타입 불일치 및 클로저 에러 해결)
-    private func setupNearbyInteractionCallbacks() {
-        self.niManager.onReadingUpdated = { [weak self] reading in
-            guard let self = self else { return }
-            
-            // 주입받은 읽기값 구조(예: reading)에서 필요한 정보가 들어있다고 가정하고 안전하게 추출해야 합니다.
-            // 에러 로그 상 'NearbyInteractionReading' 타입이 들어오는 것으로 보입니다.
-            // 만약 매니저 코드 내부 구조가 다르면 이 부분을 프로젝트 내부 PeerID 매핑에 맞게 맞춰야 합니다.
-            
-            // 아래는 예시 타겟 설정입니다. 프로젝트 내부 구조에 맞춰 변환하세요.
-            // guard let targetPeerID = reading.peerID else { return }
-            
-            Task { @MainActor in
-                // 예시로 첫 번째 참가자의 ID를 임시 매핑 로직으로 처리하거나, 실제 맵에서 찾아야 합니다.
-                // 리드 피드백 3번에 맞춰 구현:
-                /*
-                await self.gameModel.send(.observeProximity(
-                    hiderID: hiderID,
-                    distance: reading.distance,
-                    direction: reading.direction,
-                    observedAt: Date()
-                ))
-                */
+    // 4. NI 읽기값 콜백 설정
+        private func setupNearbyInteractionCallbacks() {
+            // 💡 중요: Swift가 타입을 헷갈려하지 않도록 (reading: NearbyInteractionReading) 명시합니다.
+            // 만약 매니저가 peerID도 같이 던져주는 스펙이 확실하다면 { [weak self] reading, peerID in ... } 으로 유지하되,
+            // 에러가 지속된다면 아래처럼 reading 하나만 받아와서 내부에서 처리하는 것이 안전합니다.
+            self.niManager.onReadingUpdated = { [weak self] (reading: NearbyInteractionReading) in
+                guard let self = self else { return }
+                
+                // 💡 1. 방향 벡터 타입 변환 (SIMD3<Float>? -> DirectionVector?)
+                // 리드 개발자님이 만들어둔 DirectionVector에 SIMD3를 넣어서 변환하는 이니셜라이저가 있다고 가정합니다.
+                // 만약 변환 생성자가 없다면 우선 컴파일을 위해 nil을 넣어두고 구조를 확인해야 합니다.
+                let convertedDirection: DirectionVector? = {
+                    if let simdDir = reading.direction {
+                        return DirectionVector(simdDir) // 혹은 프로젝트 구조에 맞는 변환 방식 적용
+                    }
+                    return nil
+                }()
+                
+                // 💡 2. reading 내부에 식별자가 없으므로, 현재 추적 중인 타겟 ID를 기반으로 이벤트를 보냅니다.
+                // (술래가 찾고 있는 플레이어 ID가 이미 결정되어 있다고 가정)
+                guard let hiderID = self.trackingTargetID else { return }
+                
+                Task { @MainActor in
+                    // 실시간 읽기값을 GameModel 엔진으로 전송
+                    await self.gameModel.send(.observeProximity(
+                        hiderID: hiderID,
+                        distance: reading.distance,
+                        direction: convertedDirection, // 변환된 타입 전달
+                        observedAt: reading.timestamp
+                    ))
+                    
+                    // 힌트가 활성화되어 있다면 UI에 방향/거리 표시
+                    if self.isHintActive {
+                        self.nearestHiderDistance = reading.distance
+                        self.nearestHiderDirection = convertedDirection // 타입 일치 완료
+                    }
+                    
+                    // 5m 이내 5초 감시 로직 실행
+                    self.checkProximityAlert(hiderID: hiderID, distance: reading.distance)
+                }
             }
         }
-    }
     
     // 5. 5m 이내에 5초 동안 머물렀는지 체크하는 로직 (MainActor 격리 해결)
     private func checkProximityAlert(hiderID: PlayerID, distance: Float?) {
