@@ -63,7 +63,7 @@ struct RoomDetailView: View {
 
     private var footer: some View {
         VStack(spacing: 12) {
-            if model.canStartGame {
+            if model.isHostInActiveRoom {
                 Text("참여자를 선택해 술래로 지정하세요. 선택하지 않으면 시작 시 랜덤으로 정해집니다")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
