@@ -14,7 +14,7 @@ import MultipeerConnectivity
 @MainActor
 final class TaggerSearchViewModel {
     // 1. 외부에서 주입받을 의존성 (GameModel 및 기존 세션)
-    private let gameModel: GameModel
+    let gameModel: GameModel
     private let mcSession: MultipeerGameSession
     private let niManager: NearbyInteractionManager
     
