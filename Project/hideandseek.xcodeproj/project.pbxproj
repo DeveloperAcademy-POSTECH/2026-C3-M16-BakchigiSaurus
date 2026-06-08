@@ -6,11 +6,59 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		57DC7D192FCFCA4A00EB2EA9 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 57DC7D182FCFCA4A00EB2EA9 /* WidgetKit.framework */; };
+		57DC7D1B2FCFCA4A00EB2EA9 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 57DC7D1A2FCFCA4A00EB2EA9 /* SwiftUI.framework */; };
+		57DC7D2C2FCFCA4A00EB2EA9 /* HideAndSeekLiveActivityExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 57DC7D162FCFCA4A00EB2EA9 /* HideAndSeekLiveActivityExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		57DC7D2A2FCFCA4A00EB2EA9 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 96888C1D2FC7E3990080F374 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 57DC7D152FCFCA4A00EB2EA9;
+			remoteInfo = HideAndSeekLiveActivityExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		57DC7D312FCFCA4A00EB2EA9 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				57DC7D2C2FCFCA4A00EB2EA9 /* HideAndSeekLiveActivityExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		57DC7D162FCFCA4A00EB2EA9 /* HideAndSeekLiveActivityExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = HideAndSeekLiveActivityExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		57DC7D182FCFCA4A00EB2EA9 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		57DC7D1A2FCFCA4A00EB2EA9 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		96888C252FC7E3990080F374 /* hideandseek.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = hideandseek.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		57DC7D302FCFCA4A00EB2EA9 /* Exceptions for "HideAndSeekLiveActivity" folder in "HideAndSeekLiveActivityExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 57DC7D152FCFCA4A00EB2EA9 /* HideAndSeekLiveActivityExtension */;
+		};
+		57DC7D352FCFCC0700EB2EA9 /* Exceptions for "hideandseek" folder in "HideAndSeekLiveActivityExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Shared/Components/ActivityAttributes.swift,
+				Shared/Managers/LiveActivityManager.swift,
+			);
+			target = 57DC7D152FCFCA4A00EB2EA9 /* HideAndSeekLiveActivityExtension */;
+		};
 		63EE4A2F2FCC24200004B6B7 /* Exceptions for "hideandseek" folder in "hideandseek" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -21,10 +69,19 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		57DC7D1C2FCFCA4A00EB2EA9 /* HideAndSeekLiveActivity */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				57DC7D302FCFCA4A00EB2EA9 /* Exceptions for "HideAndSeekLiveActivity" folder in "HideAndSeekLiveActivityExtension" target */,
+			);
+			path = HideAndSeekLiveActivity;
+			sourceTree = "<group>";
+		};
 		96888C272FC7E3990080F374 /* hideandseek */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				63EE4A2F2FCC24200004B6B7 /* Exceptions for "hideandseek" folder in "hideandseek" target */,
+				57DC7D352FCFCC0700EB2EA9 /* Exceptions for "hideandseek" folder in "HideAndSeekLiveActivityExtension" target */,
 			);
 			path = hideandseek;
 			sourceTree = "<group>";
@@ -32,6 +89,15 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		57DC7D132FCFCA4A00EB2EA9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				57DC7D1B2FCFCA4A00EB2EA9 /* SwiftUI.framework in Frameworks */,
+				57DC7D192FCFCA4A00EB2EA9 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		96888C222FC7E3990080F374 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -42,10 +108,21 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		57DC7D172FCFCA4A00EB2EA9 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				57DC7D182FCFCA4A00EB2EA9 /* WidgetKit.framework */,
+				57DC7D1A2FCFCA4A00EB2EA9 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		96888C1C2FC7E3990080F374 = {
 			isa = PBXGroup;
 			children = (
 				96888C272FC7E3990080F374 /* hideandseek */,
+				57DC7D1C2FCFCA4A00EB2EA9 /* HideAndSeekLiveActivity */,
+				57DC7D172FCFCA4A00EB2EA9 /* Frameworks */,
 				96888C262FC7E3990080F374 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -54,6 +131,7 @@
 			isa = PBXGroup;
 			children = (
 				96888C252FC7E3990080F374 /* hideandseek.app */,
+				57DC7D162FCFCA4A00EB2EA9 /* HideAndSeekLiveActivityExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -61,6 +139,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		57DC7D152FCFCA4A00EB2EA9 /* HideAndSeekLiveActivityExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 57DC7D2D2FCFCA4A00EB2EA9 /* Build configuration list for PBXNativeTarget "HideAndSeekLiveActivityExtension" */;
+			buildPhases = (
+				57DC7D122FCFCA4A00EB2EA9 /* Sources */,
+				57DC7D132FCFCA4A00EB2EA9 /* Frameworks */,
+				57DC7D142FCFCA4A00EB2EA9 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				57DC7D1C2FCFCA4A00EB2EA9 /* HideAndSeekLiveActivity */,
+			);
+			name = HideAndSeekLiveActivityExtension;
+			packageProductDependencies = (
+			);
+			productName = HideAndSeekLiveActivityExtension;
+			productReference = 57DC7D162FCFCA4A00EB2EA9 /* HideAndSeekLiveActivityExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		96888C242FC7E3990080F374 /* hideandseek */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 96888C302FC7E39A0080F374 /* Build configuration list for PBXNativeTarget "hideandseek" */;
@@ -69,10 +169,12 @@
 				96888C222FC7E3990080F374 /* Frameworks */,
 				96888C232FC7E3990080F374 /* Resources */,
 				96D7F8892FC84C8A002A6A32 /* ShellScript */,
+				57DC7D312FCFCA4A00EB2EA9 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				57DC7D2B2FCFCA4A00EB2EA9 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				96888C272FC7E3990080F374 /* hideandseek */,
@@ -91,9 +193,12 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 2640;
+				LastSwiftUpdateCheck = 2650;
 				LastUpgradeCheck = 2640;
 				TargetAttributes = {
+					57DC7D152FCFCA4A00EB2EA9 = {
+						CreatedOnToolsVersion = 26.5;
+					};
 					96888C242FC7E3990080F374 = {
 						CreatedOnToolsVersion = 26.4;
 					};
@@ -114,11 +219,19 @@
 			projectRoot = "";
 			targets = (
 				96888C242FC7E3990080F374 /* hideandseek */,
+				57DC7D152FCFCA4A00EB2EA9 /* HideAndSeekLiveActivityExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		57DC7D142FCFCA4A00EB2EA9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		96888C232FC7E3990080F374 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -150,6 +263,13 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		57DC7D122FCFCA4A00EB2EA9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		96888C212FC7E3990080F374 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -159,7 +279,81 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		57DC7D2B2FCFCA4A00EB2EA9 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 57DC7D152FCFCA4A00EB2EA9 /* HideAndSeekLiveActivityExtension */;
+			targetProxy = 57DC7D2A2FCFCA4A00EB2EA9 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		57DC7D2E2FCFCA4A00EB2EA9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 42K8379729;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = HideAndSeekLiveActivity/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = HideAndSeekLiveActivity;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bakchigisaurus.hideandseek.HideAndSeekLiveActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		57DC7D2F2FCFCA4A00EB2EA9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 42K8379729;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = HideAndSeekLiveActivity/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = HideAndSeekLiveActivity;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bakchigisaurus.hideandseek.HideAndSeekLiveActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		96888C2E2FC7E39A0080F374 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -212,7 +406,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -269,7 +463,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -284,14 +478,18 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = P9K4FP6UPH;
+				DEVELOPMENT_TEAM = 42K8379729;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = hideandseek/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "플레이중 장면을 녹화하기 위해서 권한이 필요합니다.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "근처 친구와 숨바꼭질 게임을 연결하기 위해 로컬 네트워크 접근이 필요합니다.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "플레이중 소리를 녹화하기 위해서 권한이 필요합니다.";
+				INFOPLIST_KEY_NSNearbyInteractionUsageDescription = "게임 중 상대방과의 거리와 방향을 확인하기 위해 Nearby interaction을 사용합니다";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -306,7 +504,6 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.bakchigisaurus.hideandseek;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "박치기숨바꼭질";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
@@ -322,14 +519,18 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = P9K4FP6UPH;
+				DEVELOPMENT_TEAM = 42K8379729;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = hideandseek/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "플레이중 장면을 녹화하기 위해서 권한이 필요합니다.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "근처 친구와 숨바꼭질 게임을 연결하기 위해 로컬 네트워크 접근이 필요합니다.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "플레이중 소리를 녹화하기 위해서 권한이 필요합니다.";
+				INFOPLIST_KEY_NSNearbyInteractionUsageDescription = "게임 중 상대방과의 거리와 방향을 확인하기 위해 Nearby interaction을 사용합니다";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -344,7 +545,6 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.bakchigisaurus.hideandseek;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "박치기숨바꼭질";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
@@ -358,6 +558,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		57DC7D2D2FCFCA4A00EB2EA9 /* Build configuration list for PBXNativeTarget "HideAndSeekLiveActivityExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				57DC7D2E2FCFCA4A00EB2EA9 /* Debug */,
+				57DC7D2F2FCFCA4A00EB2EA9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		96888C202FC7E3990080F374 /* Build configuration list for PBXProject "hideandseek" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

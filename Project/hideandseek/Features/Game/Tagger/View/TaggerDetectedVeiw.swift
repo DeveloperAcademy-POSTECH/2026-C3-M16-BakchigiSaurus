@@ -8,11 +8,45 @@
 import SwiftUI
 
 struct TaggerDetectedVeiw: View {
+    let camera: CameraModel
+    let isHiderNearby: Bool
+    let isUsingHint: Bool
+    let timeLeft: Int
+    @State private var isHiderDetected: Bool = true
+
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        ZStack(alignment: .top) {
+            GameCameraBackground(
+                camera: camera,
+                isRevealed: isHiderNearby && isUsingHint,
+                isRecording: isHiderNearby
+            )
+            .ignoresSafeArea()
+
+            VStack {
+                GameTimer(timeLeft: timeLeft)
+                Spacer()
+                Text("녹화중이에요")
+                    .font(.largeTitle.bold())
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.bottom, 7)
+            }
+            .padding(.horizontal, 36)
+
+            if isHiderDetected {
+                FakeDynamicIslandView(isExpanded: true) {
+                    IslandCompactContent()
+                } expanded: {
+                    IslandExpandedContent(timeLeft: 180, type: .hiderNearby)
+                }
+                .padding(.top, 12)
+                .ignoresSafeArea()
+            }
+        }
     }
 }
 
 #Preview {
-    TaggerDetectedVeiw()
+    TaggerDetectedVeiw(camera: CameraModel(), isHiderNearby: true, isUsingHint: false, timeLeft: 300)
 }

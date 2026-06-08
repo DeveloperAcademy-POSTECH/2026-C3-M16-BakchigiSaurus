@@ -8,15 +8,26 @@
 import SwiftUI
 
 struct HintFailureView: View {
+    let camera: CameraModel
+    let isHiderNearby: Bool
+    let isUsingHint: Bool
+    let timeLeft: Int
+
+    @Environment(\.dismiss) private var dismiss
+
     var body: some View {
         ZStack {
-//            TODO: CameraView 호출
+            GameCameraBackground(
+                camera: camera,
+                isRevealed: isHiderNearby && isUsingHint,
+                isRecording: isHiderNearby
+            )
             Color.appDanger
                 .ignoresSafeArea()
                 .opacity(0.75)
             ZStack {
                 VStack {
-                    GameTimer(timeLeft: 300)
+                    GameTimer(timeLeft: timeLeft)
                     Spacer()
                     Image(systemName: "xmark")
                         .font(.system(size: 200))
@@ -34,26 +45,23 @@ struct HintFailureView: View {
                                     .font(.largeTitle.bold())
                                     .foregroundStyle(.secondary)
                             }
-                            Button {} label: {
-                                Label("힌트 (n개 남음)", systemImage: "magnifyingglass")
-                                    .padding(.vertical, 10)
-                                    .font(.title3)
-                            }
-                            .buttonStyle(.glass)
-                            .cornerRadius(20)
-                            .padding(.bottom, 7)
-                            .opacity(0)
-                            .disabled(true)
                         }
                         Spacer()
                     }
+                    .padding(.bottom)
                 }
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, 36)
+        }
+        .onAppear {
+            Task {
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                dismiss()
+            }
         }
     }
 }
 
 #Preview {
-    HintFailureView()
+    HintFailureView(camera: CameraModel(), isHiderNearby: false, isUsingHint: false, timeLeft: 300)
 }
