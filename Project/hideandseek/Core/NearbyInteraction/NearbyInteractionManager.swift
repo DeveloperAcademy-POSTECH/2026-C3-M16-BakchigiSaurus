@@ -19,9 +19,9 @@ import NearbyInteraction
 final class NearbyInteractionManager: NSObject {
     private var session: NISession?
     var onReadingUpdated: ((NearbyInteractionReading) -> Void)? // 거리, 방향 값 들어왔을 때 외부에 콜백
+    var onSessionRestartRequired: (() -> Void)? // 연결 객체에 재시작 필요를 알려주는 콜백
 
     private(set) var state: NearbyInteractionState = .idle
-    private(set) var sharedTokenWithPeer = false
     private var peerDiscoveryToken: NIDiscoveryToken? // 상대방의 discovery token을 저장해두는 변수
 
     /// 초기화 함수
@@ -43,7 +43,6 @@ final class NearbyInteractionManager: NSObject {
         newSession.delegate = self
 
         session = newSession
-        sharedTokenWithPeer = false
         state = .ready
     }
 
@@ -85,7 +84,6 @@ final class NearbyInteractionManager: NSObject {
     func invalidateSession() {
         session?.invalidate()
         session = nil
-        sharedTokenWithPeer = false
         peerDiscoveryToken = nil // 세션 종료시 상대토큰 남는 것 초기화
         state = .invalidated
     }
@@ -131,8 +129,11 @@ extension NearbyInteractionManager: NISessionDelegate {
         case .peerEnded:
             state = .peerEnded
 
-        case .timeout:
+        case .timeout: // 새 NI 생성 및 token 수신 필요
             state = .peerLost
+            self.session = nil
+            peerDiscoveryToken = nil
+            onSessionRestartRequired?()
 
         default:
             state = .failed(.peerRemoved(reason))
@@ -163,7 +164,6 @@ extension NearbyInteractionManager: NISessionDelegate {
     func session(_ session: NISession, didInvalidateWith error: Error) {
         self.session = nil
         peerDiscoveryToken = nil // 재사용 불가한 peer token 정리
-        sharedTokenWithPeer = false
         state = .failed(.sessionInvalidated(error))
     }
 }
