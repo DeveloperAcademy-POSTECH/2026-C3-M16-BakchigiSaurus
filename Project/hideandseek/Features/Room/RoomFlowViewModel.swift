@@ -37,10 +37,7 @@ final class RoomFlowViewModel: ObservableObject {
     ) {
         self.session = session
         self.niManager = niManager
-        self.connection = McniConnection(
-            mcManager: session,
-            niManager: niManager
-        )
+        self.connection = McniConnection(mcManager: session)
         self.localPeer = session.localPeer
         self.currentPeers = session.currentPeers
 

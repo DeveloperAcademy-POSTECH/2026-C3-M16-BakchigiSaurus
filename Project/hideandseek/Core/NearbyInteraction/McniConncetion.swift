@@ -11,15 +11,22 @@ import NearbyInteraction
 
 final class McniConnection {
     private let mcSession: MultipeerGameSession
-    private let niManager: NearbyInteractionManager
+    private let trackerPool: NearbyTrackerPool
 
     private var sessionEventTask: Task<Void, Error>?
     private var niTokenEventTask: Task<Void, Error>?
-    private var tokenExchangePeerRawID: String?
 
-    init(mcManager: MultipeerGameSession, niManager: NearbyInteractionManager) {
+    var onPeerReadingUpdated: ((PeerID, NearbyInteractionReading) -> Void)? {
+        get { trackerPool.onPeerReadingUpdated }
+        set { trackerPool.onPeerReadingUpdated = newValue }
+    }
+
+    init(
+        mcManager: MultipeerGameSession,
+        trackerPool: NearbyTrackerPool? = nil
+    ) {
         self.mcSession = mcManager
-        self.niManager = niManager
+        self.trackerPool = trackerPool ?? NearbyTrackerPool(session: mcManager)
 
         observeSessionEvents()
         observeNITokenEvents()
@@ -33,14 +40,15 @@ final class McniConnection {
             for await event in mcSession.makeEventStream() {
                 switch event {
                 case let .peerConnected(peer):
-                    if tokenExchangePeerRawID != peer.rawID {
-                        print("MC peer Connected:", peer)
-                        startNITokenExchange(with: peer)
+                    print("MC peer Connected:", peer)
+                    await MainActor.run {
+                        self.trackerPool.startTracking(peer)
                     }
 
-                case .peerDisconnected:
-                    tokenExchangePeerRawID = nil
-                    niManager.invalidateSession()
+                case let .peerDisconnected(peer):
+                    await MainActor.run {
+                        self.trackerPool.stopTracking(peer)
+                    }
 
                 case .discoveredRoomsChanged:
                     break
@@ -49,30 +57,14 @@ final class McniConnection {
         }
     }
 
-    /// 내 NI token 을 상대에게 보내는 함수
-    /// NI 세션 시작 후 내 discoveryToken 을 가져와서 MC 를 통해 상대 peer 에게 내 token 보낸다
-    private func startNITokenExchange(with peer: PeerID) {
-        tokenExchangePeerRawID = peer.rawID
-        niManager.startSession()
-
-        guard let localToken = niManager.getMyDiscoveryToken() else {
-            tokenExchangePeerRawID = nil
-            print("Local NI token 생성 실패")
-            return
-        }
-
-        mcSession.sendNIDiscoveryToken(localToken, to: peer)
-        print("Local NI token sent to peer:", peer)
-    }
-
-    /// NI token 이벤트 구독 예정
-    /// 상대가 보내준 NI Token 을 기다리는 함수
     private func observeNITokenEvents() {
         niTokenEventTask = Task { [weak self] in
             guard let self else { return }
 
             for await event in mcSession.makeNIDiscoveryTokenStream() {
-                niManager.run(with: event.token)
+                await MainActor.run {
+                    self.trackerPool.receiveToken(event.token, from: event.peer)
+                }
             }
         }
     }
@@ -80,7 +72,9 @@ final class McniConnection {
     deinit {
         sessionEventTask?.cancel()
         niTokenEventTask?.cancel()
-        niManager.invalidateSession()
+        Task { @MainActor [trackerPool] in
+            trackerPool.stopAll()
+        }
     }
 }
 
@@ -89,8 +83,7 @@ final class McniConnectionHolder: ObservableObject {
 
     init() {
         let mcSession = MultipeerGameSession()
-        let niManager = NearbyInteractionManager()
 
-        self.connection = McniConnection(mcManager: mcSession, niManager: niManager)
+        self.connection = McniConnection(mcManager: mcSession)
     }
 }

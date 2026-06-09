@@ -11,7 +11,6 @@ import Foundation
 @MainActor
 final class NIDebugViewModel: ObservableObject {
     private let session: MultipeerGameSession
-    private let niManager: NearbyInteractionManager
     private let connection: McniConnection
 
     @Published private(set) var localPeer: PeerID
@@ -26,14 +25,9 @@ final class NIDebugViewModel: ObservableObject {
 
     init() {
         let session = MultipeerGameSession()
-        let niManager = NearbyInteractionManager()
 
         self.session = session
-        self.niManager = niManager
-        self.connection = McniConnection(
-            mcManager: session,
-            niManager: niManager
-        )
+        self.connection = McniConnection(mcManager: session)
 
         self.localPeer = session.localPeer
         self.hostPeer = session.hostPeer
@@ -82,14 +76,13 @@ final class NIDebugViewModel: ObservableObject {
     func stop() {
         session.stopHosting()
         session.stopBrowsing()
-        niManager.invalidateSession()
 
         appendLog("MC 및 NI 세션 종료")
         refreshPeers()
     }
 
     private func observeNIReadings() {
-        niManager.onReadingUpdated = { [weak self] reading in
+        connection.onPeerReadingUpdated = { [weak self] _, reading in
             Task { @MainActor in
                 self?.distanceText = reading.distance.map {
                     String(format: "%.2f m", $0)
