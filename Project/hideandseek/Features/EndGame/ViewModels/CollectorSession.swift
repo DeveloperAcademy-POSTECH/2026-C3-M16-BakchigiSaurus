@@ -54,6 +54,9 @@ final class CollectorSession {
             case let .peerDisconnected(peer):
                 connectedPeers.removeAll { $0 == peer }
                 if peer == session.hostPeer { isHostReachable = false } // 호스트 끊김
+
+            case .discoveredRoomsChanged:
+                break
             }
         }
     }

@@ -8,10 +8,32 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var connectionHolder = McniConnectionHolder()
+    @StateObject private var roomFlow = RoomFlowViewModel()
+    @State private var showingCreateRoom = false
 
     var body: some View {
-        GameRootView()
+        NavigationStack {
+            Group {
+                if let activeRoom = roomFlow.activeRoom {
+                    RoomDetailView(
+                        model: roomFlow,
+                        room: activeRoom
+                    )
+                } else {
+                    RoomListView(
+                        model: roomFlow,
+                        showingCreateRoom: $showingCreateRoom
+                    )
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
+        .sheet(isPresented: $showingCreateRoom) {
+            NavigationStack {
+                RoomCreateView(model: roomFlow)
+            }
+            .preferredColorScheme(.dark)
+        }
     }
 }
 

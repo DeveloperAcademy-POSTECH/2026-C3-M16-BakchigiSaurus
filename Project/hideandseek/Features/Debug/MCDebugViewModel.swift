@@ -107,6 +107,9 @@ final class MCDebugViewModel: ObservableObject {
 
         case let .peerDisconnected(peer):
             appendLog("연결 끊김: \(peer.displayName)")
+
+        case .discoveredRoomsChanged:
+            appendLog("발견된 방 목록 갱신")
         }
 
         refreshPeers()

@@ -8,6 +8,9 @@
 import SwiftUI
 
 struct RoomCreateView: View {
+    @ObservedObject var model: RoomFlowViewModel
+    @Environment(\.dismiss) private var dismiss
+
     @State private var roomName: String = ""
     @State private var hintCount: Int = 3
     @State private var hideTime: Int = 10
@@ -32,7 +35,15 @@ struct RoomCreateView: View {
             }
             .scrollDismissesKeyboard(.immediately)
 
-            Button {} label: {
+            Button {
+                model.createRoom(
+                    name: roomName,
+                    hintCount: hintCount,
+                    hideTimeSeconds: hideTime,
+                    gameMinutes: gameMinutes
+                )
+                dismiss()
+            } label: {
                 Text("설정 완료")
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
@@ -45,6 +56,15 @@ struct RoomCreateView: View {
         .background(.appBackground)
         .navigationTitle("방 설정")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    dismiss()
+                } label: {
+                    Label("goback", systemImage: "chevron.left")
+                }
+            }
+        }
         .toolbarBackground(.black, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
     }
@@ -150,7 +170,7 @@ struct RoomCreateView: View {
 
 #Preview {
     NavigationStack {
-        RoomCreateView()
+        RoomCreateView(model: RoomFlowViewModel())
     }
     .preferredColorScheme(.dark)
 }
