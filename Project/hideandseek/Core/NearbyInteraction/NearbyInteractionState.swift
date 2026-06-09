@@ -20,7 +20,7 @@
 import Foundation
 import NearbyInteraction
 
-/// NI의 상태
+/// NI 세션의 상태
 enum NearbyInteractionState {
     case idle // 아무것도 시작 안한 상태
     case ready // NI 세션 만듦
@@ -39,9 +39,6 @@ enum NearbyInteractionError: Error {
     case missingSession // 세션 없는데 뭔가 하려고 함
     case sessionInvalidated(Error) // 세션이 종료되면서 실제 에러를 감쌈
 
-    // 토큰 변환 실패 case 추가
-    case missingDiscoveryToken
-    case invalidDiscoveryToken
 
     case peerRemoved(NINearbyObject.RemovalReason)
 }

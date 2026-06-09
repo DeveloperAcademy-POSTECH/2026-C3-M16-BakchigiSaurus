@@ -1,5 +1,5 @@
 //
-//  McniConncetion.swift
+//  McniConnection.swift
 //  hideandseek
 //
 //  Created by 허지우 on 6/5/26.

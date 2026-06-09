@@ -9,6 +9,13 @@
 import Foundation
 import NearbyInteraction
 
+/// startSession( ) 으로 NI 세션을 준비합니다.
+/// getMyDiscoveryToken( ) 으로 내 토큰을 가져와 MC로 전송합니다.
+/// 상대 토큰을 받으면 run 으로 측정을 시작합니다.
+/// onReadingUpdated 에서 거리와 방향을 받습니다.
+/// 게임 종료시 invalidateSession( ) 을 호출합니다.
+
+// 거리 방향 측정값이 갱신될 때 호출, 실제 게임 ViewModel에서 한번 등록해 사용
 final class NearbyInteractionManager: NSObject {
     private var session: NISession?
     var onReadingUpdated: ((NearbyInteractionReading) -> Void)? // 거리, 방향 값 들어왔을 때 외부에 콜백
@@ -22,7 +29,9 @@ final class NearbyInteractionManager: NSObject {
         super.init()
     }
 
-    /// NI 세션을 시작 준비하는 함수
+    /// NI 세션을 생성하고 측정 준비상태로 전환합니다.
+    /// 상대 토큰으로 측정 시작전에 호출해야 합니다.
+    /// McniConnection 을 사용하면 MC 연결 완료시 자동으로 호출됩니다.
     func startSession() {
         guard NISession.deviceCapabilities.supportsPreciseDistanceMeasurement else {
             state = .unsupported
@@ -38,13 +47,16 @@ final class NearbyInteractionManager: NSObject {
         state = .ready
     }
 
-    /// NISession에서 내 token 가져오기
+    /// 상대에게 전송할 내 NI DiscoveryToken 반환 (가져오기)
     func getMyDiscoveryToken() -> NIDiscoveryToken? {
         session?.discoveryToken
     }
 
 
     /// NI Session 실행 함수
+    /// 상대 기기의 DiscoveryToken 으로 거리 및 방향 측정을 시작합니다.
+    /// MC 에서 상대 토큰을 받은 뒤 호출, (McnoConnection 사용시 자동 호출)
+    /// parameter peerToken: MC를 통해 받은 상대 기기의 DiscoveryToken
     func run(with peerToken: NIDiscoveryToken) { // NI에서 부르는 상대토큰 변수명: peerToken
 
         guard session != nil else {
@@ -68,6 +80,8 @@ final class NearbyInteractionManager: NSObject {
     }
 
     /// 세션  종료  함수
+    /// NI 측정을 종료하고 세션 및 상대 토큰을 초기화 합니다.
+    /// 게임 종료 또는 상대방 이탈시 자동 처리(호출) 됩니다.
     func invalidateSession() {
         session?.invalidate()
         session = nil
@@ -78,6 +92,7 @@ final class NearbyInteractionManager: NSObject {
 }
 
 /// NI가 주변 기기 정보를 업데이트 했을 때 자동으로 호출되는 함수
+/// 직접 호출하지 않습니다.
 extension NearbyInteractionManager: NISessionDelegate {
     /// 시스템  호출  콜백
     func sessionDidStartRunning(_ session: NISession) {
