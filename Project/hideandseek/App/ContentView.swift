@@ -8,14 +8,32 @@
 import SwiftUI
 
 struct ContentView: View {
+    @StateObject private var roomFlow = RoomFlowViewModel()
+    @State private var showingCreateRoom = false
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        NavigationStack {
+            Group {
+                if let activeRoom = roomFlow.activeRoom {
+                    RoomDetailView(
+                        model: roomFlow,
+                        room: activeRoom
+                    )
+                } else {
+                    RoomListView(
+                        model: roomFlow,
+                        showingCreateRoom: $showingCreateRoom
+                    )
+                }
+            }
         }
-        .padding()
+        .preferredColorScheme(.dark)
+        .sheet(isPresented: $showingCreateRoom) {
+            NavigationStack {
+                RoomCreateView(model: roomFlow)
+            }
+            .preferredColorScheme(.dark)
+        }
     }
 }
 

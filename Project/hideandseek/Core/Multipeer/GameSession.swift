@@ -11,7 +11,7 @@
 import Foundation
 
 /// 게임 참가자 식별자. (MC의 `MCPeerID`를 감싸는 추상 타입)
-struct PeerID: Hashable {
+struct PeerID: Codable, Hashable {
     /// MCPeerID 매핑용 안정 식별자
     let rawID: String
     /// 예: "캄초의 iPhone"
@@ -22,6 +22,7 @@ struct PeerID: Hashable {
 enum SessionEvent {
     case peerConnected(PeerID)
     case peerDisconnected(PeerID)
+    case discoveredRoomsChanged
 }
 
 /// 수집 세션이 MC에게 요구하는 최소 인터페이스 (MC 담당자의 구현 스펙).
