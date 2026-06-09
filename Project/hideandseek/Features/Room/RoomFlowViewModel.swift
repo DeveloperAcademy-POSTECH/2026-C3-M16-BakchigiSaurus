@@ -16,6 +16,7 @@ final class RoomFlowViewModel: ObservableObject {
 
     private var sessionEventTask: Task<Void, Never>?
     private var gameEventTask: Task<Void, Never>?
+    private var gameFlowTask: Task<Void, Never>?
     private var playerIDByPeerRawID: [String: PlayerID] = [:]
     private var peerIDByPlayerID: [PlayerID: PeerID] = [:]
 
@@ -43,12 +44,14 @@ final class RoomFlowViewModel: ObservableObject {
 
         observeSessionEvents()
         observeGameEvents()
+        observeGameFlowMessages()
         refreshSnapshot()
     }
 
     deinit {
         sessionEventTask?.cancel()
         gameEventTask?.cancel()
+        gameFlowTask?.cancel()
         niManager.invalidateSession()
     }
 
@@ -202,6 +205,16 @@ final class RoomFlowViewModel: ObservableObject {
         }
     }
 
+    private func observeGameFlowMessages() {
+        gameFlowTask = Task { [weak self, session] in
+            for await event in session.makeGameFlowMessageStream() {
+                await MainActor.run {
+                    self?.handleLegacyGameFlowMessage(event.message, from: event.peer)
+                }
+            }
+        }
+    }
+
     private func handleSessionEvent(_ event: SessionEvent) {
         refreshSnapshot()
 
@@ -241,6 +254,12 @@ final class RoomFlowViewModel: ObservableObject {
 
         Task { @MainActor [weak self] in
             await self?.mergeRemoteEvents(event.envelopes, from: event.peer)
+        }
+    }
+
+    private func handleLegacyGameFlowMessage(_ message: GameFlowMessage, from peer: PeerID) {
+        Task { @MainActor [weak self] in
+            await self?.bridgeLegacyGameFlowMessage(message, from: peer)
         }
     }
 
@@ -389,6 +408,7 @@ final class RoomFlowViewModel: ObservableObject {
 
         await sendCommand(.assignTagger(taggerPlayerID))
         await sendCommand(.startHiding())
+        sendLegacyStartMessages(taggerPlayerID: taggerPlayerID, taggerPeer: taggerPeer)
 
         syncPublishedStateFromGameModel()
         statusMessage = "게임 시작 신호를 전송했습니다"
@@ -480,10 +500,121 @@ final class RoomFlowViewModel: ObservableObject {
         let events = await gameModel.send(command, as: sourcePlayerID)
         if !events.isEmpty {
             session.sendGameEvents(events, to: peer)
+            sendLegacyMessageIfNeeded(for: command, sourcePlayerID: sourcePlayerID)
         }
         rebuildPeerMappings()
         syncPublishedStateFromGameModel()
         return events
+    }
+
+    private func bridgeLegacyGameFlowMessage(
+        _ message: GameFlowMessage,
+        from peer: PeerID
+    ) async {
+        guard let gameModel else { return }
+
+        let sourcePlayerID = ensurePlayerID(for: peer, isHost: peer.rawID == activeRoom?.host.rawID)
+
+        switch message.kind {
+        case .roleAssigned:
+            guard gameModel.sharedState.taggerID == nil else { return }
+            guard let taggerPeer = resolveLegacyTaggerPeer(from: message) else { return }
+            let taggerPlayerID = ensurePlayerID(
+                for: taggerPeer,
+                isHost: taggerPeer.rawID == activeRoom?.host.rawID
+            )
+            await gameModel.applyBridgeCommand(.assignTagger(taggerPlayerID), as: sourcePlayerID)
+
+        case .gameStarted, .countdownStarted:
+            guard gameModel.sharedState.phase == .lobby else { return }
+            await gameModel.applyBridgeCommand(.startHiding(), as: sourcePlayerID)
+
+        case .searchStarted:
+            guard gameModel.sharedState.phase == .hiding else { return }
+            await gameModel.applyBridgeCommand(.startPlaying(), as: sourcePlayerID)
+
+        case .gameEnded:
+            guard gameModel.sharedState.phase != .ended else { return }
+            let reason = legacyEndReason(from: message)
+            await gameModel.applyBridgeCommand(.finishGame(reason: reason), as: sourcePlayerID)
+
+        case .playerFound:
+            break
+        }
+
+        rebuildPeerMappings()
+        syncPublishedStateFromGameModel()
+        refreshSnapshot()
+    }
+
+    private func resolveLegacyTaggerPeer(from message: GameFlowMessage) -> PeerID? {
+        if let referencedPeer = message.referencedPeer {
+            return referencedPeer
+        }
+
+        if message.role == .seeker {
+            return localPeer
+        }
+
+        return activeRoom?.host
+    }
+
+    private func legacyEndReason(from message: GameFlowMessage) -> GameEndReason {
+        switch message.winner {
+        case .seeker:
+            .allHidersCaptured
+        case .hider:
+            .timeExpired
+        case .unknown, .none:
+            .hostEnded
+        }
+    }
+
+    private func sendLegacyStartMessages(
+        taggerPlayerID: PlayerID,
+        taggerPeer: PeerID
+    ) {
+        for participant in sortedParticipants {
+            guard let peer = participant.peerID, peer.rawID != localPeer.rawID else { continue }
+
+            let role: GameFlowRole = participant.id == taggerPlayerID ? .seeker : .hider
+            session.sendRoleAssigned(
+                role,
+                taggerPeer: taggerPeer,
+                to: peer
+            )
+        }
+
+        session.sendGameStarted()
+        session.sendCountdownStarted(seconds: gameModel?.sharedState.session.settings.hideTimeSeconds ?? 0)
+    }
+
+    private func sendLegacyMessageIfNeeded(
+        for command: GameCommand,
+        sourcePlayerID: PlayerID?
+    ) {
+        guard let gameModel else { return }
+        guard sourcePlayerID == nil || sourcePlayerID == gameModel.localPlayerID else { return }
+        guard isHostInActiveRoom else { return }
+
+        switch command {
+        case .startPlaying:
+            session.sendSearchStarted()
+
+        case let .finishGame(reason, _):
+            let winner: GameFlowWinner = switch reason {
+            case .allHidersCaptured:
+                .seeker
+            case .timeExpired:
+                .hider
+            case .hostEnded, .aborted:
+                .unknown
+            }
+            session.sendGameEnded(winner: winner)
+
+        default:
+            break
+        }
     }
 
     private func peerIDByRawID(_ rawID: String) -> PeerID? {

@@ -98,6 +98,11 @@ final class GameModel {
         return mutation.newEvents
     }
 
+    func applyBridgeCommand(_ command: GameCommand, as sourcePlayerID: PlayerID) async {
+        let mutation = await engine.apply(command, as: sourcePlayerID)
+        sharedState = mutation.sharedState
+    }
+
     func merge(remoteEvents: [GameEventEnvelope], syncedAt: Date = .now) async {
         let mutation = await engine.merge(remoteEvents)
         sharedState = mutation.sharedState

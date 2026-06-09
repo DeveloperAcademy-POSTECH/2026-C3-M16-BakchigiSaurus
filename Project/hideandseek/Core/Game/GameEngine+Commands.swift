@@ -15,7 +15,8 @@ extension GameEngine {
         switch command {
         case .upsertParticipant, .removeParticipant, .assignTagger:
             makeParticipantEvents(for: command, sourcePlayerID: sourcePlayerID)
-        case .startHiding, .startPlaying, .useHint, .observeProximity, .confirmCapture, .rejectCapture, .evaluateDeadlines, .finishGame:
+        case .startHiding, .startPlaying, .useHint, .observeProximity, .confirmCapture, .rejectCapture,
+             .evaluateDeadlines, .finishGame:
             makeGameplayEvents(for: command, sourcePlayerID: sourcePlayerID)
         case .startClip, .finishClip, .updateClipTransfer:
             makeClipEvents(for: command, sourcePlayerID: sourcePlayerID)
