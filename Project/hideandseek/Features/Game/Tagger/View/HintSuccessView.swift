@@ -7,44 +7,37 @@
 
 import SwiftUI
 
-struct HintSuccessView: View {
-    let camera: CameraModel
-    let isHiderNearby: Bool
-    let isUsingHint: Bool
+struct HintResultView: View {
+    let result: HintDisplayResult
     let timeLeft: Int
+    var onFinished: @MainActor () -> Void = {}
 
-    @State var rotation: Double = 30.0
-    @Environment(\.dismiss) private var dismiss
+    @State var rotation: Double = 0
 
     var body: some View {
         ZStack {
-            GameCameraBackground(
-                camera: camera,
-                isRevealed: isHiderNearby && isUsingHint,
-                isRecording: isHiderNearby
-            )
-            Color.appSuccess
+            result.overlayColor
                 .ignoresSafeArea()
                 .opacity(0.75)
             ZStack {
                 VStack {
                     GameTimer(timeLeft: timeLeft)
                     Spacer()
-                    Image(systemName: "arrow.up")
+                    Image(systemName: result.iconName)
                         .font(.system(size: 200))
-                        .rotationEffect(Angle(degrees: rotation))
+                        .rotationEffect(result == .success ? Angle(degrees: rotation) : .zero)
 
                     Spacer()
                     HStack {
                         VStack(alignment: .leading) {
-                            Text("화살표 방향에")
+                            Text(result.leadingText)
                                 .font(.largeTitle.bold())
                                 .foregroundStyle(.secondary)
                             HStack {
                                 Text("숨은 사람")
                                     .font(.largeTitle.bold())
                                     .foregroundStyle(.primary)
-                                Text("이 있어요")
+                                Text(result.trailingText)
                                     .font(.largeTitle.bold())
                                     .foregroundStyle(.secondary)
                             }
@@ -56,12 +49,67 @@ struct HintSuccessView: View {
             }
             .padding(.horizontal, 36)
         }
-        .onAppear {
-            Task {
-                try? await Task.sleep(nanoseconds: 5_000_000_000)
-                dismiss()
-            }
+        .task(id: result) {
+            try? await Task.sleep(nanoseconds: result.displayDuration)
+            guard !Task.isCancelled else { return }
+            await onFinished()
         }
+    }
+}
+
+private extension HintDisplayResult {
+    var overlayColor: Color {
+        switch self {
+        case .success:
+            return .appSuccess
+        case .failure:
+            return .red
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .success:
+            return "arrow.up.circle.fill"
+        case .failure:
+            return "xmark.circle.fill"
+        }
+    }
+
+    var leadingText: String {
+        "화살표 방향에"
+    }
+
+    var trailingText: String {
+        switch self {
+        case .success:
+            return "이 있어요"
+        case .failure:
+            return "이 없어요"
+        }
+    }
+
+    var displayDuration: UInt64 {
+        switch self {
+        case .success:
+            return 5_000_000_000
+        case .failure:
+            return 2_000_000_000
+        }
+    }
+}
+
+struct HintSuccessView: View {
+    let camera: CameraModel
+    let isHiderNearby: Bool
+    let isUsingHint: Bool
+    let timeLeft: Int
+
+    var body: some View {
+        HintResultView(
+            result: .success,
+            timeLeft: timeLeft
+        )
     }
 }
 

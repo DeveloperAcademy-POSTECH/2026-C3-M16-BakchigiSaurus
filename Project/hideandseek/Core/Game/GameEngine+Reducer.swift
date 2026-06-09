@@ -110,7 +110,7 @@ extension GameEngine {
         state.hideDeadline = phaseState.hideDeadline
         state.gameDeadline = phaseState.gameDeadline
 
-        if phaseState.phase == .hiding {
+        if phaseState.phase == .hiding || phaseState.phase == .playing {
             resetTransientGameplayState()
         }
 

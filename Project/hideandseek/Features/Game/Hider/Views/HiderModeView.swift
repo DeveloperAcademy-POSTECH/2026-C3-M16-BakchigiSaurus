@@ -10,6 +10,7 @@ import SwiftUI
 /// 숨는 사람이 보는 전체  화면 흐름 관리하는 메인 화면
 struct HiderModeView: View {
     let camera: CameraModel
+    var timeLeft: Int? = nil
     var onCaptureConfirmed: () -> Void = {}
     // 상위 View에서 만든 camera를 받아서 사용
 
@@ -29,19 +30,19 @@ struct HiderModeView: View {
         // view 모델이 가지고 있는 현재 상태 확인
         case .hiding:
             HiderSearchView(
-                timeLeft: viewModel.timeLeft
+                timeLeft: displayedTimeLeft
             )
 
         case .taggerNearby:
             TaggerWarningView(
-                timeLeft: viewModel.timeLeft
+                timeLeft: displayedTimeLeft
             )
 
         case .recording:
             CameraRecordingView(
                 camera: camera,
                 // 상위 View에서 받은 카메라 객체를 CameraRecordingView에 넘김
-                timeLeft: viewModel.timeLeft,
+                timeLeft: displayedTimeLeft,
                 isTaggerNearby: true, // 술래가 가까운 상태라고 알려줌
                 onRecordingFinished: {
                     viewModel.finishRecording()
@@ -50,7 +51,7 @@ struct HiderModeView: View {
 
         case .taggedCheck:
             TaggedCheckView(
-                timeLeft: viewModel.timeLeft,
+                timeLeft: displayedTimeLeft,
                 onConfirmAnswer: { answer in
                     if viewModel.confirmTaggedAnswer(answer) {
                         onCaptureConfirmed()
@@ -61,6 +62,10 @@ struct HiderModeView: View {
         case .captured:
             capturedContent
         }
+    }
+
+    private var displayedTimeLeft: Int {
+        timeLeft ?? viewModel.timeLeft
     }
 
     private var capturedContent: some View {

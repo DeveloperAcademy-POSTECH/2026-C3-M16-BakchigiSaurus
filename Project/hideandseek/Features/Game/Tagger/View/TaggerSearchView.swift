@@ -7,91 +7,102 @@
 
 import SwiftUI
 
-enum HintViewType: Identifiable {
-    case success
-    case failure
-    var id: HintViewType {
-        self
-    }
-}
-
 struct TaggerSearchView: View {
     @State private var showHintAlert: Bool = false
+    @State private var activeHintResult: HintDisplayResult?
     let camera: CameraModel
-    let isHiderNearby: Bool
-    let isUsingHint: Bool
+    var viewModel: TaggerSearchViewModel
     let timeLeft: Int
-    @State var hintCount = 1
-    @State private var activeHintView: HintViewType?
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .top) {
             GameCameraBackground(
                 camera: camera,
-                isRevealed: isHiderNearby && isUsingHint,
-                isRecording: isHiderNearby
+                isRevealed: true,
+                isRecording: viewModel.isRecording
             )
-            ZStack {
-                VStack {
-                    GameTimer(timeLeft: timeLeft)
-                    Spacer()
-                    HStack {
-                        VStack(alignment: .leading) {
-                            Text("주변에")
+            .ignoresSafeArea()
+
+            if let activeHintResult {
+                HintResultView(
+                    result: activeHintResult,
+                    timeLeft: timeLeft
+                ) {
+                    self.activeHintResult = nil
+                }
+                .transition(.opacity)
+            } else {
+                searchContent
+                    .transition(.opacity)
+            }
+
+            if activeHintResult == nil {
+                FakeDynamicIslandView(isExpanded: viewModel.isIslandExpanded) {
+                    IslandCompactContent()
+                } expanded: {
+                    IslandExpandedContent(
+                        timeLeft: timeLeft,
+                        type: .hiderNearby
+                    )
+                }
+                .padding(.top, 12)
+                .ignoresSafeArea()
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: activeHintResult)
+    }
+
+    private var searchContent: some View {
+        ZStack {
+            VStack {
+                GameTimer(timeLeft: timeLeft)
+                Spacer()
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text("주변에")
+                            .font(.largeTitle.bold())
+                            .foregroundStyle(.secondary)
+                        HStack {
+                            Text("숨은 사람")
+                                .font(.largeTitle.bold())
+                                .foregroundStyle(.primary)
+                            Text("을 찾는 중")
                                 .font(.largeTitle.bold())
                                 .foregroundStyle(.secondary)
-                            HStack {
-                                Text("숨은 사람")
-                                    .font(.largeTitle.bold())
-                                    .foregroundStyle(.primary)
-                                Text("을 찾는 중")
-                                    .font(.largeTitle.bold())
-                                    .foregroundStyle(.secondary)
-                            }
-                            Button {
-                                showHintAlert = true
-                            } label: {
-                                Label("힌트 \(hintCount)개 남음", systemImage: "magnifyingglass")
-                                    .padding(.vertical, 10)
-                                    .font(.title3)
-                            }
-                            .buttonStyle(.glass)
-                            .cornerRadius(20)
-                            .padding(.bottom, 7)
-                            .disabled(hintCount == 0)
                         }
-                        Spacer()
-                    }
-                }
-            }
-            .alert("힌트를 사용할까요?", isPresented: $showHintAlert) {
-                Button("네", role: .none) {
-                    if hintCount > 0 {
-                        hintCount -= 1
-                        if isHiderNearby {
-                            activeHintView = .success
-                        } else {
-                            activeHintView = .failure
+                        Button {
+                            showHintAlert = true
+                        } label: {
+                            Label("힌트 \(viewModel.hintCountRemaining)개 남음", systemImage: "magnifyingglass")
+                                .padding(.vertical, 10)
+                                .font(.title3)
                         }
+                        .buttonStyle(.glass)
+                        .cornerRadius(20)
+                        .padding(.bottom, 7)
+                        .disabled(!viewModel.canUseHint)
                     }
-                }
-                Button("아니요", role: .cancel) {}
-            } message: {
-                Text("가장 가까운 사람의 방향이 잠시동안 표시됩니다")
-            }
-            .fullScreenCover(item: $activeHintView) { hintType in
-                switch hintType {
-                case .success:
-                    HintSuccessView(camera: camera, isHiderNearby: isHiderNearby, isUsingHint: true, timeLeft: timeLeft)
-                case .failure:
-                    HintFailureView(camera: camera, isHiderNearby: isHiderNearby, isUsingHint: true, timeLeft: timeLeft)
+                    Spacer()
                 }
             }
-            .padding(.horizontal, 36)
         }
-    }
-}
+        .alert("힌트를 사용할까요?", isPresented: $showHintAlert) {
+            Button("네", role: .none) {
+                showHintAlert = false
+                Task {
+                    guard let result = await viewModel.tapHintButton() else { return }
 
-#Preview {
-    TaggerSearchView(camera: CameraModel(), isHiderNearby: true, isUsingHint: false, timeLeft: 300)
+                    try? await Task.sleep(nanoseconds: 300_000_000)
+                    // TODO: 데이터 레이싱 해결하기
+                    await MainActor.run {
+                        activeHintResult = result
+                    }
+                }
+            }
+            Button("아니요", role: .cancel) {}
+        } message: {
+            Text("가장 가까운 사람의 방향이 잠시동안 표시됩니다")
+        }
+        .padding(.horizontal, 36)
+    }
 }

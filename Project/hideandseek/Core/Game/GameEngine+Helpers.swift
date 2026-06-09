@@ -26,6 +26,7 @@ extension GameEngine {
     func availableHintCandidates(from candidates: [HintCandidate]) -> [HintCandidate] {
         candidates.filter { candidate in
             guard let participant = state.participants[candidate.hiderID] else { return false }
+            guard let distance = candidate.distance, distance <= 5 else { return false }
             return participant.role == .hider && participant.status != .captured
         }
     }

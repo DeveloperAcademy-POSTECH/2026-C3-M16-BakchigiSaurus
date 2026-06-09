@@ -126,6 +126,8 @@ struct GameCameraBackground: View {
     let isRevealed: Bool
     /// 값이 바뀌면 녹화 시작/정지가 자동으로 따라온다.
     let isRecording: Bool
+    /// false면 이 뷰는 preview/blur만 그리고 녹화 상태는 건드리지 않는다.
+    var controlsRecording: Bool = true
 
     var body: some View {
         ZStack {
@@ -142,6 +144,7 @@ struct GameCameraBackground: View {
         .animation(.easeInOut(duration: 0.3), value: isRevealed)
         // 외부 Bool 변화 → 녹화 제어. initial: true로 첫 진입 상태도 반영.
         .onChange(of: isRecording, initial: true) { _, shouldRecord in
+            guard controlsRecording else { return }
             Task { await camera.setRecording(shouldRecord) }
         }
     }

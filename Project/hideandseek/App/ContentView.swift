@@ -14,7 +14,13 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if let activeRoom = roomFlow.activeRoom {
+                if let gameModel = roomFlow.gameModel, roomFlow.gameStarted {
+                    GameRootView(
+                        gameModel: gameModel,
+                        mcSession: roomFlow.gameSession,
+                        niManager: roomFlow.nearbyInteractionManager
+                    )
+                } else if let activeRoom = roomFlow.activeRoom {
                     RoomDetailView(
                         model: roomFlow,
                         room: activeRoom
