@@ -48,14 +48,13 @@ final class McniConnection {
                     connectedPeer = peer
                     startNITokenExchange(with: peer)
 
-
                 case let .peerDisconnected(peer):
                     print("MC peer Disconnected:", peer)
-                    
+
                     if connectedPeer?.rawID == peer.rawID {
                         connectedPeer = nil
                     }
-                    
+
                     tokenExchangePeerRawID = nil
                     niManager.invalidateSession()
 

@@ -48,7 +48,7 @@ final class NearbyInteractionManager: NSObject {
         newSession.delegate = self
 
         session = newSession
-        
+
         peerDiscoveryToken = nil
         state = .ready
     }
