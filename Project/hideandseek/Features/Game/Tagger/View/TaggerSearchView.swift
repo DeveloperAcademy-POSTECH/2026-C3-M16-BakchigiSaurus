@@ -151,3 +151,21 @@ struct TaggerSearchView: View {
         }
     }
 }
+
+#Preview {
+    // 1. 프리뷰용 가짜(Mock) 의존성 데이터 생성
+    // (구현하신 클래스/구조체의 이니셜라이저 형태에 맞게 수정이 필요할 수 있습니다.)
+    let dummyGameModel = GameModel(localPlayerName: "테스트 술래")
+    let dummyMcSession = MultipeerGameSession()
+    let dummyNiManager = NearbyInteractionManager()
+    let dummyCamera = CameraModel()
+    
+    // 2. TaggerSearchView에 의존성을 주입하여 프리뷰 렌더링
+    TaggerSearchView(
+        gameModel: dummyGameModel,
+        mcSession: dummyMcSession,
+        niManager: dummyNiManager,
+        camera: dummyCamera,
+        timeLeft: 180 // 제한 시간 3분 가정
+    )
+}
