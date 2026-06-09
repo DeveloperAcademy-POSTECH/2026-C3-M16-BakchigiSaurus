@@ -28,14 +28,20 @@ final class TaggerSearchViewModel {
     var isHintActive: Bool = false
     var latestObservedDistance: Float?
     var latestObservedDirection: DirectionVector?
+    var latestObservedAt: Date?
     var localTaggerConfirmationSentAt: Date?
     var didReceiveLocalReading: Bool = false
     var isHiderWithinRecordingRange: Bool = false
 
     private var hintDisplayTask: Task<Void, Never>?
     private var proximityConfirmationTask: Task<Void, Never>?
+    private var proximityStalenessTask: Task<Void, Never>?
     private var trackingTargetID: PlayerID?
     private var localEnteredWarningRadiusAt: Date?
+
+    private let warningRadiusMeters: Float = 5
+    private let requiredProximityDuration: TimeInterval = 5
+    private let readingStaleDuration: TimeInterval = 2
 
     init(gameModel: GameModel, mcSession: MultipeerGameSession, niManager: NearbyInteractionManager) {
         self.gameModel = gameModel
@@ -117,20 +123,28 @@ final class TaggerSearchViewModel {
             }()
 
             Task { @MainActor in
+                guard self.canTrackLocalProximity else {
+                    self.resetProximityTracking()
+                    return
+                }
+
+                guard let hiderID = self.observedHiderID() else {
+                    self.resetProximityTracking()
+                    return
+                }
+
                 self.recordLocalProximity(
                     distance: reading.distance,
                     direction: convertedDirection,
                     observedAt: reading.timestamp
                 )
 
-                guard let hiderID = self.observedHiderID() else { return }
-                let events = await self.gameModel.send(.observeProximity(
+                await self.gameModel.send(.observeProximity(
                     hiderID: hiderID,
                     distance: reading.distance,
                     direction: convertedDirection,
                     observedAt: reading.timestamp
                 ))
-                self.applyProximityRule(from: events)
             }
         }
     }
@@ -189,10 +203,14 @@ final class TaggerSearchViewModel {
     func resetProximityTracking() {
         proximityConfirmationTask?.cancel()
         proximityConfirmationTask = nil
+        proximityStalenessTask?.cancel()
+        proximityStalenessTask = nil
         localEnteredWarningRadiusAt = nil
         localTaggerConfirmationSentAt = nil
+        trackingTargetID = nil
         latestObservedDistance = nil
         latestObservedDirection = nil
+        latestObservedAt = nil
         didReceiveLocalReading = false
         isHiderWithinRecordingRange = false
     }
@@ -201,6 +219,8 @@ final class TaggerSearchViewModel {
         didReceiveLocalReading = true
         latestObservedDistance = distance
         latestObservedDirection = direction
+        latestObservedAt = observedAt
+        scheduleProximityStalenessReset(for: observedAt)
 
         guard let distance else {
             isHiderWithinRecordingRange = false
@@ -208,7 +228,7 @@ final class TaggerSearchViewModel {
             return
         }
 
-        let isWithinWarningRadius = distance <= 5
+        let isWithinWarningRadius = distance <= warningRadiusMeters
         isHiderWithinRecordingRange = isWithinWarningRadius
 
         if isWithinWarningRadius {
@@ -218,7 +238,7 @@ final class TaggerSearchViewModel {
             }
 
             if let enteredAt = localEnteredWarningRadiusAt,
-               observedAt.timeIntervalSince(enteredAt) >= 5,
+               observedAt.timeIntervalSince(enteredAt) >= requiredProximityDuration,
                localTaggerConfirmationSentAt == nil
             {
                 expandDynamicIsland(observedAt: observedAt)
@@ -230,20 +250,50 @@ final class TaggerSearchViewModel {
 
     private func scheduleLocalProximityConfirmation() {
         proximityConfirmationTask?.cancel()
+        let enteredAt = localEnteredWarningRadiusAt ?? Date()
+        let delay = max(0, requiredProximityDuration - Date().timeIntervalSince(enteredAt))
+
         proximityConfirmationTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 5 * 1_000_000_000)
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             guard !Task.isCancelled else { return }
 
             await MainActor.run {
                 guard let self,
-                      let distance = self.latestObservedDistance,
+                      self.canTrackLocalProximity,
                       self.isHiderWithinRecordingRange,
-                      distance <= 5 else {
+                      self.localEnteredWarningRadiusAt == enteredAt,
+                      let latestObservedAt = self.latestObservedAt,
+                      let distance = self.latestObservedDistance,
+                      distance <= self.warningRadiusMeters,
+                      Date().timeIntervalSince(latestObservedAt) <= self.readingStaleDuration else {
                     return
                 }
 
                 self.expandDynamicIsland(observedAt: Date())
                 self.proximityConfirmationTask = nil
+            }
+        }
+    }
+
+    private func scheduleProximityStalenessReset(for observedAt: Date) {
+        proximityStalenessTask?.cancel()
+        let staleDuration = readingStaleDuration
+
+        proximityStalenessTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(staleDuration * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
+                guard let self,
+                      self.latestObservedAt == observedAt else {
+                    return
+                }
+
+                self.latestObservedDistance = nil
+                self.latestObservedDirection = nil
+                self.latestObservedAt = nil
+                self.isHiderWithinRecordingRange = false
+                self.clearLocalProximityConfirmation()
             }
         }
     }
@@ -261,46 +311,27 @@ final class TaggerSearchViewModel {
         logProximityState("compact")
     }
 
-    private func applyProximityRule(from events: [GameEventEnvelope]) {
-        for event in events {
-            guard case let .proximityUpdated(update) = event.event else { continue }
-            applyProximityRule(from: update)
-        }
-    }
-
-    private func applyProximityRule(from update: ProximityUpdate) {
-        guard let distance = update.distance else {
-            isHiderWithinRecordingRange = false
-            clearLocalProximityConfirmation()
-            return
-        }
-
-        let isWithinWarningRadius = distance <= 5
-        isHiderWithinRecordingRange = isWithinWarningRadius
-
-        guard isWithinWarningRadius else {
-            clearLocalProximityConfirmation()
-            return
-        }
-
-        if let confirmationSentAt = update.taggerConfirmationSentAt,
-           isConfirmationInCurrentPlayingPhase(confirmationSentAt)
-        {
-            expandDynamicIsland(observedAt: confirmationSentAt)
-        }
-    }
-
     private func isConfirmationInCurrentPlayingPhase(_ confirmationSentAt: Date) -> Bool {
         guard gameModel.sharedState.phase == .playing else { return false }
-        guard let phaseStartedAt = gameModel.sharedState.phaseStartedAt else { return true }
+        guard let phaseStartedAt = gameModel.sharedState.phaseStartedAt else { return false }
         return confirmationSentAt >= phaseStartedAt
+    }
+
+    private var canTrackLocalProximity: Bool {
+        gameModel.sharedState.phase == .playing && gameModel.isLocalTagger
     }
 
     private func logProximityState(_ state: String) {
 //        #if DEBUG
 //        print(
 //            "[TaggerSearchViewModel] dynamicIsland=\(state)",
-//            "distance=\(latestObservedDistance.map(String.init) ?? "nil")"
+//            "phase=\(gameModel.sharedState.phase)",
+//            "isLocalTagger=\(gameModel.isLocalTagger)",
+//            "distance=\(latestObservedDistance.map(String.init) ?? "nil")",
+//            "latestAt=\(latestObservedAt?.description ?? "nil")",
+//            "enteredAt=\(localEnteredWarningRadiusAt?.description ?? "nil")",
+//            "confirmedAt=\(localTaggerConfirmationSentAt?.description ?? "nil")",
+//            "isRecording=\(isHiderWithinRecordingRange)"
 //        )
 //        #endif
     }

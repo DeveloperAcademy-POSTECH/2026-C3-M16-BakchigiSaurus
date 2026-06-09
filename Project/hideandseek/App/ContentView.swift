@@ -20,6 +20,7 @@ struct ContentView: View {
                         mcSession: roomFlow.gameSession,
                         niManager: roomFlow.nearbyInteractionManager
                     )
+                    .id(gameModel.sharedState.session.id)
                 } else if let activeRoom = roomFlow.activeRoom {
                     RoomDetailView(
                         model: roomFlow,
