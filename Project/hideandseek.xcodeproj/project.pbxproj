@@ -27,6 +27,10 @@
 		63EE4A2F2FCC24200004B6B7 /* Exceptions for "hideandseek" folder in "hideandseek" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Features/EndGame/Transfer/ClipTransferService.swift,
+				Features/EndGame/Transfer/CollectorSession.swift,
+				Features/EndGame/Transfer/TransferStatusView.swift,
+				Features/EndGame/Transfer/TransferStatusViewModel.swift,
 				Info.plist,
 			);
 			target = 96888C242FC7E3990080F374 /* hideandseek */;

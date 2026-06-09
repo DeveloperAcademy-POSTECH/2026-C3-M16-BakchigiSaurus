@@ -43,6 +43,17 @@ struct GameFlowMessage {
     let targetPeerDisplayName: String?
     let winner: GameFlowWinner?
 
+    var referencedPeer: PeerID? {
+        guard let targetPeerRawID, let targetPeerDisplayName else {
+            return nil
+        }
+
+        return PeerID(
+            rawID: targetPeerRawID,
+            displayName: targetPeerDisplayName
+        )
+    }
+
     /// 게임 시작 메시지를 만든다.
     static func gameStarted() -> GameFlowMessage {
         GameFlowMessage(
@@ -56,13 +67,16 @@ struct GameFlowMessage {
     }
 
     /// 역할 배정 메시지를 만든다.
-    static func roleAssigned(_ role: GameFlowRole) -> GameFlowMessage {
+    static func roleAssigned(
+        _ role: GameFlowRole,
+        taggerPeer: PeerID? = nil
+    ) -> GameFlowMessage {
         GameFlowMessage(
             kind: .roleAssigned,
             role: role,
             seconds: nil,
-            targetPeerRawID: nil,
-            targetPeerDisplayName: nil,
+            targetPeerRawID: taggerPeer?.rawID,
+            targetPeerDisplayName: taggerPeer?.displayName,
             winner: nil
         )
     }

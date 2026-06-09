@@ -698,10 +698,11 @@ extension MultipeerGameSession {
     /// 역할 배정 메시지를 전송한다.
     func sendRoleAssigned(
         _ role: GameFlowRole,
+        taggerPeer: PeerID? = nil,
         to peer: PeerID? = nil
     ) {
         sendGameFlowMessage(
-            .roleAssigned(role),
+            .roleAssigned(role, taggerPeer: taggerPeer),
             to: peer
         )
     }
