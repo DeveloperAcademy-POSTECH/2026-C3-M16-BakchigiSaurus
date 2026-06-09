@@ -128,7 +128,7 @@ final class TaggerSearchViewModel {
         print("🚨 알림: 숨은 사람(\(hiderID))이 5m 이내에 5초 동안 있었습니다!")
     }
     
-    // 6. 힌트 버튼 클릭 시 Action (HintCandidate 타입 변환 에러 해결)
+    // 6. 힌트 버튼 클릭 시 Action 
     func tapHintButton() async {
         guard gameModel.sharedState.hintCountRemaining > 0 else { return }
         
