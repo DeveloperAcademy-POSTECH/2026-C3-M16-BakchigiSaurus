@@ -42,14 +42,22 @@ final class McniConnection {
             for await event in mcSession.makeEventStream() {
                 switch event {
                 case let .peerConnected(peer):
+                    connectedPeer = peer
+                    
+                    // 같은 peer와 중복 토큰 교환 방지
                     if tokenExchangePeerRawID != peer.rawID {
                         print("MC peer Connected:", peer)
                         startNITokenExchange(with: peer)
                     }
 
-                case .peerDisconnected:
-                    tokenExchangePeerRawID = nil
-                    niManager.invalidateSession()
+                case let .peerDisconnected(peer):
+                    print("MC peer Disconnected:", peer)
+                    
+                    if connectedPeer?.rawID == peer.rawID {
+                        connectedPeer = nil
+                        tokenExchangePeerRawID = nil
+                        niManager.invalidateSession()
+                    }
 
                 case .discoveredRoomsChanged:
                     break
