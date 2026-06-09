@@ -159,7 +159,7 @@ struct TaggerSearchView: View {
     let dummyMcSession = MultipeerGameSession()
     let dummyNiManager = NearbyInteractionManager()
     let dummyCamera = CameraModel()
-    
+
     // 2. TaggerSearchView에 의존성을 주입하여 프리뷰 렌더링
     TaggerSearchView(
         gameModel: dummyGameModel,
