@@ -1,5 +1,5 @@
 //
-//  TaggerDetectedVeiw.swift
+//  TaggerDetectedView.swift
 //  hideandseek
 //
 //  Created by 캄초 on 5/28/26.

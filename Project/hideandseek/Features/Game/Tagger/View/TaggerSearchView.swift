@@ -20,15 +20,21 @@ struct TaggerSearchView: View {
     @State private var viewModel: TaggerSearchViewModel
     @State private var showHintAlert: Bool = false
     @State private var activeHintView: HintViewType?
-    
+
     let camera: CameraModel
     let timeLeft: Int
 
-    // 💡 2. 이니셜라이저를 통해 의존성을 외부에서 주입받아 뷰모델을 초기화합니다.
-    init(gameModel: GameModel, mcSession: MultipeerGameSession, niManager: NearbyInteractionManager, camera: CameraModel, timeLeft: Int) {
+    /// 💡 2. 이니셜라이저를 통해 의존성을 외부에서 주입받아 뷰모델을 초기화합니다.
+    init(
+        gameModel: GameModel,
+        mcSession: MultipeerGameSession,
+        niManager: NearbyInteractionManager,
+        camera: CameraModel,
+        timeLeft: Int
+    ) {
         self.camera = camera
         self.timeLeft = timeLeft
-        
+
         _viewModel = State(initialValue: TaggerSearchViewModel(
             gameModel: gameModel,
             mcSession: mcSession,
@@ -41,17 +47,17 @@ struct TaggerSearchView: View {
             // 센서 실시간 판정 연동
             // 거리가 감지되고 있으면(nil이 아니면) 주변에 숨은 사람이 있는 것으로 판단
             let isHiderNearby = viewModel.nearestHiderDistance != nil
-            
+
             GameCameraBackground(
                 camera: camera,
                 isRevealed: isHiderNearby && viewModel.isHintActive,
                 isRecording: isHiderNearby
             )
-            
+
             ZStack {
                 VStack {
                     GameTimer(timeLeft: timeLeft)
-                    
+
                     // 실시간 거리 측정 UI 추가부
                     if let distance = viewModel.nearestHiderDistance {
                         VStack(spacing: 4) {
@@ -68,9 +74,9 @@ struct TaggerSearchView: View {
                         .cornerRadius(15)
                         .padding(.top, 10)
                     }
-                    
+
                     Spacer()
-                    
+
                     HStack {
                         VStack(alignment: .leading) {
                             Text("주변에")
@@ -84,10 +90,10 @@ struct TaggerSearchView: View {
                                     .font(.largeTitle.bold())
                                     .foregroundStyle(.secondary)
                             }
-                            
+
                             // 💡 4. 엔진 내부의 힌트 개수 잔여량과 동기화
                             let hintCount = viewModel.gameModel.sharedState.hintCountRemaining
-                            
+
                             Button {
                                 showHintAlert = true
                             } label: {
@@ -109,7 +115,7 @@ struct TaggerSearchView: View {
                     // 💡 5. 비동기로 뷰모델의 힌트 아이템 사용 로직 구동
                     Task {
                         await viewModel.tapHintButton()
-                        
+
                         // 힌트 사용 직후 성공/실패 화면 분기 판정
                         if viewModel.nearestHiderDistance != nil {
                             activeHintView = .success
@@ -126,9 +132,19 @@ struct TaggerSearchView: View {
                 let isHiderNearby = viewModel.nearestHiderDistance != nil
                 switch hintType {
                 case .success:
-                    HintSuccessView(camera: camera, isHiderNearby: isHiderNearby, isUsingHint: viewModel.isHintActive, timeLeft: timeLeft)
+                    HintSuccessView(
+                        camera: camera,
+                        isHiderNearby: isHiderNearby,
+                        isUsingHint: viewModel.isHintActive,
+                        timeLeft: timeLeft
+                    )
                 case .failure:
-                    HintFailureView(camera: camera, isHiderNearby: isHiderNearby, isUsingHint: viewModel.isHintActive, timeLeft: timeLeft)
+                    HintFailureView(
+                        camera: camera,
+                        isHiderNearby: isHiderNearby,
+                        isUsingHint: viewModel.isHintActive,
+                        timeLeft: timeLeft
+                    )
                 }
             }
             .padding(.horizontal, 36)
