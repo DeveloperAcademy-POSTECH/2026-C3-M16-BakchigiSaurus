@@ -63,6 +63,7 @@ final class McniConnection {
             guard let self else { return }
 
             for await event in mcSession.makeNIDiscoveryTokenStream() {
+                print("NI token received from:", event.peer)
                 niManager.run(with: event.token)
             }
         }

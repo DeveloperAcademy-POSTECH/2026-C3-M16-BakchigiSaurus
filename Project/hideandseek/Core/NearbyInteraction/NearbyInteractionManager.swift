@@ -43,38 +43,6 @@ final class NearbyInteractionManager: NSObject {
         session?.discoveryToken
     }
 
-    /// 내 token을 MC가 보낼 수있는 Data로 변환
-    func makeLocalDiscoveryTokenData() throws -> Data {
-        guard let discoveryToken = session?.discoveryToken else {
-            state = .failed(.missingDiscoveryToken)
-            throw NearbyInteractionError.missingDiscoveryToken
-        }
-
-        return try NSKeyedArchiver.archivedData(withRootObject: discoveryToken, requiringSecureCoding: true)
-    }
-
-    /// MC에게 받은 Data를 다시 token으로 바꿈
-    func decodeDiscoveryToken(from data: Data) throws -> NIDiscoveryToken {
-        guard let token = try NSKeyedUnarchiver.unarchivedObject(
-            ofClass: NIDiscoveryToken.self,
-            from: data
-        ) else {
-            state = .failed(.invalidDiscoveryToken)
-            throw NearbyInteractionError.invalidDiscoveryToken
-        }
-
-        return token
-    }
-
-    /// MC가 받은 상대방 token data를 NI 세션 실행 함수에 이어줄때 사용하는 함수
-    func run(with peerTokenData: Data) {
-        do {
-            let peerToken = try decodeDiscoveryToken(from: peerTokenData)
-            run(with: peerToken)
-        } catch {
-            state = .failed(.invalidDiscoveryToken)
-        }
-    }
 
     /// NI Session 실행 함수
     func run(with peerToken: NIDiscoveryToken) { // NI에서 부르는 상대토큰 변수명: peerToken
@@ -88,8 +56,14 @@ final class NearbyInteractionManager: NSObject {
 
         let configuration = NINearbyPeerConfiguration(peerToken: peerToken) // 위에서 받은 상대의 token? peerToken 이 이름이 맞는지
 
-        configuration.isCameraAssistanceEnabled = true
+        // camera Assistance 지원 여부 확인 필요
+        configuration.isCameraAssistanceEnabled = NISession.deviceCapabilities.supportsCameraAssistance
 
+        
+        print("NI session.run 호출")
+        print("camera assistance supported:", NISession.deviceCapabilities.supportsCameraAssistance)
+        print("camera assistance enabled:", configuration.isCameraAssistanceEnabled)
+        
         session?.run(configuration)
     }
 
@@ -98,6 +72,7 @@ final class NearbyInteractionManager: NSObject {
         session?.invalidate()
         session = nil
         sharedTokenWithPeer = false
+        peerDiscoveryToken = nil // 세션 종료시 상대토큰 남는 것 초기화
         state = .invalidated
     }
 }
@@ -162,6 +137,10 @@ extension NearbyInteractionManager: NISessionDelegate {
         }
 
         let configuration = NINearbyPeerConfiguration(peerToken: peerDiscoveryToken)
+        
+        // 세션 재개시 camera Assistance 다시 활성화
+        configuration.isCameraAssistanceEnabled = NISession.deviceCapabilities.supportsCameraAssistance
+        
         session.run(configuration)
     }
 
