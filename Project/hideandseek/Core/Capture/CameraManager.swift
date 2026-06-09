@@ -125,6 +125,8 @@ actor CaptureService {
     private let output = AVCaptureMovieFileOutput()
     private lazy var recorder = RecorderDelegate(output: output)
 
+    private var recordingStartedAt: Date?
+
     /// 후면 카메라 + 마이크 입력과 동영상 파일 출력을 세션에 구성한다.
     /// - Throws: 입력 디바이스(`AVCaptureDeviceInput`) 생성에 실패한 경우.
     func configure() throws {
@@ -170,18 +172,18 @@ actor CaptureService {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("\(UUID().uuidString).mov")
 
+        recordingStartedAt = Date()
         recorder.start(to: url)
     }
 
     /// 녹화를 멈추고 저장이 끝난 클립의 URL을 돌려준다.
     /// - Returns: 저장된 `.mov` 파일 URL.
     /// - Throws: 녹화 중 발생한 오류.
-    func stopRecording() async throws -> URL {
-        guard output.isRecording else {
-            throw CameraError.notRecording
-        }
-
-        return try await recorder.stopAndWait()
+    func stopRecording() async throws -> RecordedClip {
+        let url = try await recorder.stopAndWait()
+        let started = recordingStartedAt ?? Date()
+        recordingStartedAt = nil
+        return RecordedClip(url: url, startedAt: started)
     }
 }
 
@@ -223,7 +225,7 @@ final class CameraModel {
     var isRecording = false
 
     /// 가장 최근에 저장된 클립의 파일 URL. ``setRecording(_:)``에 `false`를 준 뒤 갱신된다.
-    var lastSavedURL: URL?
+    var lastSaved: RecordedClip?
 
     /// 미리보기 연결 등에 쓰이는 캡처 서비스. (보통 직접 만질 필요 없음)
     let service = CaptureService()
@@ -276,7 +278,7 @@ final class CameraModel {
             isRecording = true
         } else if !desiredRecording, isRecording {
             do {
-                lastSavedURL = try await service.stopRecording()
+                lastSaved = try await service.stopRecording()
             } catch {
                 print("record error:", error)
             }
@@ -291,4 +293,9 @@ final class CameraModel {
         let audio = await AVCaptureDevice.requestAccess(for: .audio)
         return video && audio
     }
+}
+
+struct RecordedClip {
+    let url: URL
+    let startedAt: Date
 }
