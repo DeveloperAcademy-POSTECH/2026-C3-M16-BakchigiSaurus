@@ -21,9 +21,9 @@ final class McniConnection {
     init(mcManager: MultipeerGameSession, niManager: NearbyInteractionManager) {
         self.mcSession = mcManager
         self.niManager = niManager
-        
+
         // NI 가 timeout 발생시 새로운 세션과 토큰 교환 시작
-        niManager.onSessionRestartRequired = { [ weak self ] in
+        niManager.onSessionRestartRequired = { [weak self] in
             guard let self, let peer = connectedPeer else {
                 return
             }
@@ -43,7 +43,7 @@ final class McniConnection {
                 switch event {
                 case let .peerConnected(peer):
                     connectedPeer = peer
-                    
+
                     // 같은 peer와 중복 토큰 교환 방지
                     if tokenExchangePeerRawID != peer.rawID {
                         print("MC peer Connected:", peer)
@@ -52,7 +52,7 @@ final class McniConnection {
 
                 case let .peerDisconnected(peer):
                     print("MC peer Disconnected:", peer)
-                    
+
                     if connectedPeer?.rawID == peer.rawID {
                         connectedPeer = nil
                         tokenExchangePeerRawID = nil

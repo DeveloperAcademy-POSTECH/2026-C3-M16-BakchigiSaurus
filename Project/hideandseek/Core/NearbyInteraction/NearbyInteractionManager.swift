@@ -9,12 +9,12 @@
 import Foundation
 import NearbyInteraction
 
-/// startSession( ) 으로 NI 세션을 준비합니다.
-/// getMyDiscoveryToken( ) 으로 내 토큰을 가져와 MC로 전송합니다.
-/// 상대 토큰을 받으면 run 으로 측정을 시작합니다.
-/// onReadingUpdated 에서 거리와 방향을 받습니다.
-/// 게임 종료시 invalidateSession( ) 을 호출합니다.
-/// 거리 방향 측정값이 갱신될 때 호출, 실제 게임 ViewModel에서 한번 등록해 사용
+// startSession( ) 으로 NI 세션을 준비합니다.
+// getMyDiscoveryToken( ) 으로 내 토큰을 가져와 MC로 전송합니다.
+// 상대 토큰을 받으면 run 으로 측정을 시작합니다.
+// onReadingUpdated 에서 거리와 방향을 받습니다.
+// 게임 종료시 invalidateSession( ) 을 호출합니다.
+// 거리 방향 측정값이 갱신될 때 호출, 실제 게임 ViewModel에서 한번 등록해 사용
 
 final class NearbyInteractionManager: NSObject {
     private var session: NISession?
@@ -60,7 +60,6 @@ final class NearbyInteractionManager: NSObject {
         session?.discoveryToken
     }
 
-
     /// NI Session 실행 함수
     /// 상대 기기의 DiscoveryToken 으로 거리 및 방향 측정을 시작합니다.
     /// MC 에서 상대 토큰을 받은 뒤 호출, (McnoConnection 사용시 자동 호출)
@@ -75,7 +74,7 @@ final class NearbyInteractionManager: NSObject {
         peerDiscoveryToken = peerToken // NIDiscoveryToken에 저장한 변수를 peerDiscoveryToken에 저장함
 
         let configuration = NINearbyPeerConfiguration(peerToken: peerToken) // 위에서 받은 상대의 token? peerToken 이 이름이 맞는지
-        
+
         // camera Assistance 지원 여부 확인 필요
         configuration.isCameraAssistanceEnabled = NISession.deviceCapabilities.supportsCameraAssistance
 
@@ -94,8 +93,8 @@ final class NearbyInteractionManager: NSObject {
         session?.pause()
         session?.invalidate()
         session = nil
-        //peerDiscoveryToken = nil
-        //sharedTokenWithPeer = false
+        // peerDiscoveryToken = nil
+        // sharedTokenWithPeer = false
         peerDiscoveryToken = nil // 세션 종료시 상대토큰 남는 것 초기화
         state = .invalidated
     }
@@ -170,10 +169,10 @@ extension NearbyInteractionManager: NISessionDelegate {
         }
 
         let configuration = NINearbyPeerConfiguration(peerToken: peerDiscoveryToken)
-        
+
         // 세션 재개시 camera Assistance 다시 활성화
         configuration.isCameraAssistanceEnabled = NISession.deviceCapabilities.supportsCameraAssistance
-        
+
         session.run(configuration)
     }
 
@@ -181,7 +180,7 @@ extension NearbyInteractionManager: NISessionDelegate {
     func session(_ session: NISession, didInvalidateWith error: Error) {
         self.session = nil
         peerDiscoveryToken = nil // 재사용 불가한 peer token 정리
-        //sharedTokenWithPeer = false
+        // sharedTokenWithPeer = false
         state = .failed(.sessionInvalidated(error))
     }
 }
