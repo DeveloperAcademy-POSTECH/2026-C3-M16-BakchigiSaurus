@@ -38,11 +38,18 @@ final class NearbyInteractionManager: NSObject {
             return
         }
 
+        if let session {
+            session.pause()
+            session.invalidate()
+        }
+
         // NI 세션 생성
         let newSession = NISession()
         newSession.delegate = self
 
         session = newSession
+        
+        peerDiscoveryToken = nil
         state = .ready
     }
 
@@ -74,16 +81,23 @@ final class NearbyInteractionManager: NSObject {
         print("camera assistance enabled:", configuration.isCameraAssistanceEnabled)
 
         session?.run(configuration)
+        sharedTokenWithPeer = true
     }
 
     /// 세션  종료  함수
     /// NI 측정을 종료하고 세션 및 상대 토큰을 초기화 합니다.
     /// 게임 종료 또는 상대방 이탈시 자동 처리(호출) 됩니다.
     func invalidateSession() {
+        session?.pause()
         session?.invalidate()
         session = nil
         peerDiscoveryToken = nil // 세션 종료시 상대토큰 남는 것 초기화
         state = .invalidated
+    }
+
+    deinit {
+        session?.pause()
+        session?.invalidate()
     }
 }
 

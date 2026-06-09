@@ -15,6 +15,7 @@ final class McniConnection {
 
     private var sessionEventTask: Task<Void, Error>?
     private var niTokenEventTask: Task<Void, Error>?
+    private var tokenExchangePeerRawID: String?
 
     private var connectedPeer: PeerID? // 현재 연결된 peer 저장한 뒤 다시 토큰 교환
 
@@ -47,9 +48,19 @@ final class McniConnection {
                     connectedPeer = peer
                     startNITokenExchange(with: peer)
 
-                case .peerDisconnected:
-                    connectedPeer = nil
+
+                case let .peerDisconnected(peer):
+                    print("MC peer Disconnected:", peer)
+                    
+                    if connectedPeer?.rawID == peer.rawID {
+                        connectedPeer = nil
+                    }
+                    
+                    tokenExchangePeerRawID = nil
                     niManager.invalidateSession()
+
+                case .discoveredRoomsChanged:
+                    break
                 }
             }
         }
@@ -58,9 +69,11 @@ final class McniConnection {
     /// 내 NI token 을 상대에게 보내는 함수
     /// NI 세션 시작 후 내 discoveryToken 을 가져와서 MC 를 통해 상대 peer 에게 내 token 보낸다
     private func startNITokenExchange(with peer: PeerID) {
+        tokenExchangePeerRawID = peer.rawID
         niManager.startSession()
 
         guard let localToken = niManager.getMyDiscoveryToken() else {
+            tokenExchangePeerRawID = nil
             print("Local NI token 생성 실패")
             return
         }
@@ -85,6 +98,7 @@ final class McniConnection {
     deinit {
         sessionEventTask?.cancel()
         niTokenEventTask?.cancel()
+        niManager.invalidateSession()
     }
 }
 
