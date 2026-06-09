@@ -15,19 +15,19 @@ final class McniConnection {
 
     private var sessionEventTask: Task<Void, Error>?
     private var niTokenEventTask: Task<Void, Error>?
-    
+
     private var connectedPeer: PeerID? // 현재 연결된 peer 저장한 뒤 다시 토큰 교환
 
     init(mcManager: MultipeerGameSession, niManager: NearbyInteractionManager) {
         self.mcSession = mcManager
         self.niManager = niManager
-        
+
         // NI 가 timeout 발생시 새로운 세션과 토큰 교환 시작
         niManager.onSessionRestartRequired = { [weak self] in
             guard let self, let peer = connectedPeer else {
                 return
             }
-            
+
             startNITokenExchange(with: peer)
         }
 

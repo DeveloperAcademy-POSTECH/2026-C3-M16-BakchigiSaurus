@@ -39,7 +39,6 @@ enum NearbyInteractionError: Error {
     case missingSession // 세션 없는데 뭔가 하려고 함
     case sessionInvalidated(Error) // 세션이 종료되면서 실제 에러를 감쌈
 
-
     case peerRemoved(NINearbyObject.RemovalReason)
 }
 
