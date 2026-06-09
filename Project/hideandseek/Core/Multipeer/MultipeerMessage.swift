@@ -16,8 +16,10 @@ import Foundation
 enum MultipeerMessageKind: String {
     /// NearbyInteraction을 시작하기 위한 NIDiscoveryToken 메시지.
     case niDiscoveryToken
-    /// 숨바꼭질 게임 진행 상태를 동기화하기 위한 메시지.
+    /// 숨바꼭질 게임 진행 상태를 동기화하기 위한 레거시 메시지.
     case gameFlowMessage
+    /// GameEngine 이벤트 묶음을 동기화하기 위한 메시지.
+    case gameEventEnvelopes
 }
 
 extension MultipeerMessageKind: Codable {

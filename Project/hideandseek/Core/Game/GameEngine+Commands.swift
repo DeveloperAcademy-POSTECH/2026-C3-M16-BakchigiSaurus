@@ -15,7 +15,7 @@ extension GameEngine {
         switch command {
         case .upsertParticipant, .removeParticipant, .assignTagger:
             makeParticipantEvents(for: command, sourcePlayerID: sourcePlayerID)
-        case .startHiding, .startPlaying, .useHint, .observeProximity, .confirmCapture, .evaluateDeadlines, .finishGame:
+        case .startHiding, .startPlaying, .useHint, .observeProximity, .confirmCapture, .rejectCapture, .evaluateDeadlines, .finishGame:
             makeGameplayEvents(for: command, sourcePlayerID: sourcePlayerID)
         case .startClip, .finishClip, .updateClipTransfer:
             makeClipEvents(for: command, sourcePlayerID: sourcePlayerID)
@@ -64,6 +64,12 @@ extension GameEngine {
             makeCaptureConfirmationEvents(
                 hiderID: hiderID,
                 confirmedAt: confirmedAt,
+                sourcePlayerID: sourcePlayerID
+            )
+        case let .rejectCapture(hiderID, rejectedAt):
+            makeCaptureRejectionEvents(
+                hiderID: hiderID,
+                rejectedAt: rejectedAt,
                 sourcePlayerID: sourcePlayerID
             )
         case let .evaluateDeadlines(evaluatedAt):
@@ -214,6 +220,24 @@ extension GameEngine {
         }
 
         return events
+    }
+
+    func makeCaptureRejectionEvents(
+        hiderID: PlayerID,
+        rejectedAt: Date,
+        sourcePlayerID: PlayerID
+    ) -> [GameEventEnvelope] {
+        guard state.phase == .playing else { return [] }
+        guard sourcePlayerID == hiderID else { return [] }
+        guard state.activeCaptureRequests[hiderID] != nil else { return [] }
+
+        return [
+            makeEnvelope(
+                .captureRejected(hiderID: hiderID, rejectedAt: rejectedAt),
+                by: sourcePlayerID,
+                at: rejectedAt
+            )
+        ]
     }
 
     func makeDeadlineEvents(

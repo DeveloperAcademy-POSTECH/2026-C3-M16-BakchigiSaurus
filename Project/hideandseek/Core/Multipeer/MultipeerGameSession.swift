@@ -27,9 +27,16 @@ struct GameFlowMessageEvent {
     let message: GameFlowMessage
 }
 
+/// MC를 통해 수신한 GameEngine 이벤트 묶음.
+struct GameEventEnvelopesEvent {
+    let peer: PeerID
+    let envelopes: [GameEventEnvelope]
+}
+
 /// 방 목록과 대기실 UI에서 사용하는 광고 스냅샷.
 struct RoomLobbySnapshot: Identifiable, Hashable {
     let id: String
+    let sessionID: UUID
     let host: PeerID
     let name: String
     let currentCount: Int
@@ -71,6 +78,9 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
     /// MC로 수신한 게임 진행 메시지 이벤트 구독자들.
     private var gameFlowMessageContinuations: [UUID: AsyncStream<GameFlowMessageEvent>.Continuation] = [:]
 
+    /// MC로 수신한 게임 이벤트 구독자들.
+    private var gameEventContinuations: [UUID: AsyncStream<GameEventEnvelopesEvent>.Continuation] = [:]
+
     /// 호스트 광고를 담당하는 advertiser.
     private var advertiser: MCNearbyServiceAdvertiser?
 
@@ -92,6 +102,9 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
 
     /// 현재 기기가 호스트일 때 외부에 광고할 방 설정이다.
     private var hostedRoomSettings: RoomSettings?
+
+    /// 현재 기기가 호스트일 때 외부에 광고할 게임 세션 ID다.
+    private var hostedRoomSessionID: UUID?
 
     /// GameSession 요구사항: 이 기기의 추상화된 식별자.
     let localPeer: PeerID
@@ -221,6 +234,23 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
             }
         }
     }
+
+    /// MCSession을 통해 수신한 GameEngine 이벤트 스트림을 생성한다.
+    func makeGameEventStream() -> AsyncStream<GameEventEnvelopesEvent> {
+        AsyncStream { continuation in
+            let subscriberID = UUID()
+
+            stateQueue.async {
+                self.gameEventContinuations[subscriberID] = continuation
+            }
+
+            continuation.onTermination = { [weak self] _ in
+                self?.stateQueue.async {
+                    self?.gameEventContinuations.removeValue(forKey: subscriberID)
+                }
+            }
+        }
+    }
 }
 
 private extension MultipeerGameSession {
@@ -228,6 +258,7 @@ private extension MultipeerGameSession {
         static let hostRawID = "hostRawID"
         static let hostDisplayName = "hostDisplayName"
         static let roomName = "roomName"
+        static let sessionID = "sessionID"
         static let currentCount = "roomCurrentCount"
         static let maxCount = "roomMaxCount"
         static let hintCount = "roomHintCount"
@@ -277,6 +308,7 @@ private extension MultipeerGameSession {
 
         return RoomLobbySnapshot(
             id: localPeer.rawID,
+            sessionID: hostedRoomSessionID ?? UUID(),
             host: localPeer,
             name: normalizedName,
             currentCount: min(settings.maxCount, max(1, connectedMCPeers.count + 1)),
@@ -292,6 +324,7 @@ private extension MultipeerGameSession {
             DiscoveryKey.hostRawID: room.host.rawID,
             DiscoveryKey.hostDisplayName: room.host.displayName,
             DiscoveryKey.roomName: room.name,
+            DiscoveryKey.sessionID: room.sessionID.uuidString,
             DiscoveryKey.currentCount: String(room.currentCount),
             DiscoveryKey.maxCount: String(room.maxCount),
             DiscoveryKey.hintCount: String(room.hintCount),
@@ -338,6 +371,7 @@ private extension MultipeerGameSession {
 
         return RoomLobbySnapshot(
             id: host.rawID,
+            sessionID: UUID(uuidString: discoveryInfo?[DiscoveryKey.sessionID] ?? "") ?? UUID(),
             host: host,
             name: discoveryInfo?[DiscoveryKey.roomName] ?? fallbackName,
             currentCount: Int(
@@ -372,6 +406,12 @@ private extension MultipeerGameSession {
 
     func yieldGameFlowMessageEvent(_ event: GameFlowMessageEvent) {
         for continuation in gameFlowMessageContinuations.values {
+            continuation.yield(event)
+        }
+    }
+
+    func yieldGameEvent(_ event: GameEventEnvelopesEvent) {
+        for continuation in gameEventContinuations.values {
             continuation.yield(event)
         }
     }
@@ -462,6 +502,20 @@ extension MultipeerGameSession: MCSessionDelegate {
                             message: gameFlowMessage
                         )
                     )
+
+                case .gameEventEnvelopes:
+                    let envelopes = try JSONDecoder().decode(
+                        [GameEventEnvelope].self,
+                        from: message.payload
+                    )
+                    let peer = self.makeKnownPeerID(from: peerID)
+
+                    self.yieldGameEvent(
+                        GameEventEnvelopesEvent(
+                            peer: peer,
+                            envelopes: envelopes
+                        )
+                    )
                 }
             } catch {
                 print("Failed to handle received multipeer data:", error.localizedDescription)
@@ -496,9 +550,10 @@ extension MultipeerGameSession: MCSessionDelegate {
 }
 
 extension MultipeerGameSession {
-    func configureHostedRoom(with settings: RoomSettings) {
+    func configureHostedRoom(with settings: RoomSettings, sessionID: UUID) {
         stateQueue.sync {
             self.hostedRoomSettings = settings
+            self.hostedRoomSessionID = sessionID
         }
 
         refreshHostingAdvertisementIfNeeded()
@@ -512,6 +567,7 @@ extension MultipeerGameSession {
             self.connectedMCPeers.removeAll()
             self.hostPeer = self.localPeer
             self.hostedRoomSettings = nil
+            self.hostedRoomSessionID = nil
         }
     }
 
@@ -683,6 +739,50 @@ extension MultipeerGameSession {
                 )
             } catch {
                 print("Failed to send game flow message:", error.localizedDescription)
+            }
+        }
+    }
+
+    /// GameEngine 이벤트 묶음을 연결된 peer에게 전송한다.
+    func sendGameEvents(
+        _ envelopes: [GameEventEnvelope],
+        to peer: PeerID? = nil
+    ) {
+        guard !envelopes.isEmpty else { return }
+
+        stateQueue.async {
+            do {
+                let payload = try JSONEncoder().encode(envelopes)
+                let message = MultipeerMessage(
+                    kind: .gameEventEnvelopes,
+                    payload: payload
+                )
+                let messageData = try JSONEncoder().encode(message)
+
+                let targetPeers: [MCPeerID]
+                if let peer {
+                    guard let targetPeer = self.connectedMCPeer(for: peer) else {
+                        print("Failed to send game events. MCPeerID not found:", peer.displayName)
+                        return
+                    }
+
+                    targetPeers = [targetPeer]
+                } else {
+                    targetPeers = self.session.connectedPeers
+                }
+
+                guard !targetPeers.isEmpty else {
+                    print("Failed to send game events. No connected peers.")
+                    return
+                }
+
+                try self.session.send(
+                    messageData,
+                    toPeers: targetPeers,
+                    with: .reliable
+                )
+            } catch {
+                print("Failed to send game events:", error.localizedDescription)
             }
         }
     }

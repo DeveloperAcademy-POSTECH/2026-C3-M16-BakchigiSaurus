@@ -25,7 +25,7 @@ extension GameEngine {
         case .participantUpserted, .participantRemoved, .taggerAssigned:
             reduceParticipantEvent(event)
         case .phaseChanged, .participantStatusesSet, .hintConsumed,
-             .proximityUpdated, .captureRequested, .captureConfirmed:
+             .proximityUpdated, .captureRequested, .captureConfirmed, .captureRejected:
             reduceGameplayEvent(event)
         case .clipStarted, .clipEnded, .clipTransferUpdated:
             reduceClipEvent(event)
@@ -82,6 +82,8 @@ extension GameEngine {
             state.activeCaptureRequests[request.hiderID] = request
         case let .captureConfirmed(hiderID, _):
             reduceCaptureConfirmed(hiderID: hiderID)
+        case let .captureRejected(hiderID, _):
+            reduceCaptureRejected(hiderID: hiderID)
         default:
             break
         }
@@ -132,6 +134,14 @@ extension GameEngine {
         guard var participant = state.participants[hiderID] else { return }
         participant.status = .captured
         state.participants[hiderID] = participant
+    }
+
+    func reduceCaptureRejected(hiderID: PlayerID) {
+        state.activeCaptureRequests.removeValue(forKey: hiderID)
+
+        guard var proximity = state.proximityByHiderID[hiderID] else { return }
+        proximity.captureRequestSentAt = nil
+        state.proximityByHiderID[hiderID] = proximity
     }
 
     func reduceGameFinished(_ conclusion: GameConclusion) {

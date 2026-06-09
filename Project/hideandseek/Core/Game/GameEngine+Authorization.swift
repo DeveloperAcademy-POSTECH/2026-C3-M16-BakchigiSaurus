@@ -20,7 +20,7 @@ extension GameEngine {
         case .participantUpserted, .participantRemoved, .taggerAssigned:
             isAuthorizedParticipantEvent(envelope)
         case .phaseChanged, .participantStatusesSet, .hintConsumed,
-             .proximityUpdated, .captureRequested, .captureConfirmed:
+             .proximityUpdated, .captureRequested, .captureConfirmed, .captureRejected:
             isAuthorizedGameplayEvent(envelope)
         case .clipStarted, .clipEnded, .clipTransferUpdated:
             isAuthorizedClipEvent(envelope)
@@ -64,6 +64,8 @@ extension GameEngine {
         case let .captureRequested(request):
             return sourcePlayerID == state.taggerID && request.taggerID == sourcePlayerID
         case let .captureConfirmed(hiderID, _):
+            return sourcePlayerID == hiderID && state.activeCaptureRequests[hiderID] != nil
+        case let .captureRejected(hiderID, _):
             return sourcePlayerID == hiderID && state.activeCaptureRequests[hiderID] != nil
         default:
             return false

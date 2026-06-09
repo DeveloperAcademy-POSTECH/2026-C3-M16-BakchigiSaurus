@@ -107,6 +107,7 @@ struct RoomDetailView: View {
             model: RoomFlowViewModel(),
             room: RoomLobbySnapshot(
                 id: "preview",
+                sessionID: UUID(),
                 host: PeerID(rawID: "preview-host", displayName: "미리보기 호스트"),
                 name: "박치기 사우루스 숨바꼭질",
                 currentCount: 2,

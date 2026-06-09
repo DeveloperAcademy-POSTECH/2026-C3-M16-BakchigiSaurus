@@ -27,7 +27,6 @@ struct TaggerSearchView: View {
     /// 💡 2. 이니셜라이저를 통해 의존성을 외부에서 주입받아 뷰모델을 초기화합니다.
     init(
         gameModel: GameModel,
-        mcSession: MultipeerGameSession,
         niManager: NearbyInteractionManager,
         camera: CameraModel,
         timeLeft: Int
@@ -37,7 +36,6 @@ struct TaggerSearchView: View {
 
         _viewModel = State(initialValue: TaggerSearchViewModel(
             gameModel: gameModel,
-            mcSession: mcSession,
             niManager: niManager
         ))
     }
@@ -92,7 +90,7 @@ struct TaggerSearchView: View {
                             }
 
                             // 💡 4. 엔진 내부의 힌트 개수 잔여량과 동기화
-                            let hintCount = viewModel.gameModel.sharedState.hintCountRemaining
+                            let hintCount = viewModel.hintCountRemaining
 
                             Button {
                                 showHintAlert = true
@@ -117,7 +115,7 @@ struct TaggerSearchView: View {
                         await viewModel.tapHintButton()
 
                         // 힌트 사용 직후 성공/실패 화면 분기 판정
-                        if viewModel.nearestHiderDistance != nil {
+                        if viewModel.didResolveHint {
                             activeHintView = .success
                         } else {
                             activeHintView = .failure
@@ -156,14 +154,12 @@ struct TaggerSearchView: View {
     // 1. 프리뷰용 가짜(Mock) 의존성 데이터 생성
     // (구현하신 클래스/구조체의 이니셜라이저 형태에 맞게 수정이 필요할 수 있습니다.)
     let dummyGameModel = GameModel(localPlayerName: "테스트 술래")
-    let dummyMcSession = MultipeerGameSession()
     let dummyNiManager = NearbyInteractionManager()
     let dummyCamera = CameraModel()
 
     // 2. TaggerSearchView에 의존성을 주입하여 프리뷰 렌더링
     TaggerSearchView(
         gameModel: dummyGameModel,
-        mcSession: dummyMcSession,
         niManager: dummyNiManager,
         camera: dummyCamera,
         timeLeft: 180 // 제한 시간 3분 가정

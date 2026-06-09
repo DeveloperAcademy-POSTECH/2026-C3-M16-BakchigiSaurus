@@ -15,7 +15,7 @@ final class RoomFlowViewModel: ObservableObject {
     private let connection: McniConnection
 
     private var sessionEventTask: Task<Void, Never>?
-    private var gameFlowTask: Task<Void, Never>?
+    private var gameEventTask: Task<Void, Never>?
     private var playerIDByPeerRawID: [String: PlayerID] = [:]
     private var peerIDByPlayerID: [PlayerID: PeerID] = [:]
 
@@ -45,13 +45,13 @@ final class RoomFlowViewModel: ObservableObject {
         self.currentPeers = session.currentPeers
 
         observeSessionEvents()
-        observeGameFlowMessages()
+        observeGameEvents()
         refreshSnapshot()
     }
 
     deinit {
         sessionEventTask?.cancel()
-        gameFlowTask?.cancel()
+        gameEventTask?.cancel()
         niManager.invalidateSession()
     }
 
@@ -108,7 +108,9 @@ final class RoomFlowViewModel: ObservableObject {
         bootstrapHostedGameModel(settings: settings)
 
         session.stopBrowsing()
-        session.configureHostedRoom(with: settings)
+        if let sessionID = gameModel?.sharedState.session.id {
+            session.configureHostedRoom(with: settings, sessionID: sessionID)
+        }
         session.startHosting()
 
         isBrowsing = false
@@ -172,6 +174,7 @@ final class RoomFlowViewModel: ObservableObject {
         let currentCount = max(1, sortedParticipants.count)
         self.activeRoom = RoomLobbySnapshot(
             id: activeRoom.id,
+            sessionID: gameModel?.sharedState.session.id ?? activeRoom.sessionID,
             host: activeRoom.host,
             name: settings?.name ?? activeRoom.name,
             currentCount: currentCount,
@@ -192,11 +195,11 @@ final class RoomFlowViewModel: ObservableObject {
         }
     }
 
-    private func observeGameFlowMessages() {
-        gameFlowTask = Task { [weak self, session] in
-            for await event in session.makeGameFlowMessageStream() {
+    private func observeGameEvents() {
+        gameEventTask = Task { [weak self, session] in
+            for await event in session.makeGameEventStream() {
                 await MainActor.run {
-                    self?.handleGameFlowMessage(event.message)
+                    self?.handleReceivedGameEvents(event)
                 }
             }
         }
@@ -236,25 +239,16 @@ final class RoomFlowViewModel: ObservableObject {
         }
     }
 
-    private func handleGameFlowMessage(_ message: GameFlowMessage) {
-        switch message.kind {
-        case .roleAssigned:
-            Task { @MainActor [weak self] in
-                await self?.applyRoleAssignmentMessage(message)
-            }
+    private func handleReceivedGameEvents(_ event: GameEventEnvelopesEvent) {
+        guard !event.envelopes.isEmpty else { return }
 
-        case .gameStarted:
-            Task { @MainActor [weak self] in
-                await self?.applyGameStartedMessage()
-            }
-
-        default:
-            break
+        Task { @MainActor [weak self] in
+            await self?.mergeRemoteEvents(event.envelopes, from: event.peer)
         }
     }
 
     private func bootstrapHostedGameModel(settings: RoomSettings) {
-        let localPlayerID = PlayerID()
+        let localPlayerID = ensurePlayerID(for: localPeer)
         let localParticipant = GameParticipant(
             id: localPlayerID,
             peerID: localPeer,
@@ -270,18 +264,17 @@ final class RoomFlowViewModel: ObservableObject {
             participantOrder: [localPlayerID]
         )
 
-        playerIDByPeerRawID[localPeer.rawID] = localPlayerID
-        peerIDByPlayerID[localPlayerID] = localPeer
         gameModel = GameModel(
             initialState: initialState,
             localPlayerID: localPlayerID
         )
+        rebuildPeerMappings()
         syncPublishedStateFromGameModel()
     }
 
     private func bootstrapJoinedGameModel(for room: RoomLobbySnapshot) {
-        let hostPlayerID = PlayerID()
-        let localPlayerID = PlayerID()
+        let hostPlayerID = ensurePlayerID(for: room.host)
+        let localPlayerID = ensurePlayerID(for: localPeer)
         let settings = RoomSettings(
             name: room.name,
             maxCount: room.maxCount,
@@ -304,6 +297,7 @@ final class RoomFlowViewModel: ObservableObject {
         )
         let initialState = GameState(
             session: GameSessionDefinition(
+                id: room.sessionID,
                 hostID: hostPlayerID,
                 settings: settings
             ),
@@ -317,14 +311,11 @@ final class RoomFlowViewModel: ObservableObject {
             ]
         )
 
-        playerIDByPeerRawID[room.host.rawID] = hostPlayerID
-        peerIDByPlayerID[hostPlayerID] = room.host
-        playerIDByPeerRawID[localPeer.rawID] = localPlayerID
-        peerIDByPlayerID[localPlayerID] = localPeer
         gameModel = GameModel(
             initialState: initialState,
             localPlayerID: localPlayerID
         )
+        rebuildPeerMappings()
         syncPublishedStateFromGameModel()
     }
 
@@ -346,6 +337,12 @@ final class RoomFlowViewModel: ObservableObject {
 
     private func syncGameParticipantsUsingCoreModel() async {
         guard let gameModel, let activeRoom else { return }
+        guard isHostInActiveRoom else {
+            rebuildPeerMappings()
+            syncPublishedStateFromGameModel()
+            refreshSnapshot()
+            return
+        }
 
         var activePeers = currentPeers
         if !activePeers.contains(where: { $0.rawID == activeRoom.host.rawID }) {
@@ -367,11 +364,11 @@ final class RoomFlowViewModel: ObservableObject {
             )
 
             remainingParticipantIDs.remove(playerID)
-            await gameModel.send(.upsertParticipant(participant), as: playerID)
+            await sendCommand(.upsertParticipant(participant), as: playerID)
         }
 
         for participantID in remainingParticipantIDs where participantID != gameModel.localPlayerID {
-            await gameModel.send(.removeParticipant(participantID), as: participantID)
+            await sendCommand(.removeParticipant(participantID), as: participantID)
 
             if let peer = peerIDByPlayerID.removeValue(forKey: participantID) {
                 playerIDByPeerRawID.removeValue(forKey: peer.rawID)
@@ -393,73 +390,21 @@ final class RoomFlowViewModel: ObservableObject {
             isHost: taggerPeer.rawID == activeRoom?.host.rawID
         )
 
-        await gameModel.send(.assignTagger(taggerPlayerID))
-        await gameModel.send(.startHiding())
+        await sendCommand(.assignTagger(taggerPlayerID))
+        await sendCommand(.startHiding())
 
         syncPublishedStateFromGameModel()
-
-        for participant in sortedParticipants {
-            guard let peer = participant.peerID, peer.rawID != localPeer.rawID else { continue }
-
-            let role: GameFlowRole = participant.id == taggerPlayerID ? .seeker : .hider
-            session.sendRoleAssigned(
-                role,
-                taggerPeer: taggerPeer,
-                to: peer
-            )
-        }
-
-        session.sendGameStarted()
         statusMessage = "게임 시작 신호를 전송했습니다"
         refreshSnapshot()
     }
 
-    private func applyRoleAssignmentMessage(_ message: GameFlowMessage) async {
-        localAssignedRole = message.role
+    private func mergeRemoteEvents(_ events: [GameEventEnvelope], from peer: PeerID) async {
+        guard let gameModel else { return }
 
-        guard let gameModel else {
-            updateStatusMessage(for: message.role)
-            return
-        }
-
-        let taggerPeer: PeerID
-        if let referencedPeer = message.referencedPeer {
-            taggerPeer = referencedPeer
-        } else if message.role == .seeker {
-            taggerPeer = localPeer
-        } else if let hostPeer = activeRoom?.host {
-            taggerPeer = hostPeer
-        } else {
-            updateStatusMessage(for: message.role)
-            return
-        }
-
-        let taggerPlayerID = ensurePlayerID(
-            for: taggerPeer,
-            isHost: taggerPeer.rawID == activeRoom?.host.rawID
-        )
-        await gameModel.send(.assignTagger(taggerPlayerID))
+        await gameModel.merge(remoteEvents: events)
+        peerIDByPlayerID[ensurePlayerID(for: peer)] = peer
+        rebuildPeerMappings()
         syncPublishedStateFromGameModel()
-        updateStatusMessage(for: message.role)
-        refreshSnapshot()
-    }
-
-    private func applyGameStartedMessage() async {
-        guard let gameModel else {
-            gameStarted = true
-            if statusMessage == nil {
-                statusMessage = "게임이 시작됐습니다"
-            }
-            return
-        }
-
-        await gameModel.send(.startHiding())
-        syncPublishedStateFromGameModel()
-
-        if statusMessage == nil {
-            statusMessage = "게임이 시작됐습니다"
-        }
-
         refreshSnapshot()
     }
 
@@ -472,6 +417,7 @@ final class RoomFlowViewModel: ObservableObject {
     }
 
     private func syncPublishedStateFromGameModel() {
+        rebuildPeerMappings()
         gameStarted = gameModel.map { $0.sharedState.phase != .lobby } ?? false
 
         if let assignedTaggerID = gameModel?.sharedState.taggerID,
@@ -482,6 +428,7 @@ final class RoomFlowViewModel: ObservableObject {
 
         if let role = mapRole(gameModel?.localParticipant?.role) {
             localAssignedRole = role
+            updateStatusMessage(for: role)
         } else if gameModel == nil {
             localAssignedRole = nil
         }
@@ -498,13 +445,13 @@ final class RoomFlowViewModel: ObservableObject {
         }
     }
 
-    private func ensurePlayerID(for peer: PeerID, isHost: Bool) -> PlayerID {
+    private func ensurePlayerID(for peer: PeerID, isHost: Bool = false) -> PlayerID {
         if let existingPlayerID = playerIDByPeerRawID[peer.rawID] {
             peerIDByPlayerID[existingPlayerID] = peer
             return existingPlayerID
         }
 
-        let playerID = PlayerID()
+        let playerID = PlayerID(stablePeerRawID: peer.rawID)
         playerIDByPeerRawID[peer.rawID] = playerID
         peerIDByPlayerID[playerID] = peer
 
@@ -513,6 +460,33 @@ final class RoomFlowViewModel: ObservableObject {
         }
 
         return playerID
+    }
+
+    private func rebuildPeerMappings() {
+        guard let participants = gameModel?.participants else { return }
+
+        for participant in participants {
+            guard let peer = participant.peerID else { continue }
+            playerIDByPeerRawID[peer.rawID] = participant.id
+            peerIDByPlayerID[participant.id] = peer
+        }
+    }
+
+    @discardableResult
+    private func sendCommand(
+        _ command: GameCommand,
+        as sourcePlayerID: PlayerID? = nil,
+        to peer: PeerID? = nil
+    ) async -> [GameEventEnvelope] {
+        guard let gameModel else { return [] }
+
+        let events = await gameModel.send(command, as: sourcePlayerID)
+        if !events.isEmpty {
+            session.sendGameEvents(events, to: peer)
+        }
+        rebuildPeerMappings()
+        syncPublishedStateFromGameModel()
+        return events
     }
 
     private func peerIDByRawID(_ rawID: String) -> PeerID? {

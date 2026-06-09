@@ -73,6 +73,22 @@ final class GameModel {
         sharedState.remainingSeconds()
     }
 
+    func participantState(for participantID: PlayerID) -> LocalParticipantState? {
+        localState.participantStates[participantID]
+    }
+
+    func proximityState(for hiderID: PlayerID) -> ProximityState? {
+        sharedState.proximityByHiderID[hiderID]
+    }
+
+    var activeLocalCaptureRequest: CaptureRequest? {
+        sharedState.activeCaptureRequests[localPlayerID]
+    }
+
+    var latestHint: HintResolution? {
+        sharedState.lastHint
+    }
+
     @discardableResult
     func send(_ command: GameCommand, as sourcePlayerID: PlayerID? = nil) async -> [GameEventEnvelope] {
         let actorID = sourcePlayerID ?? localPlayerID
