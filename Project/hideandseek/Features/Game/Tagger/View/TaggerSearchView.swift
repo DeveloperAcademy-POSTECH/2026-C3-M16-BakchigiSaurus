@@ -9,34 +9,11 @@ import Foundation
 import SwiftUI
 
 struct TaggerSearchView: View {
-    // 💡 1. 뷰모델을 관찰 가능한 상태로 소유합니다.
-    @State private var viewModel: TaggerSearchViewModel
     @State private var showHintAlert: Bool = false
     @State private var activeHintResult: HintDisplayResult?
     let camera: CameraModel
     var viewModel: TaggerSearchViewModel
     let timeLeft: Int
-
-    let camera: CameraModel
-    let timeLeft: Int
-
-    /// 💡 2. 이니셜라이저를 통해 의존성을 외부에서 주입받아 뷰모델을 초기화합니다.
-    init(
-        gameModel: GameModel,
-        mcSession: MultipeerGameSession,
-        niManager: NearbyInteractionManager,
-        camera: CameraModel,
-        timeLeft: Int
-    ) {
-        self.camera = camera
-        self.timeLeft = timeLeft
-
-        _viewModel = State(initialValue: TaggerSearchViewModel(
-            gameModel: gameModel,
-            mcSession: mcSession,
-            niManager: niManager
-        ))
-    }
 
     var body: some View {
         ZStack(alignment: .top) {

@@ -17,10 +17,10 @@ struct RoomDetailView: View {
 
             ScrollView {
                 LazyVStack(spacing: 10) {
-                    ForEach(model.sortedParticipants) { participant in
+                    ForEach(model.sortedParticipants, id: \.rawID) { participant in
                         ParticipantCard(
-                            name: participant.name,
-                            isTagger: model.selectedTaggerRawID == participant.peerID?.rawID
+                            name: participant.displayName,
+                            isTagger: model.selectedTaggerRawID == participant.rawID
                         ) {
                             model.toggleTagger(for: participant)
                         }

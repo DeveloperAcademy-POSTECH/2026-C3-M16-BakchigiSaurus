@@ -73,16 +73,7 @@ final class NearbyInteractionManager: NSObject {
 
         peerDiscoveryToken = peerToken // NIDiscoveryToken에 저장한 변수를 peerDiscoveryToken에 저장함
 
-        let configuration = NINearbyPeerConfiguration(peerToken: peerToken) // 위에서 받은 상대의 token? peerToken 이 이름이 맞는지
-
-        // camera Assistance 지원 여부 확인 필요
-        configuration.isCameraAssistanceEnabled = NISession.deviceCapabilities.supportsCameraAssistance
-
-        print("NI session.run 호출")
-        print("camera assistance supported:", NISession.deviceCapabilities.supportsCameraAssistance)
-        print("camera assistance enabled:", configuration.isCameraAssistanceEnabled)
-
-        session?.run(configuration)
+        session?.run(makeConfiguration(peerToken: peerToken))
         sharedTokenWithPeer = true
     }
 
@@ -111,9 +102,8 @@ final class NearbyInteractionManager: NSObject {
         session?.pause()
         session?.invalidate()
         session = nil
-        // peerDiscoveryToken = nil
-        // sharedTokenWithPeer = false
         peerDiscoveryToken = nil // 세션 종료시 상대토큰 남는 것 초기화
+        sharedTokenWithPeer = false
         state = .invalidated
     }
 
@@ -203,19 +193,15 @@ extension NearbyInteractionManager: NISessionDelegate {
             return
         }
 
-        let configuration = NINearbyPeerConfiguration(peerToken: peerDiscoveryToken)
-
-        // 세션 재개시 camera Assistance 다시 활성화
-        configuration.isCameraAssistanceEnabled = NISession.deviceCapabilities.supportsCameraAssistance
-
-        session.run(configuration)
+        session.run(makeConfiguration(peerToken: peerDiscoveryToken))
+        debugLog("sessionSuspensionEnded rerun")
     }
 
     /// 세션이 에러와 함께 완전 종료되었을 때
     func session(_ session: NISession, didInvalidateWith error: Error) {
         self.session = nil
         peerDiscoveryToken = nil // 재사용 불가한 peer token 정리
-        // sharedTokenWithPeer = false
+        sharedTokenWithPeer = false
         state = .failed(.sessionInvalidated(error))
         debugLog("didInvalidateWith error=\(error)")
     }
