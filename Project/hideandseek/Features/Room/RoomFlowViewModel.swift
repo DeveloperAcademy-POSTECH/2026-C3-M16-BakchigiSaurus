@@ -69,14 +69,19 @@ final class RoomFlowViewModel: ObservableObject {
     }
 
     var canStartGame: Bool {
-        isHostInActiveRoom && currentPeers.count > 1
+        isHostInActiveRoom && sortedParticipants.count > 1
     }
 
-    var sortedParticipants: [PeerID] {
-        currentPeers.sorted { lhs, rhs in
-            if lhs.rawID == activeRoom?.host.rawID { return true }
-            if rhs.rawID == activeRoom?.host.rawID { return false }
-            return lhs.displayName.localizedCompare(rhs.displayName) == .orderedAscending
+    var sortedParticipants: [GameParticipant] {
+        let hostRawID = activeRoom?.host.rawID
+
+        return (gameModel?.participants ?? []).sorted { lhs, rhs in
+            let lhsRawID = lhs.peerID?.rawID
+            let rhsRawID = rhs.peerID?.rawID
+
+            if lhsRawID == hostRawID { return true }
+            if rhsRawID == hostRawID { return false }
+            return lhs.name.localizedCompare(rhs.name) == .orderedAscending
         }
     }
 
@@ -108,30 +113,30 @@ final class RoomFlowViewModel: ObservableObject {
             taggerSelectionPolicy: .random
         )
 
+        resetGameSessionState()
+        bootstrapHostedGameModel(settings: settings)
+
         session.stopBrowsing()
         session.configureHostedRoom(with: settings)
         session.startHosting()
 
         isBrowsing = false
-        joiningRoomID = nil
-        gameStarted = false
-        localAssignedRole = nil
-        selectedTaggerRawID = nil
         statusMessage = "참가자를 기다리는 중입니다"
         gameModel = nil
         playerIDByPeerRawID.removeAll()
         activeRoom = session.hostedRoom
         refreshSnapshot()
+        syncGameParticipants()
     }
 
     func joinRoom(_ room: RoomLobbySnapshot) {
         guard !room.isFull else { return }
 
+        resetGameSessionState()
+        bootstrapJoinedGameModel(for: room)
+
         joiningRoomID = room.id
         activeRoom = room
-        gameStarted = false
-        localAssignedRole = nil
-        selectedTaggerRawID = nil
         statusMessage = "\(room.name)에 연결하는 중입니다"
         gameModel = nil
         playerIDByPeerRawID.removeAll()
@@ -150,17 +155,19 @@ final class RoomFlowViewModel: ObservableObject {
         playerIDByPeerRawID.removeAll()
         statusMessage = nil
         currentPeers = [localPeer]
+        resetGameSessionState()
         activateLobby()
     }
 
-    func toggleTagger(for peer: PeerID) {
+    func toggleTagger(for participant: GameParticipant) {
         guard isHostInActiveRoom else { return }
-        selectedTaggerRawID = selectedTaggerRawID == peer.rawID ? nil : peer.rawID
+        guard let peerRawID = participant.peerID?.rawID else { return }
+        selectedTaggerRawID = selectedTaggerRawID == peerRawID ? nil : peerRawID
     }
 
     func startGame() {
         guard isHostInActiveRoom else { return }
-        guard currentPeers.count > 1 else {
+        guard sortedParticipants.count > 1 else {
             statusMessage = "게임을 시작하려면 최소 2명이 필요합니다"
             return
         }
@@ -193,23 +200,22 @@ final class RoomFlowViewModel: ObservableObject {
         localPeer = session.localPeer
         currentPeers = session.currentPeers
         discoveredRooms = session.discoveredRooms
+        syncPublishedStateFromGameModel()
 
-        if let activeRoom {
-            if isHostInActiveRoom {
-                self.activeRoom = session.hostedRoom
-            } else {
-                self.activeRoom = RoomLobbySnapshot(
-                    id: activeRoom.id,
-                    host: activeRoom.host,
-                    name: activeRoom.name,
-                    currentCount: currentPeers.count,
-                    maxCount: activeRoom.maxCount,
-                    hintCount: activeRoom.hintCount,
-                    hideTimeSeconds: activeRoom.hideTimeSeconds,
-                    gameMinutes: activeRoom.gameMinutes
-                )
-            }
-        }
+        guard let activeRoom else { return }
+
+        let settings = gameModel?.sharedState.session.settings
+        let currentCount = max(1, sortedParticipants.count)
+        self.activeRoom = RoomLobbySnapshot(
+            id: activeRoom.id,
+            host: activeRoom.host,
+            name: settings?.name ?? activeRoom.name,
+            currentCount: currentCount,
+            maxCount: settings?.maxCount ?? activeRoom.maxCount,
+            hintCount: settings?.hintCount ?? activeRoom.hintCount,
+            hideTimeSeconds: settings?.hideTimeSeconds ?? activeRoom.hideTimeSeconds,
+            gameMinutes: settings?.gameMinutes ?? activeRoom.gameMinutes
+        )
     }
 
     private func observeSessionEvents() {
@@ -237,6 +243,8 @@ final class RoomFlowViewModel: ObservableObject {
 
         switch event {
         case let .peerConnected(peer):
+            syncGameParticipants()
+
             if joiningRoomID != nil, peer.rawID == activeRoom?.host.rawID {
                 joiningRoomID = nil
                 statusMessage = "\(activeRoom?.name ?? "방")에 참가했습니다"
@@ -248,10 +256,12 @@ final class RoomFlowViewModel: ObservableObject {
             if !isHostInActiveRoom, peer.rawID == activeRoom?.host.rawID {
                 statusMessage = "호스트 연결이 끊어졌습니다"
                 activeRoom = nil
-                joiningRoomID = nil
+                resetGameSessionState()
                 activateLobby()
                 return
             }
+
+            syncGameParticipants()
 
             if isHostInActiveRoom {
                 statusMessage = "\(peer.displayName) 님이 나갔습니다"
@@ -265,11 +275,8 @@ final class RoomFlowViewModel: ObservableObject {
     private func handleGameFlowMessage(_ message: GameFlowMessage) {
         switch message.kind {
         case .roleAssigned:
-            localAssignedRole = message.role
-            if message.role == .seeker {
-                statusMessage = "당신이 술래입니다"
-            } else if message.role == .hider {
-                statusMessage = "숨는 역할이 배정됐습니다"
+            Task { @MainActor [weak self] in
+                await self?.applyRoleAssignmentMessage(message)
             }
 
         case .gameStarted:
