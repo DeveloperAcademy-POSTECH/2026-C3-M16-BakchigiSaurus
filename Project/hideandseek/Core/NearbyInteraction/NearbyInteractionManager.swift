@@ -92,12 +92,26 @@ final class NearbyInteractionManager: NSObject {
 
         peerDiscoveryToken = peerToken // NIDiscoveryToken에 저장한 변수를 peerDiscoveryToken에 저장함
 
-        let configuration = NINearbyPeerConfiguration(peerToken: peerToken) // 위에서 받은 상대의 token? peerToken 이 이름이 맞는지
-
-        configuration.isCameraAssistanceEnabled = true
-
-        session?.run(configuration)
+        session?.run(makeConfiguration(peerToken: peerToken))
         sharedTokenWithPeer = true
+    }
+
+    @discardableResult
+    func resumeSessionIfPossible() -> Bool {
+        guard let peerDiscoveryToken else {
+            debugLog("resumeSessionIfPossible skipped: peerDiscoveryToken=nil")
+            return false
+        }
+
+        guard session != nil else {
+            state = .failed(.missingSession)
+            debugLog("resumeSessionIfPossible skipped: session=nil")
+            return false
+        }
+
+        run(with: peerDiscoveryToken)
+        debugLog("resumeSessionIfPossible rerun requested")
+        return true
     }
 
     /// 세션  종료  함수
@@ -114,6 +128,12 @@ final class NearbyInteractionManager: NSObject {
         session?.pause()
         session?.invalidate()
     }
+
+    private func makeConfiguration(peerToken: NIDiscoveryToken) -> NINearbyPeerConfiguration {
+        let configuration = NINearbyPeerConfiguration(peerToken: peerToken)
+        configuration.isCameraAssistanceEnabled = false
+        return configuration
+    }
 }
 
 /// NI가 주변 기기 정보를 업데이트 했을 때 자동으로 호출되는 함수
@@ -121,17 +141,20 @@ extension NearbyInteractionManager: NISessionDelegate {
     /// 시스템  호출  콜백
     func sessionDidStartRunning(_ session: NISession) {
         state = .running
+        debugLog("sessionDidStartRunning")
     }
 
     /// 거리, 방향 값 들어왔을 때 업데이트 과정
     func session(_ session: NISession, didUpdate nearbyObjects: [NINearbyObject]) {
         guard let peerDiscoveryToken else {
+            debugLog("didUpdate ignored: peerDiscoveryToken=nil objects=\(nearbyObjects.count)")
             return
         }
         // 배열 안에서 상대방 object 찾기
         guard let nearbyObject = nearbyObjects.first(where: {
             $0.discoveryToken == peerDiscoveryToken
         }) else {
+            debugLog("didUpdate ignored: no matching peer objects=\(nearbyObjects.count)")
             return
         }
         // 상대와의 거리, 방향, 시각을 하나의 모델로 정리
@@ -142,6 +165,10 @@ extension NearbyInteractionManager: NISessionDelegate {
             horizontalAngle: nearbyObject.horizontalAngle
         )
 
+        debugLog(
+            "didUpdate matched distance=\(format(distance: reading.distance)) " +
+            "hasDirection=\(reading.direction != nil)"
+        )
         onReadingUpdated?(reading) // 만든 값을 외부로 전달
     }
 
@@ -154,29 +181,34 @@ extension NearbyInteractionManager: NISessionDelegate {
         switch reason {
         case .peerEnded:
             state = .peerEnded
+            debugLog("didRemove peerEnded objects=\(nearbyObjects.count)")
 
         case .timeout:
             state = .peerLost
+            debugLog("didRemove timeout objects=\(nearbyObjects.count)")
 
         default:
             state = .failed(.peerRemoved(reason))
+            debugLog("didRemove failed reason=\(reason) objects=\(nearbyObjects.count)")
         }
     }
 
     /// 세션이 일시중단 되었을 때
     func sessionWasSuspended(_ session: NISession) {
         state = .suspended
+        debugLog("sessionWasSuspended")
     }
 
     /// 세션 중단이 종료되었을 때 (= 재실행 가능 상태, 세션 재호출)
     func sessionSuspensionEnded(_ session: NISession) {
         guard let peerDiscoveryToken else {
             state = .ready
+            debugLog("sessionSuspensionEnded without peer token")
             return
         }
 
-        let configuration = NINearbyPeerConfiguration(peerToken: peerDiscoveryToken)
-        session.run(configuration)
+        session.run(makeConfiguration(peerToken: peerDiscoveryToken))
+        debugLog("sessionSuspensionEnded rerun")
     }
 
     /// 세션이 에러와 함께 완전 종료되었을 때
@@ -185,5 +217,17 @@ extension NearbyInteractionManager: NISessionDelegate {
         peerDiscoveryToken = nil // 재사용 불가한 peer token 정리
         sharedTokenWithPeer = false
         state = .failed(.sessionInvalidated(error))
+        debugLog("didInvalidateWith error=\(error)")
+    }
+
+    private func debugLog(_ message: String) {
+        #if DEBUG
+        print("[NearbyInteractionManager] \(message) state=\(state)")
+        #endif
+    }
+
+    private func format(distance: Float?) -> String {
+        guard let distance else { return "nil" }
+        return String(format: "%.2fm", distance)
     }
 }

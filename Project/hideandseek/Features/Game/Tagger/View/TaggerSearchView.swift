@@ -5,6 +5,7 @@
 //  Created by 캄초 on 5/28/26.
 //
 
+import Foundation
 import SwiftUI
 
 struct TaggerSearchView: View {
@@ -50,6 +51,25 @@ struct TaggerSearchView: View {
             }
         }
         .animation(.easeInOut(duration: 0.2), value: activeHintResult)
+        .onAppear {
+            viewModel.activateProximityTracking(reason: "TaggerSearchView appear")
+            logRenderState("appear")
+        }
+        .onDisappear {
+            viewModel.deactivateProximityTracking(reason: "TaggerSearchView disappear")
+        }
+        .onChange(of: viewModel.isIslandExpanded, initial: true) { _, isExpanded in
+            logRenderState("isIslandExpanded changed -> \(isExpanded)")
+        }
+        .onChange(of: viewModel.isRecording, initial: true) { _, isRecording in
+            logRenderState("isRecording changed -> \(isRecording)")
+        }
+        .onChange(of: viewModel.latestObservedDistance, initial: true) { _, distance in
+            logRenderState("latestObservedDistance changed -> \(format(distance: distance))")
+        }
+        .onChange(of: activeHintResult, initial: true) { _, result in
+            logRenderState("activeHintResult changed -> \(String(describing: result))")
+        }
     }
 
     private var searchContent: some View {
@@ -104,5 +124,29 @@ struct TaggerSearchView: View {
             Text("가장 가까운 사람의 방향이 잠시동안 표시됩니다")
         }
         .padding(.horizontal, 36)
+    }
+
+    private func logRenderState(_ message: String) {
+        #if DEBUG
+        print(
+            "[TaggerSearchView] \(message)",
+            "isIslandExpanded=\(viewModel.isIslandExpanded)",
+            "isRecording=\(viewModel.isRecording)",
+            "activeHintResult=\(String(describing: activeHintResult))",
+            "distance=\(format(distance: viewModel.latestObservedDistance))",
+            "within5m=\(viewModel.isHiderWithinWarningRadius)",
+            "confirmedAt=\(format(date: viewModel.localTaggerConfirmationSentAt))"
+        )
+        #endif
+    }
+
+    private func format(distance: Float?) -> String {
+        guard let distance else { return "nil" }
+        return String(format: "%.2fm", distance)
+    }
+
+    private func format(date: Date?) -> String {
+        guard let date else { return "nil" }
+        return String(format: "%.3f", date.timeIntervalSince1970)
     }
 }

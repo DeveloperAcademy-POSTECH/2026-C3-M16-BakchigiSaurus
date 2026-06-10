@@ -27,6 +27,7 @@ struct GameRootView: View {
                 niManager: niManager
             )
         )
+        debugLog("init")
     }
 
     var body: some View {
@@ -37,8 +38,18 @@ struct GameRootView: View {
             .task {
                 await runGameClock()
             }
-            .onChange(of: gameModel.sharedState.phase, initial: true) { _, _ in
-                taggerViewModel.resetProximityTracking()
+            .onChange(of: gameModel.sharedState.phase, initial: true) { oldPhase, newPhase in
+                debugLog(
+                    "phase changed old=\(oldPhase) new=\(newPhase) " +
+                    "isLocalTagger=\(gameModel.isLocalTagger) -> reset tagger proximity tracking"
+                )
+                taggerViewModel.resetProximityTracking(reason: "GameRootView phase change \(oldPhase)->\(newPhase)")
+
+                if newPhase == .playing, gameModel.isLocalTagger {
+                    taggerViewModel.activateProximityTracking(reason: "GameRootView playing phase")
+                } else {
+                    taggerViewModel.deactivateProximityTracking(reason: "GameRootView phase \(newPhase)")
+                }
             }
     }
 
@@ -101,5 +112,11 @@ struct GameRootView: View {
 
             try? await Task.sleep(nanoseconds: 1_000_000_000)
         }
+    }
+
+    private func debugLog(_ message: String) {
+        #if DEBUG
+        print("[GameRootView] \(message) phase=\(gameModel.sharedState.phase)")
+        #endif
     }
 }
