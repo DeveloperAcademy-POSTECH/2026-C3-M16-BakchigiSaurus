@@ -9,11 +9,13 @@ import SwiftUI
 
 /// 숨는 사람이 처음 보는 기본 화면
 struct HiderSearchView: View {
+    let camera: CameraModel // 상위 View에서 공유받은 카메라
     let timeLeft: Int // 남은 게임 시간. 초단위
 
     var body: some View {
         ZStack {
-            searchBackground // 배경
+            // 숨는 사람은 항상 촬영 가능 상태라 블러 없이 카메라를 보여준다.
+            GameCameraBackground(camera: camera, isRevealed: true)
 
             GameTimer(timeLeft: timeLeft)
                 .frame(width: 171, height: 67)
@@ -26,19 +28,6 @@ struct HiderSearchView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
         }
         .ignoresSafeArea()
-    }
-
-    private var searchBackground: some View {
-        LinearGradient(
-            colors: [
-                Color(red: 0.20, green: 0.13, blue: 0.09),
-                Color(red: 0.10, green: 0.13, blue: 0.14),
-                Color(red: 0.32, green: 0.24, blue: 0.18)
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .blur(radius: 2)
     }
 
     private var bottomMessage: some View {
@@ -54,5 +43,5 @@ struct HiderSearchView: View {
 }
 
 #Preview {
-    HiderSearchView(timeLeft: 180)
+    HiderSearchView(camera: CameraModel(), timeLeft: 180)
 }

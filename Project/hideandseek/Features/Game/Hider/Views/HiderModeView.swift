@@ -30,6 +30,7 @@ struct HiderModeView: View {
         // view 모델이 가지고 있는 현재 상태 확인
         case .hiding:
             HiderSearchView(
+                camera: camera,
                 timeLeft: displayedTimeLeft
             )
 

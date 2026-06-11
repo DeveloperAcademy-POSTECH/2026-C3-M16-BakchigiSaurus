@@ -105,7 +105,9 @@ extension GameEngine {
         let phaseState = PhaseState(
             phase: .hiding,
             startedAt: startedAt,
-            hideDeadline: startedAt.addingTimeInterval(TimeInterval(state.session.settings.hideTimeSeconds)),
+            hideDeadline: startedAt.addingTimeInterval(
+                TimeInterval(RoomSettings.taggerRevealSeconds + state.session.settings.hideTimeSeconds)
+            ),
             gameDeadline: nil
         )
 
