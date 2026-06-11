@@ -27,6 +27,8 @@ struct HiderModeView: View {
             if shouldShowCamera {
                 GameCameraBackground(camera: camera, isRevealed: true)
                     .ignoresSafeArea()
+                CameraFrameOverlay()
+                CameraBottomGradient()
             }
 
             screenContent // 현재 상태에 따라 보여줄 화면 결정
@@ -36,7 +38,7 @@ struct HiderModeView: View {
                     capturePhoto()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                .padding(.bottom, 24)
+                .padding(.bottom, 176)
             }
         }
             .onAppear {

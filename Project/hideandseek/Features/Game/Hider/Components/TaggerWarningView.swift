@@ -60,7 +60,7 @@ struct TaggerWarningView: View {
         .font(.largeTitle.bold())
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.leading, 36)
-        .padding(.bottom, 121)
+        .padding(.bottom, 64)
     }
 }
 
