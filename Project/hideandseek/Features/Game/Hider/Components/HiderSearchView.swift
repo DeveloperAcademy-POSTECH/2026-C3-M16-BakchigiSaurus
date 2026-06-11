@@ -9,6 +9,7 @@ import SwiftUI
 
 /// 숨는 사람이 처음 보는 기본 화면
 struct HiderSearchView: View {
+    let camera: CameraModel // 상위 View에서 공유받은 카메라
     let timeLeft: Int // 남은 게임 시간. 초단위
 
     var body: some View {
@@ -34,5 +35,5 @@ struct HiderSearchView: View {
 }
 
 #Preview {
-    HiderSearchView(timeLeft: 180)
+    HiderSearchView(camera: CameraModel(), timeLeft: 180)
 }

@@ -68,6 +68,9 @@ nonisolated struct RoomSettings: Codable, Hashable {
         gameMinutes * 60
     }
 
+    /// hiding 단계 도입부에 술래 룰렛을 보여주는 시간. 숨는 시간 카운트다운은 이 시간이 지난 뒤 시작된다.
+    static let taggerRevealSeconds = 5
+
     static let `default` = RoomSettings(
         name: "",
         maxCount: 6,
@@ -124,6 +127,8 @@ nonisolated struct GameParticipant: Codable, Hashable, Identifiable {
     var isHost: Bool
     var role: PlayerRole
     var status: PlayerGameStatus
+    /// 검거 확정 시각. 전송 화면의 "m:ss 검거" 표기에 사용한다.
+    var capturedAt: Date?
 
     init(
         id: PlayerID = PlayerID(),
@@ -131,7 +136,8 @@ nonisolated struct GameParticipant: Codable, Hashable, Identifiable {
         name: String,
         isHost: Bool = false,
         role: PlayerRole = .unassigned,
-        status: PlayerGameStatus = .waiting
+        status: PlayerGameStatus = .waiting,
+        capturedAt: Date? = nil
     ) {
         self.id = id
         self.peerID = peerID
@@ -139,6 +145,7 @@ nonisolated struct GameParticipant: Codable, Hashable, Identifiable {
         self.isHost = isHost
         self.role = role
         self.status = status
+        self.capturedAt = capturedAt
     }
 }
 
@@ -233,6 +240,8 @@ nonisolated struct GameState: Codable, Hashable {
     let session: GameSessionDefinition
     var phase: GamePhase
     var phaseStartedAt: Date?
+    /// playing 단계가 시작된 시각. 종료 후에도 검거 경과 시간 계산에 쓰도록 phaseStartedAt과 별도로 보관한다.
+    var playingStartedAt: Date?
     var hideDeadline: Date?
     var gameDeadline: Date?
     var endedAt: Date?
@@ -257,6 +266,7 @@ nonisolated struct GameState: Codable, Hashable {
         self.session = session
         self.phase = phase
         self.phaseStartedAt = nil
+        self.playingStartedAt = nil
         self.hideDeadline = nil
         self.gameDeadline = nil
         self.endedAt = nil

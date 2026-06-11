@@ -80,8 +80,8 @@ extension GameEngine {
             )
         case let .captureRequested(request):
             state.activeCaptureRequests[request.hiderID] = request
-        case let .captureConfirmed(hiderID, _):
-            reduceCaptureConfirmed(hiderID: hiderID)
+        case let .captureConfirmed(hiderID, confirmedAt):
+            reduceCaptureConfirmed(hiderID: hiderID, confirmedAt: confirmedAt)
         default:
             break
         }
@@ -114,6 +114,10 @@ extension GameEngine {
             resetTransientGameplayState()
         }
 
+        if phaseState.phase == .playing {
+            state.playingStartedAt = phaseState.startedAt
+        }
+
         normalizeRolesAndStatuses()
     }
 
@@ -125,12 +129,13 @@ extension GameEngine {
         }
     }
 
-    func reduceCaptureConfirmed(hiderID: PlayerID) {
+    func reduceCaptureConfirmed(hiderID: PlayerID, confirmedAt: Date) {
         state.activeCaptureRequests.removeValue(forKey: hiderID)
         state.proximityByHiderID.removeValue(forKey: hiderID)
 
         guard var participant = state.participants[hiderID] else { return }
         participant.status = .captured
+        participant.capturedAt = confirmedAt
         state.participants[hiderID] = participant
     }
 
@@ -151,5 +156,11 @@ extension GameEngine {
         state.proximityByHiderID.removeAll()
         state.activeCaptureRequests.removeAll()
         state.clips.removeAll()
+        state.playingStartedAt = nil
+
+        for (participantID, var participant) in state.participants {
+            participant.capturedAt = nil
+            state.participants[participantID] = participant
+        }
     }
 }

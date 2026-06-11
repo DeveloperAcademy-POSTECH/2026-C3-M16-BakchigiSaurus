@@ -24,3 +24,13 @@ protocol ClipTransport: AnyObject, Sendable {
     /// (호스트) 도착하는 클립 스트림.
     func makeIncomingClipStream() -> AsyncStream<IncomingClip>
 }
+
+/// MC 리소스 전송이 구현되기 전까지 쓰는 자리표시 transport.
+/// 아무것도 보내지 않고, 수신 스트림도 비어 있다. (feat/clip-transfer에서 실제 구현으로 교체)
+final class PendingClipTransport: ClipTransport {
+    func sendClip(at url: URL, to peer: PeerID) async throws {}
+
+    func makeIncomingClipStream() -> AsyncStream<IncomingClip> {
+        AsyncStream { _ in }
+    }
+}

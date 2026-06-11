@@ -34,6 +34,8 @@ final class TransferStatusViewModel {
         let peer: PeerID
         let isSeeker: Bool
         let status: Status
+        /// 이름 아래 보조 텍스트. 예: "1:30 검거"
+        let detail: String?
         var id: String {
             peer.rawID
         }
@@ -43,6 +45,7 @@ final class TransferStatusViewModel {
     private let session: CollectorSession
     private let transfer: ClipTransferService
     private let seekerIDs: Set<String>
+    private let detailProvider: ((PeerID) -> String?)?
     private var hasStarted = false // ✅ 추가: 버튼 탭으로 전송이 시작됐는지
     private var didFail = false // ✅ 추가: 전송 실패 여부
 
@@ -50,29 +53,27 @@ final class TransferStatusViewModel {
         title: String,
         session: CollectorSession,
         transfer: ClipTransferService,
-        seekerIDs: Set<String> = []
+        seekerIDs: Set<String> = [],
+        detailProvider: ((PeerID) -> String?)? = nil
     ) {
         self.title = title
         self.session = session
         self.transfer = transfer
         self.seekerIDs = seekerIDs
+        self.detailProvider = detailProvider
     }
 
-    /// 참가자별 행. 수신되면 done, 시작 후 미수신이면 transferring, 시작 전이면 waiting.
+    /// 참가자별 행. 수집은 화면 진입과 함께 자동으로 진행되므로
+    /// 수신 완료면 done, 아니면 transferring(스피너)로 표시한다.
     /// per-참가자 실시간 진행률·실패는 transport progress 이벤트 연결 후 정교화(후속).
     var rows: [Row] {
         session.connectedPeers.map { peer in
-            let status: Status = if transfer.collected[peer] != nil {
-                .done
-            } else if hasStarted {
-                .transferring // ✅ 시작 후에만 "전송중"
-            } else {
-                .waiting // ✅ 시작 전엔 "대기중" (스피너 X)
-            }
+            let status: Status = transfer.collected[peer] != nil ? .done : .transferring
             return Row(
                 peer: peer,
                 isSeeker: seekerIDs.contains(peer.rawID),
-                status: status
+                status: status,
+                detail: detailProvider?(peer)
             )
         }
     }
