@@ -5,167 +5,236 @@
 //  Created by 캄초 on 5/28/26.
 //
 
+import Foundation
 import SwiftUI
 
-enum HintViewType: Identifiable {
-    case success
-    case failure
-    var id: HintViewType {
-        self
-    }
-}
-
 struct TaggerSearchView: View {
-    // 💡 1. 뷰모델을 관찰 가능한 상태로 소유합니다.
-    @State private var viewModel: TaggerSearchViewModel
     @State private var showHintAlert: Bool = false
-    @State private var activeHintView: HintViewType?
-
+    @State private var activeHintResult: HintDisplayResult?
+    @State private var isMeasuringHint: Bool = false
     let camera: CameraModel
+    var viewModel: TaggerSearchViewModel
+    let photoStore: CapturedPhotoStore
     let timeLeft: Int
 
-    /// 💡 2. 이니셜라이저를 통해 의존성을 외부에서 주입받아 뷰모델을 초기화합니다.
-    init(
-        gameModel: GameModel,
-        mcSession: MultipeerGameSession,
-        niManager: NearbyInteractionManager,
-        camera: CameraModel,
-        timeLeft: Int
-    ) {
-        self.camera = camera
-        self.timeLeft = timeLeft
-
-        _viewModel = State(initialValue: TaggerSearchViewModel(
-            gameModel: gameModel,
-            mcSession: mcSession,
-            niManager: niManager
-        ))
-    }
-
     var body: some View {
-        ZStack {
-            // 센서 실시간 판정 연동
-            // 거리가 감지되고 있으면(nil이 아니면) 주변에 숨은 사람이 있는 것으로 판단
-            let isHiderNearby = viewModel.nearestHiderDistance != nil
-
+        ZStack(alignment: .top) {
+            // 촬영 가능(=아일랜드 확장) 상태에서만 블러 해제. 그 외엔 블러로 가림.
             GameCameraBackground(
                 camera: camera,
-                isRevealed: isHiderNearby && viewModel.isHintActive,
-                isRecording: isHiderNearby
+                isRevealed: viewModel.isIslandExpanded
             )
+            .ignoresSafeArea()
 
-            ZStack {
-                VStack {
-                    GameTimer(timeLeft: timeLeft)
+            if let activeHintResult {
+                HintResultView(
+                    result: activeHintResult,
+                    timeLeft: timeLeft,
+                    angleRadians: viewModel.currentHintAngleRadians
+                ) {
+                    self.activeHintResult = nil
+                    // 힌트 화면이 사라지는 시점에 NI 거리 모드 + 카메라 복구.
+                    Task { await viewModel.endHintDirectionMode(camera: camera) }
+                }
+                .transition(.opacity)
+            } else if isMeasuringHint {
+                hintMeasuringContent
+                    .transition(.opacity)
+            } else {
+                searchContent
+                    .transition(.opacity)
+            }
 
-                    // 실시간 거리 측정 UI 추가부
-                    if let distance = viewModel.nearestHiderDistance {
-                        VStack(spacing: 4) {
-                            Text("상대방과의 거리")
-                                .font(.caption.bold())
-                                .foregroundStyle(.secondary)
-                            Text(String(format: "%.1f m", distance))
-                                .font(.system(.title, design: .rounded).bold())
-                                .foregroundStyle(distance <= 5.0 ? .red : .green)
-                        }
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 16)
-                        .background(.ultraThinMaterial)
-                        .cornerRadius(15)
-                        .padding(.top, 10)
-                    }
+            if activeHintResult == nil, !isMeasuringHint {
+                FakeDynamicIslandView(isExpanded: viewModel.isIslandExpanded) {
+                    IslandCompactContent()
+                } expanded: {
+                    IslandExpandedContent(
+                        timeLeft: timeLeft,
+                        type: .hiderNearby
+                    )
+                }
+                .padding(.top, 12)
+                .ignoresSafeArea()
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: activeHintResult)
+        .onAppear {
+            viewModel.activateProximityTracking(reason: "TaggerSearchView appear")
+            logRenderState("appear")
+        }
+        .onDisappear {
+            viewModel.deactivateProximityTracking(reason: "TaggerSearchView disappear")
+        }
+        .onChange(of: viewModel.isIslandExpanded, initial: true) { _, isExpanded in
+            logRenderState("isIslandExpanded changed -> \(isExpanded)")
+        }
+        .onChange(of: camera.isSessionRunning, initial: true) { _, isRunning in
+            logRenderState("camera.isSessionRunning changed -> \(isRunning)")
+        }
+        .onChange(of: activeHintResult, initial: true) { _, result in
+            logRenderState("activeHintResult changed -> \(String(describing: result))")
+        }
+        .onChange(of: isMeasuringHint, initial: true) { _, isMeasuringHint in
+            logRenderState("isMeasuringHint changed -> \(isMeasuringHint)")
+        }
+    }
 
-                    Spacer()
-
-                    HStack {
-                        VStack(alignment: .leading) {
-                            Text("주변에")
+    private var searchContent: some View {
+        ZStack {
+            VStack {
+                GameTimer(timeLeft: timeLeft)
+                Spacer()
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text("주변에")
+                            .font(.largeTitle.bold())
+                            .foregroundStyle(.secondary)
+                        HStack {
+                            Text("숨은 사람")
+                                .font(.largeTitle.bold())
+                                .foregroundStyle(.primary)
+                            Text("을 찾는 중")
                                 .font(.largeTitle.bold())
                                 .foregroundStyle(.secondary)
-                            HStack {
-                                Text("숨은 사람")
-                                    .font(.largeTitle.bold())
-                                    .foregroundStyle(.primary)
-                                Text("을 찾는 중")
-                                    .font(.largeTitle.bold())
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            // 💡 4. 엔진 내부의 힌트 개수 잔여량과 동기화
-                            let hintCount = viewModel.gameModel.sharedState.hintCountRemaining
-
-                            Button {
-                                showHintAlert = true
-                            } label: {
-                                Label("힌트 \(hintCount)개 남음", systemImage: "magnifyingglass")
-                                    .padding(.vertical, 10)
-                                    .font(.title3)
-                            }
-                            .buttonStyle(.glass)
-                            .cornerRadius(20)
-                            .padding(.bottom, 7)
-                            .disabled(hintCount == 0 || viewModel.isHintActive) // 힌트 사용 중일 때도 중복 클릭 방지
                         }
-                        Spacer()
+                        Button {
+                            showHintAlert = true
+                        } label: {
+                            Label("힌트 \(viewModel.hintCountRemaining)개 남음", systemImage: "magnifyingglass")
+                                .padding(.vertical, 10)
+                                .font(.title3)
+                        }
+                        .buttonStyle(.glass)
+                        .cornerRadius(20)
+                        .padding(.bottom, 7)
+                        .disabled(!viewModel.canUseHint || isMeasuringHint)
+                    }
+                    Spacer()
+                }
+            }
+
+            // 촬영 버튼: 아일랜드 확장(촬영 가능) + 카메라 세션 실행 중일 때만.
+            CaptureButton(isEnabled: viewModel.canCapturePhoto && camera.isSessionRunning) {
+                Task {
+                    if let photo = await camera.capturePhoto(ownerRole: .tagger) {
+                        photoStore.add(photo)
                     }
                 }
             }
-            .alert("힌트를 사용할까요?", isPresented: $showHintAlert) {
-                Button("네", role: .none) {
-                    // 💡 5. 비동기로 뷰모델의 힌트 아이템 사용 로직 구동
-                    Task {
-                        await viewModel.tapHintButton()
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+            .padding(.bottom, 24)
+        }
+        .alert("힌트를 사용할까요?", isPresented: $showHintAlert) {
+            Button("네", role: .none) {
+                showHintAlert = false
+                Task {
+                    // 방향 지원 기기에서는 NI 방향 모드, 미지원 기기에서는 거리 기반 힌트로 처리.
+                    await MainActor.run {
+                        activeHintResult = nil
+                        isMeasuringHint = viewModel.supportsDirectionalHint
+                    }
+                    let result = await viewModel.beginHintWithDirection(camera: camera)
 
-                        // 힌트 사용 직후 성공/실패 화면 분기 판정
-                        if viewModel.nearestHiderDistance != nil {
-                            activeHintView = .success
-                        } else {
-                            activeHintView = .failure
+                    await MainActor.run {
+                        isMeasuringHint = false
+                        if let result {
+                            activeHintResult = result
                         }
                     }
                 }
-                Button("아니요", role: .cancel) {}
-            } message: {
-                Text("가장 가까운 사람의 방향이 잠시동안 표시됩니다")
             }
-            .fullScreenCover(item: $activeHintView) { hintType in
-                let isHiderNearby = viewModel.nearestHiderDistance != nil
-                switch hintType {
-                case .success:
-                    HintSuccessView(
-                        camera: camera,
-                        isHiderNearby: isHiderNearby,
-                        isUsingHint: viewModel.isHintActive,
-                        timeLeft: timeLeft
-                    )
-                case .failure:
-                    HintFailureView(
-                        camera: camera,
-                        isHiderNearby: isHiderNearby,
-                        isUsingHint: viewModel.isHintActive,
-                        timeLeft: timeLeft
-                    )
+            Button("아니요", role: .cancel) {}
+        } message: {
+            Text(hintAlertMessage)
+        }
+        .padding(.horizontal, 36)
+    }
+
+    private var hintMeasuringContent: some View {
+        ZStack {
+            Color.appBackground
+                .opacity(0.92)
+                .ignoresSafeArea()
+
+            VStack(spacing: 24) {
+                GameTimer(timeLeft: timeLeft)
+
+                Spacer()
+
+                ProgressView()
+                    .controlSize(.large)
+                    .tint(.primary)
+
+                VStack(spacing: 10) {
+                    Text("방향을 측정 중이에요")
+                        .font(.largeTitle.bold())
+                        .foregroundStyle(.primary)
+                    Text(hintMeasuringMessage)
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(.secondary)
                 }
+                .multilineTextAlignment(.center)
+
+                Spacer()
             }
             .padding(.horizontal, 36)
         }
     }
-}
 
-#Preview {
-    // 1. 프리뷰용 가짜(Mock) 의존성 데이터 생성
-    // (구현하신 클래스/구조체의 이니셜라이저 형태에 맞게 수정이 필요할 수 있습니다.)
-    let dummyGameModel = GameModel(localPlayerName: "테스트 술래")
-    let dummyMcSession = MultipeerGameSession()
-    let dummyNiManager = NearbyInteractionManager()
-    let dummyCamera = CameraModel()
+    private var hintMeasuringMessage: String {
+        guard let distance = viewModel.latestObservedDistance else {
+            return "상대 방향을 향한 채 좌우로 천천히 움직여 주세요"
+        }
 
-    // 2. TaggerSearchView에 의존성을 주입하여 프리뷰 렌더링
-    TaggerSearchView(
-        gameModel: dummyGameModel,
-        mcSession: dummyMcSession,
-        niManager: dummyNiManager,
-        camera: dummyCamera,
-        timeLeft: 180 // 제한 시간 3분 가정
-    )
+        if distance < 1 {
+            return "1~2m 정도 떨어진 뒤 좌우로 천천히 움직여 주세요"
+        }
+
+        return "상대 방향을 향한 채 좌우로 천천히 움직여 주세요"
+    }
+
+    private var hintAlertMessage: String {
+        viewModel.supportsDirectionalHint
+            ? "가장 가까운 사람의 방향이 잠시동안 표시됩니다"
+            : "가까운 숨은 사람이 있는지 잠시동안 표시됩니다"
+    }
+
+    private func logRenderState(_ message: String) {
+        #if DEBUG
+            print(
+                "[TaggerSearchView] \(message)",
+                "isIslandExpanded=\(viewModel.isIslandExpanded)",
+                "canCapturePhoto=\(viewModel.canCapturePhoto)",
+                "sessionRunning=\(camera.isSessionRunning)",
+                "activeHintResult=\(String(describing: activeHintResult))",
+                "isMeasuringHint=\(isMeasuringHint)",
+                "distance=\(format(distance: viewModel.latestObservedDistance))",
+                "angle=\(format(angle: viewModel.latestObservedHorizontalAngle))",
+                "hintAngle=\(format(angleRadians: viewModel.currentHintAngleRadians))",
+                "within5m=\(viewModel.isHiderWithinWarningRadius)",
+                "confirmedAt=\(format(date: viewModel.localTaggerConfirmationSentAt))"
+            )
+        #endif
+    }
+
+    private func format(distance: Float?) -> String {
+        guard let distance else { return "nil" }
+        return String(format: "%.2fm", distance)
+    }
+
+    private func format(angle: Float?) -> String {
+        guard let angle else { return "nil" }
+        return String(format: "%.2frad", angle)
+    }
+
+    private func format(angleRadians: Double?) -> String {
+        guard let angleRadians else { return "nil" }
+        return String(format: "%.2frad", angleRadians)
+    }
+
+    private func format(date: Date?) -> String {
+        guard let date else { return "nil" }
+        return String(format: "%.3f", date.timeIntervalSince1970)
+    }
 }

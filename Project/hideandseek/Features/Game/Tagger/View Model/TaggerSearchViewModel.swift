@@ -6,164 +6,909 @@
 //
 
 import Foundation
-import MultipeerConnectivity
-import NearbyInteraction
 import Observation
+import SwiftUI
+
+enum HintDisplayResult: Hashable, Identifiable {
+    case success(angleRadians: Double?)
+    case failure
+
+    var id: Self {
+        self
+    }
+
+    var isSuccess: Bool {
+        if case .success = self {
+            return true
+        }
+
+        return false
+    }
+
+    var angleRadians: Double? {
+        if case let .success(angleRadians) = self {
+            return angleRadians
+        }
+
+        return nil
+    }
+}
 
 @Observable
 @MainActor
 final class TaggerSearchViewModel {
-    // 1. 외부에서 주입받을 의존성 (GameModel 및 기존 세션)
     let gameModel: GameModel
     private let mcSession: MultipeerGameSession
     private let niManager: NearbyInteractionManager
 
-    // 2. UI에서 바인딩해서 사용할 상태값들
     var isHintActive: Bool = false
-    var nearestHiderDirection: DirectionVector?
-    var nearestHiderDistance: Float?
+    var latestObservedDistance: Float?
+    var latestObservedDirection: DirectionVector?
+    var latestObservedHorizontalAngle: Float?
+    var latestObservedAt: Date?
+    var localTaggerConfirmationSentAt: Date?
+    var didReceiveLocalReading: Bool = false
+    var isHiderWithinWarningRadius: Bool = false
 
-    // 타이머 (5m 이내 5초 체크용)
-    private var proximityTimer: Timer?
+    private var hintDisplayTask: Task<Void, Never>?
+    private var proximityConfirmationTask: Task<Void, Never>?
+    private var proximityStalenessTask: Task<Void, Never>?
     private var trackingTargetID: PlayerID?
-    private var secondsInProximity: Int = 0
+    private var localEnteredWarningRadiusAt: Date?
+    private var isProximityTrackingActive = false
+    @ObservationIgnored private var lastProximityReadingLogAt: Date?
+    @ObservationIgnored private var lastLoggedWithinWarningRadius: Bool?
+    @ObservationIgnored private var isHintDirectionModeActive = false
+    @ObservationIgnored private var lastHintAngleDebugLogAt: Date?
+    @ObservationIgnored private var lastStalenessScheduleDebugLogAt: Date?
+    private var cachedHintHorizontalAngle: Float?
+    private var cachedHintAngleObservedAt: Date?
 
-    /// 3. 이니셜라이저 수정: 클래스 타입 대신 주입받은 인스턴스(소문자) 대입
+    private let warningRadiusMeters: Float = 5
+    private let requiredProximityDuration: TimeInterval = 5
+    private let readingStaleGraceDuration: TimeInterval = 3
+    private let hintDisplayDuration: TimeInterval = 7
+    private let hintDirectionConvergenceTimeout: TimeInterval = 8
+    private let cameraToDirectionHandoffDelayNanos: UInt64 = 150_000_000
+    private let directionToCameraHandoffDelayNanos: UInt64 = 250_000_000
+
+    private var readingStaleDuration: TimeInterval {
+        requiredProximityDuration + readingStaleGraceDuration
+    }
+
     init(gameModel: GameModel, mcSession: MultipeerGameSession, niManager: NearbyInteractionManager) {
         self.gameModel = gameModel
         self.mcSession = mcSession
         self.niManager = niManager
 
-        setupNearbyInteractionCallbacks()
+        debugLog("init completed")
     }
 
-    /// 4. NI 읽기값 콜백 설정
+    var hintCountRemaining: Int {
+        gameModel.sharedState.hintCountRemaining
+    }
+
+    var canUseHint: Bool {
+        gameModel.sharedState.canUseHint(by: gameModel.localPlayerID)
+    }
+
+    var supportsDirectionalHint: Bool {
+        niManager.supportsCameraAssistedDirection
+    }
+
+    var nearestHiderDistance: Float? {
+        currentObservedDistance
+    }
+
+    var nearestHiderDirection: DirectionVector? {
+        if let live = currentObservedDirection {
+            return live
+        }
+
+        if isHintActive, let hintedDirection = gameModel.sharedState.lastHint?.direction {
+            return hintedDirection
+        }
+
+        return nil
+    }
+
+    var currentHintAngleRadians: Double? {
+        let latestAngle = latestObservedHorizontalAngle.map(Double.init)
+        let cachedAngle = cachedHintHorizontalAngle.map(Double.init)
+        let fallbackAngle = gameModel.sharedState.lastHint?.horizontalAngle.map(Double.init)
+        return latestAngle ?? cachedAngle ?? fallbackAngle
+    }
+
+    /// 다이내믹 아일랜드(=촬영 가능) 상태. 5m 이내 5초 머물러 확정된 경우.
+    var isIslandExpanded: Bool {
+        guard gameModel.sharedState.phase == .playing, gameModel.isLocalTagger else { return false }
+        return isHiderWithinWarningRadius && localTaggerConfirmationSentAt != nil
+    }
+
+    /// 술래 촬영 가능 여부. (아일랜드 확장 상태에서만)
+    var canCapturePhoto: Bool {
+        isIslandExpanded
+    }
+
+    private var currentObservedDistance: Float? {
+        didReceiveLocalReading ? latestObservedDistance : nearestHiderProximity?.lastDistance
+    }
+
+    private var currentObservedDirection: DirectionVector? {
+        didReceiveLocalReading ? latestObservedDirection : nearestHiderProximity?.lastDirection
+    }
+
+    var nearestHiderProximity: ProximityState? {
+        gameModel.sharedState.proximityByHiderID.values
+            .filter { $0.lastDistance != nil }
+            .min { lhs, rhs in
+                (lhs.lastDistance ?? .greatestFiniteMagnitude) < (rhs.lastDistance ?? .greatestFiniteMagnitude)
+            }
+    }
+
+    var activeHiderIDs: [PlayerID] {
+        gameModel.participants.compactMap { participant in
+            guard participant.id != gameModel.localPlayerID,
+                  participant.role != .tagger,
+                  participant.status != .captured
+            else {
+                return nil
+            }
+            return participant.id
+        }
+    }
+
     private func setupNearbyInteractionCallbacks() {
-        // 💡 중요: Swift가 타입을 헷갈려하지 않도록 (reading: NearbyInteractionReading) 명시합니다.
-        // 만약 매니저가 peerID도 같이 던져주는 스펙이 확실하다면 { [weak self] reading, peerID in ... } 으로 유지하되,
-        // 에러가 지속된다면 아래처럼 reading 하나만 받아와서 내부에서 처리하는 것이 안전합니다.
         self.niManager.onReadingUpdated = { [weak self] (reading: NearbyInteractionReading) in
             guard let self else { return }
 
-            // 💡 1. 방향 벡터 타입 변환 (SIMD3<Float>? -> DirectionVector?)
-            // 리드 개발자님이 만들어둔 DirectionVector에 SIMD3를 넣어서 변환하는 이니셜라이저가 있다고 가정합니다.
-            // 만약 변환 생성자가 없다면 우선 컴파일을 위해 nil을 넣어두고 구조를 확인해야 합니다.
             let convertedDirection: DirectionVector? = {
                 if let simdDir = reading.direction {
-                    return DirectionVector(simdDir) // 혹은 프로젝트 구조에 맞는 변환 방식 적용
+                    return DirectionVector(simdDir)
                 }
                 return nil
             }()
 
-            // 💡 2. reading 내부에 식별자가 없으므로, 현재 추적 중인 타겟 ID를 기반으로 이벤트를 보냅니다.
-            // (술래가 찾고 있는 플레이어 ID가 이미 결정되어 있다고 가정)
-            guard let hiderID = self.trackingTargetID else { return }
-
             Task { @MainActor in
-                // 실시간 읽기값을 GameModel 엔진으로 전송
-                await self.gameModel.send(.observeProximity(
+                let shouldLogReading = self.shouldLogProximityReading(at: reading.timestamp)
+                if shouldLogReading {
+                    self.debugLog(
+                        "NI reading received distance=\(self.format(distance: reading.distance)) " +
+                            "horizontalAngle=\(self.format(angle: reading.horizontalAngle)) " +
+                            "direction=\(self.format(direction: convertedDirection)) " +
+                            "timestamp=\(self.format(date: reading.timestamp)) " +
+                            "canTrack=\(self.canTrackLocalProximity) activeHiders=\(self.activeHiderIDSummary)"
+                    )
+                }
+
+                guard self.canTrackLocalProximity else {
+                    self.debugLog(
+                        "NI reading ignored: cannot track local proximity " +
+                            "phase=\(self.gameModel.sharedState.phase) isLocalTagger=\(self.gameModel.isLocalTagger)"
+                    )
+                    self.resetProximityTracking(reason: "cannot track local proximity")
+                    return
+                }
+
+                guard let hiderID = self.observedHiderID() else {
+                    self.debugLog("NI reading ignored: no active hider to track")
+                    self.resetProximityTracking(reason: "no active hider")
+                    return
+                }
+
+                if shouldLogReading {
+                    self.debugLog("tracking hider=\(self.shortID(hiderID))")
+                }
+
+                self.recordLocalProximity(
+                    distance: reading.distance,
+                    direction: convertedDirection,
+                    horizontalAngle: reading.horizontalAngle,
+                    observedAt: reading.timestamp
+                )
+
+                let events = await self.gameModel.send(.observeProximity(
                     hiderID: hiderID,
                     distance: reading.distance,
-                    direction: convertedDirection, // 변환된 타입 전달
+                    direction: convertedDirection,
                     observedAt: reading.timestamp
                 ))
-
-                // 힌트가 활성화되어 있다면 UI에 방향/거리 표시
-                if self.isHintActive {
-                    self.nearestHiderDistance = reading.distance
-                    self.nearestHiderDirection = convertedDirection // 타입 일치 완료
+                if shouldLogReading {
+                    self.debugLog("observeProximity sent events=\(events.count) hider=\(self.shortID(hiderID))")
                 }
-
-                // 5m 이내 5초 감시 로직 실행
-                self.checkProximityAlert(hiderID: hiderID, distance: reading.distance)
             }
         }
     }
 
-    /// 5. 5m 이내에 5초 동안 머물렀는지 체크하는 로직 (MainActor 격리 해결)
-    private func checkProximityAlert(hiderID: PlayerID, distance: Float?) {
-        guard let distance else { return }
+    /// 힌트 시작: 카메라 세션을 닫고 NI를 방향 모드로 전환한 뒤 힌트 결과를 계산한다.
+    /// 카메라 복구는 힌트 화면이 사라질 때 ``endHintDirectionMode(camera:)``로 한다.
+    /// - Returns: nil이면 힌트 사용 불가(카메라/NI 변경 없음). non-nil이면 결과 표시 후 반드시
+    ///   ``endHintDirectionMode(camera:)``를 호출해 거리 모드 + 카메라를 복구해야 한다.
+    /// - Parameter camera: 게임 루트에서 공유 중인 카메라 모델.
+    func beginHintWithDirection(camera: CameraModel) async -> HintDisplayResult? {
+        debugLog(
+            "beginHintWithDirection start canUseHint=\(canUseHint) " +
+                "cameraRunning=\(camera.isSessionRunning) niState=\(niManager.state) " +
+                "niDirectionActive=\(niManager.isDirectionModeActive) " +
+                "latestDistance=\(format(distance: latestObservedDistance)) " +
+                "state={\(debugStateSummary)}"
+        )
 
-        if distance <= 5.0 {
-            if trackingTargetID == hiderID {
-                return
-            }
+        guard canUseHint else {
+            debugLog("beginHintWithDirection aborted: canUseHint=false")
+            return nil
+        }
 
-            trackingTargetID = hiderID
-            secondsInProximity = 0
+        guard niManager.canEnterDirectionMode else {
+            debugLog(
+                "aborted before camera: NI unavailable " +
+                    "state=\(niManager.state) hasSession=\(niManager.canEnterDirectionMode)"
+            )
+            return .failure
+        }
 
-            proximityTimer?.invalidate()
+        resetHintDirectionSample()
+        guard supportsDirectionalHint else {
+            debugLog("beginHintWithDirection fallback: camera assistance unsupported -> distance-only hint")
+            return await tapHintButton()
+        }
 
-            // @MainActor 내부에서 타이머를 안전하게 돌리기 위해 메인 큐에서 실행되도록 지정합니다.
-            let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
-                guard let self else { return }
-                // 타이머 내부 클로저가 메인 액터 영역으로 안전하게 진입하도록 Task 배치
-                Task { @MainActor in
-                    self.secondsInProximity += 1
-                    if self.secondsInProximity >= 5 {
-                        self.triggerProximityNotification(for: hiderID)
-                        self.clearProximityTimer()
-                    }
-                }
-            }
-            // 메인 런루프에 타이머 등록 (MainActor 격리 에러 방지)
-            RunLoop.main.add(timer, forMode: .common)
-            self.proximityTimer = timer
+        isHintDirectionModeActive = false
 
+        // 카메라를 닫아 자원을 양보하고 NI 방향 모드로 전환.
+        await camera.closeSession()
+        debugLog(
+            "beginHintWithDirection camera closed cameraRunning=\(camera.isSessionRunning) " +
+                "niState=\(niManager.state)"
+        )
+        try? await Task.sleep(nanoseconds: cameraToDirectionHandoffDelayNanos)
+
+        let didEnableDirectionMode = await niManager.enableDirectionMode()
+        guard didEnableDirectionMode else {
+            await camera.openSession()
+            debugLog("beginHintWithDirection aborted: direction mode unavailable")
+            return nil
+        }
+
+        isHintDirectionModeActive = true
+        guard niManager.isDirectionModeActive else {
+            isHintDirectionModeActive = false
+            await camera.openSession()
+            debugLog("beginHintWithDirection aborted: direction mode invalidated")
+            return nil
+        }
+
+        let firstAngle = await waitForFirstHorizontalAngle(timeout: hintDirectionConvergenceTimeout)
+        if let firstAngle {
+            debugLog("beginHintWithDirection first angle ready angle=\(format(angle: firstAngle))")
         } else {
-            if trackingTargetID == hiderID {
-                clearProximityTimer()
-            }
+            debugLog(
+                "beginHintWithDirection first angle timeout=\(format(seconds: hintDirectionConvergenceTimeout)) " +
+                    "-> continue with live/fallback hint"
+            )
         }
+
+        // 힌트 결과 계산(기존 로직). isHintActive 및 표시 타이머는 tapHintButton이 관리.
+        let result = await tapHintButton()
+        if result == nil {
+            isHintDirectionModeActive = false
+            niManager.disableDirectionMode()
+            resetHintDirectionSample()
+            try? await Task.sleep(nanoseconds: directionToCameraHandoffDelayNanos)
+            await camera.openSession()
+        }
+        debugLog(
+            "beginHintWithDirection finished result=\(String(describing: result)) " +
+                "currentHintAngle=\(format(angleRadians: currentHintAngleRadians)) " +
+                "cameraRunning=\(camera.isSessionRunning) niState=\(niManager.state) " +
+                "niDirectionActive=\(niManager.isDirectionModeActive)"
+        )
+        return result
     }
 
-    private func clearProximityTimer() {
-        proximityTimer?.invalidate()
-        proximityTimer = nil
-        trackingTargetID = nil
-        secondsInProximity = 0
+    /// 힌트 종료: NI를 거리 모드로 되돌리고 카메라 세션을 다시 연다.
+    /// 힌트 화면의 onFinished(또는 화면 이탈) 시점에 호출한다.
+    func endHintDirectionMode(camera: CameraModel) async {
+        debugLog(
+            "endHintDirectionMode start cameraRunning=\(camera.isSessionRunning) " +
+                "niState=\(niManager.state) niDirectionActive=\(niManager.isDirectionModeActive)"
+        )
+        let wasDirectionModeActive = isHintDirectionModeActive
+        isHintDirectionModeActive = false
+        niManager.disableDirectionMode()
+        resetHintDirectionSample()
+        try? await Task.sleep(nanoseconds: directionToCameraHandoffDelayNanos)
+        await camera.openSession()
+        debugLog(
+            "endHintDirectionMode: NI distance mode + camera reopened " +
+                "wasDirectionModeActive=\(wasDirectionModeActive) " +
+                "cameraRunning=\(camera.isSessionRunning) niState=\(niManager.state)"
+        )
     }
 
-    private func triggerProximityNotification(for hiderID: PlayerID) {
-        print("🚨 알림: 숨은 사람(\(hiderID))이 5m 이내에 5초 동안 있었습니다!")
+    private func waitForFirstHorizontalAngle(timeout: TimeInterval) async -> Float? {
+        let start = Date()
+        while Date().timeIntervalSince(start) < timeout {
+            if let angle = latestObservedHorizontalAngle ?? cachedHintHorizontalAngle {
+                return angle
+            }
+
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+
+        return nil
     }
 
-    /// 6. 힌트 버튼 클릭 시 Action
-    func tapHintButton() async {
-        guard gameModel.sharedState.hintCountRemaining > 0 else { return }
+    func tapHintButton() async -> HintDisplayResult? {
+        debugLog(
+            "tapHintButton start canUseHint=\(canUseHint) " +
+                "latestDistance=\(format(distance: latestObservedDistance)) " +
+                "latestAngle=\(format(angle: latestObservedHorizontalAngle)) " +
+                "latestDirection=\(format(direction: latestObservedDirection)) " +
+                "trackingTarget=\(trackingTargetID.map(shortID) ?? "nil")"
+        )
 
-        // 💡 변경된 부분: [PlayerID]를 [HintCandidate]로 바꿀 때,
-        // 찾으신 구조체 정의대로 hiderID, direction, distance를 모두 넣어줍니다.
+        guard canUseHint else {
+            debugLog("tapHintButton aborted: canUseHint=false")
+            return nil
+        }
+
         let candidates: [HintCandidate] = gameModel.participants
-            .filter { $0.id != gameModel.localPlayerID }
-            .map { participant in
-                // 힌트를 쓰는 시점에는 아직 정확한 방향과 거리를 모르거나
-                // NearbyInteraction 읽기값에서 가져와야 하므로, 초기값은 nil로 채워줍니다.
-                HintCandidate(
+            .filter { $0.role == .hider && $0.status != .captured }
+            .compactMap { participant in
+                let proximity = gameModel.sharedState.proximityByHiderID[participant.id]
+                let distance = currentDistance(for: participant.id, proximity: proximity)
+                guard let distance, distance <= 5 else {
+                    debugLog(
+                        "hint candidate skipped hider=\(shortID(participant.id)) " +
+                            "distance=\(format(distance: distance)) " +
+                            "proximityDistance=\(format(distance: proximity?.lastDistance)) " +
+                            "latestDistance=\(format(distance: latestObservedDistance))"
+                    )
+                    return nil
+                }
+
+                let horizontalAngle = currentHorizontalAngle(for: participant.id)
+                let direction = currentDirection(for: participant.id, proximity: proximity)
+                debugLog(
+                    "hint candidate accepted hider=\(shortID(participant.id)) " +
+                        "distance=\(format(distance: distance)) " +
+                        "horizontalAngle=\(format(angle: horizontalAngle)) " +
+                        "direction=\(format(direction: direction))"
+                )
+
+                return HintCandidate(
                     hiderID: participant.id,
-                    direction: nil,
-                    distance: nil
+                    direction: direction,
+                    horizontalAngle: horizontalAngle,
+                    distance: distance
                 )
             }
 
-        // 서버/엔진에 힌트 사용 명령 전송
-        await gameModel.send(.useHint(candidates: candidates))
+        debugLog("tapHintButton candidates=\(format(candidates: candidates))")
 
-        isHintActive = true
+        let events = await gameModel.send(.useHint(candidates: candidates))
+        debugLog("tapHintButton useHint events=\(events.count)")
+        guard let resolution = hintResolution(from: events) else {
+            debugLog("tapHintButton no hintResolution -> failure")
+            return .failure
+        }
 
-        try? await Task.sleep(nanoseconds: 7 * 1_000_000_000)
+        debugLog(
+            "tapHintButton resolution selectedHider=" +
+                "\(resolution.selectedHiderID.map(shortID) ?? "nil") " +
+                "direction=\(format(direction: resolution.direction)) " +
+                "horizontalAngle=\(format(angle: resolution.horizontalAngle)) " +
+                "remaining=\(resolution.remainingCount)"
+        )
+
+        hintDisplayTask?.cancel()
+        let result: HintDisplayResult
+        if resolution.selectedHiderID == nil {
+            result = .failure
+        } else {
+            let resolvedAngle = resolution.horizontalAngle ?? cachedHintHorizontalAngle
+            result = .success(angleRadians: resolvedAngle.map(Double.init))
+        }
+        isHintActive = result.isSuccess
+        debugLog(
+            "tapHintButton result=\(result) " +
+                "currentHintAngle=\(format(angleRadians: currentHintAngleRadians)) " +
+                "isHintActive=\(isHintActive)"
+        )
+
+        guard result.isSuccess else {
+            hintDisplayTask = nil
+            return result
+        }
+
+        hintDisplayTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64((self?.hintDisplayDuration ?? 7) * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                self?.isHintActive = false
+                self?.hintDisplayTask = nil
+            }
+        }
+
+        return result
+    }
+
+    func cancelHintDisplay() {
+        hintDisplayTask?.cancel()
+        hintDisplayTask = nil
         isHintActive = false
-        nearestHiderDirection = nil
-        nearestHiderDistance = nil
+        resetHintDirectionSample()
     }
 
-    /// Helper 수정: PeerID 비교 시 타입을 프로젝트 내 PeerID 타입에 일치시킵니다.
-    private func findPlayerID(by peerID: PeerID) -> PlayerID? {
-        gameModel.participants.first(where: { $0.peerID == peerID })?.id
+    func activateProximityTracking(reason: String = "manual") {
+        guard gameModel.isLocalTagger else {
+            debugLog("activateProximityTracking skipped reason=\(reason) isLocalTagger=false")
+            return
+        }
+
+        setupNearbyInteractionCallbacks()
+        isProximityTrackingActive = true
+        let didResume = niManager.resumeSessionIfPossible()
+        debugLog(
+            "activateProximityTracking reason=\(reason) didResumeNI=\(didResume) " +
+                "state={\(debugStateSummary)}"
+        )
     }
 
-    deinit {
-        // 타이머 해제는 메인 스레드에서 안전하게 실행되도록 처리하거나 기기 소멸 시 큐 관리
-        // @MainActor class의 deinit은 nonisolated이므로 주의가 필요합니다.
+    func deactivateProximityTracking(reason: String = "manual") {
+        guard isProximityTrackingActive else {
+            debugLog("deactivateProximityTracking skipped reason=\(reason) already inactive")
+            return
+        }
+
+        niManager.onReadingUpdated = nil
+        isProximityTrackingActive = false
+        debugLog("deactivateProximityTracking reason=\(reason)")
+    }
+
+    func resetProximityTracking(reason: String = "manual") {
+        debugLog("resetProximityTracking start reason=\(reason) state={\(debugStateSummary)}")
+        proximityConfirmationTask?.cancel()
+        proximityConfirmationTask = nil
+        proximityStalenessTask?.cancel()
+        proximityStalenessTask = nil
+        localEnteredWarningRadiusAt = nil
+        localTaggerConfirmationSentAt = nil
+        trackingTargetID = nil
+        latestObservedDistance = nil
+        latestObservedDirection = nil
+        latestObservedHorizontalAngle = nil
+        latestObservedAt = nil
+        resetHintDirectionSample()
+        didReceiveLocalReading = false
+        isHiderWithinWarningRadius = false
+        lastProximityReadingLogAt = nil
+        lastLoggedWithinWarningRadius = nil
+        debugLog("resetProximityTracking end state={\(debugStateSummary)}")
+    }
+
+    private func recordLocalProximity(
+        distance: Float?,
+        direction: DirectionVector?,
+        horizontalAngle: Float?,
+        observedAt: Date
+    ) {
+        didReceiveLocalReading = true
+        latestObservedDistance = distance
+        latestObservedDirection = direction
+        recordHintHorizontalAngle(horizontalAngle, observedAt: observedAt)
+        latestObservedAt = observedAt
+        scheduleProximityStalenessReset(for: observedAt)
+
+        guard let distance else {
+            debugLog("recordLocalProximity distance=nil -> compact")
+            isHiderWithinWarningRadius = false
+            clearLocalProximityConfirmation(reason: "distance nil")
+            return
+        }
+
+        let isWithinWarningRadius = distance <= warningRadiusMeters
+        isHiderWithinWarningRadius = isWithinWarningRadius
+        if lastLoggedWithinWarningRadius != isWithinWarningRadius {
+            lastLoggedWithinWarningRadius = isWithinWarningRadius
+            debugLog(
+                "within warning radius changed distance=\(format(distance: distance)) " +
+                    "within5m=\(isWithinWarningRadius) state={\(debugStateSummary)}"
+            )
+        }
+
+        if isWithinWarningRadius {
+            if localEnteredWarningRadiusAt == nil {
+                localEnteredWarningRadiusAt = observedAt
+                debugLog("entered warning radius at=\(format(date: observedAt)); scheduling 5s confirmation")
+                scheduleLocalProximityConfirmation()
+            }
+
+            if let enteredAt = localEnteredWarningRadiusAt,
+               observedAt.timeIntervalSince(enteredAt) >= requiredProximityDuration,
+               localTaggerConfirmationSentAt == nil
+            {
+                debugLog(
+                    "recordLocalProximity confirms by reading elapsed=" +
+                        "\(format(seconds: observedAt.timeIntervalSince(enteredAt)))"
+                )
+                expandDynamicIsland(observedAt: observedAt)
+            }
+        } else {
+            debugLog("left warning radius -> compact")
+            clearLocalProximityConfirmation(reason: "distance greater than warning radius")
+        }
+    }
+
+    private func scheduleLocalProximityConfirmation() {
+        proximityConfirmationTask?.cancel()
+        let enteredAt = localEnteredWarningRadiusAt ?? Date()
+        let delay = max(0, requiredProximityDuration - Date().timeIntervalSince(enteredAt))
+
+        debugLog(
+            "scheduleLocalProximityConfirmation enteredAt=\(format(date: enteredAt)) " +
+                "delay=\(format(seconds: delay))"
+        )
+
+        proximityConfirmationTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
+                guard let self else {
+                    #if DEBUG
+                        print("[TaggerSearchViewModel] confirmation task aborted: self nil")
+                    #endif
+                    return
+                }
+
+                let now = Date()
+                let latestAge = self.latestObservedAt.map { now.timeIntervalSince($0) }
+                self.debugLog(
+                    "confirmation task woke enteredAt=\(self.format(date: enteredAt)) " +
+                        "state={\(self.debugStateSummary)} latestAge=\(self.format(seconds: latestAge))"
+                )
+
+                guard self.canTrackLocalProximity else {
+                    self.debugLog("confirmation blocked: canTrackLocalProximity=false")
+                    return
+                }
+
+                guard self.isHiderWithinWarningRadius else {
+                    self.debugLog("confirmation blocked: isHiderWithinWarningRadius=false")
+                    return
+                }
+
+                guard self.localEnteredWarningRadiusAt == enteredAt else {
+                    self.debugLog(
+                        "confirmation blocked: enteredAt mismatch expected=\(self.format(date: enteredAt)) " +
+                            "actual=\(self.format(date: self.localEnteredWarningRadiusAt))"
+                    )
+                    return
+                }
+
+                guard let latestObservedAt = self.latestObservedAt else {
+                    self.debugLog("confirmation blocked: latestObservedAt=nil")
+                    return
+                }
+
+                guard let distance = self.latestObservedDistance else {
+                    self.debugLog("confirmation blocked: latestObservedDistance=nil")
+                    return
+                }
+
+                guard distance <= self.warningRadiusMeters else {
+                    self.debugLog(
+                        "confirmation blocked: distance=\(self.format(distance: distance)) " +
+                            "threshold=\(self.format(distance: self.warningRadiusMeters))"
+                    )
+                    return
+                }
+
+                guard now.timeIntervalSince(latestObservedAt) <= self.readingStaleDuration else {
+                    self.debugLog(
+                        "confirmation blocked: latest reading stale age=" +
+                            "\(self.format(seconds: now.timeIntervalSince(latestObservedAt))) " +
+                            "limit=\(self.format(seconds: self.readingStaleDuration))"
+                    )
+                    return
+                }
+
+                self.expandDynamicIsland(observedAt: Date())
+                self.proximityConfirmationTask = nil
+            }
+        }
+    }
+
+    private func scheduleProximityStalenessReset(for observedAt: Date) {
+        proximityStalenessTask?.cancel()
+        let staleDuration = readingStaleDuration
+
+        if shouldLogStalenessSchedule(at: observedAt) {
+            debugLog(
+                "schedule staleness reset observedAt=\(format(date: observedAt)) " +
+                    "delay=\(format(seconds: staleDuration))"
+            )
+        }
+
+        proximityStalenessTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(staleDuration * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
+                guard let self else {
+                    #if DEBUG
+                        print("[TaggerSearchViewModel] staleness task aborted: self nil")
+                    #endif
+                    return
+                }
+
+                self.debugLog(
+                    "staleness task woke observedAt=\(self.format(date: observedAt)) " +
+                        "latestObservedAt=\(self.format(date: self.latestObservedAt))"
+                )
+
+                guard self.latestObservedAt == observedAt else {
+                    self.debugLog("staleness ignored: a newer reading arrived")
+                    return
+                }
+
+                self.debugLog("staleness reset fires -> compact")
+                self.latestObservedDistance = nil
+                self.latestObservedDirection = nil
+                self.latestObservedHorizontalAngle = nil
+                self.resetHintDirectionSample()
+                self.latestObservedAt = nil
+                self.isHiderWithinWarningRadius = false
+                self.clearLocalProximityConfirmation(reason: "latest reading stale")
+            }
+        }
+    }
+
+    private func expandDynamicIsland(observedAt: Date) {
+        debugLog("expandDynamicIsland before observedAt=\(format(date: observedAt)) state={\(debugStateSummary)}")
+        localTaggerConfirmationSentAt = observedAt
+        debugLog("expandDynamicIsland after isIslandExpanded=\(isIslandExpanded) state={\(debugStateSummary)}")
+        logProximityState("expanded")
+    }
+
+    private func clearLocalProximityConfirmation(reason: String = "unspecified") {
+        debugLog("clearLocalProximityConfirmation reason=\(reason) before={\(debugStateSummary)}")
+        proximityConfirmationTask?.cancel()
+        proximityConfirmationTask = nil
+        localEnteredWarningRadiusAt = nil
+        localTaggerConfirmationSentAt = nil
+        debugLog("clearLocalProximityConfirmation after={\(debugStateSummary)}")
+        logProximityState("compact")
+    }
+
+    private var canTrackLocalProximity: Bool {
+        gameModel.sharedState.phase == .playing && gameModel.isLocalTagger
+    }
+
+    private func logProximityState(_ state: String) {
+        debugLog("dynamicIsland=\(state) state={\(debugStateSummary)}")
+    }
+
+    private func shouldLogProximityReading(at observedAt: Date) -> Bool {
+        guard let lastProximityReadingLogAt else {
+            self.lastProximityReadingLogAt = observedAt
+            return true
+        }
+
+        guard observedAt.timeIntervalSince(lastProximityReadingLogAt) >= 1 else {
+            return false
+        }
+
+        self.lastProximityReadingLogAt = observedAt
+        return true
+    }
+
+    private func shouldLogStalenessSchedule(at observedAt: Date) -> Bool {
+        guard let lastStalenessScheduleDebugLogAt else {
+            self.lastStalenessScheduleDebugLogAt = observedAt
+            return true
+        }
+
+        guard observedAt.timeIntervalSince(lastStalenessScheduleDebugLogAt) >= 1 else {
+            return false
+        }
+
+        self.lastStalenessScheduleDebugLogAt = observedAt
+        return true
+    }
+
+    private func shouldLogHintAngleUpdate(at observedAt: Date) -> Bool {
+        guard let lastHintAngleDebugLogAt else {
+            self.lastHintAngleDebugLogAt = observedAt
+            return true
+        }
+
+        guard observedAt.timeIntervalSince(lastHintAngleDebugLogAt) >= 1 else {
+            return false
+        }
+
+        self.lastHintAngleDebugLogAt = observedAt
+        return true
+    }
+
+    private func recordHintHorizontalAngle(_ horizontalAngle: Float?, observedAt: Date) {
+        latestObservedHorizontalAngle = horizontalAngle
+
+        guard let horizontalAngle else {
+            guard isHintActive || isHintDirectionModeActive else {
+                cachedHintHorizontalAngle = nil
+                cachedHintAngleObservedAt = nil
+                return
+            }
+
+            if cachedHintHorizontalAngle != nil, shouldLogHintAngleUpdate(at: observedAt) {
+                debugLog(
+                    "recordHintHorizontalAngle keep cached angle=" +
+                        "\(format(angle: cachedHintHorizontalAngle)) nil update observedAt=\(format(date: observedAt))"
+                )
+            }
+            return
+        }
+
+        guard isHintActive || isHintDirectionModeActive else {
+            cachedHintHorizontalAngle = nil
+            cachedHintAngleObservedAt = nil
+            return
+        }
+
+        cachedHintHorizontalAngle = horizontalAngle
+        cachedHintAngleObservedAt = observedAt
+        if shouldLogHintAngleUpdate(at: observedAt) {
+            debugLog(
+                "recordHintHorizontalAngle cached angle=\(format(angle: horizontalAngle)) " +
+                    "observedAt=\(format(date: observedAt))"
+            )
+        }
+    }
+
+    private func resetHintDirectionSample() {
+        latestObservedHorizontalAngle = nil
+        latestObservedDirection = nil
+        cachedHintHorizontalAngle = nil
+        cachedHintAngleObservedAt = nil
+        lastHintAngleDebugLogAt = nil
+    }
+
+    private var debugStateSummary: String {
+        [
+            "phase=\(gameModel.sharedState.phase)",
+            "isLocalTagger=\(gameModel.isLocalTagger)",
+            "distance=\(format(distance: latestObservedDistance))",
+            "horizontalAngle=\(format(angle: latestObservedHorizontalAngle))",
+            "cachedHintAngle=\(format(angle: cachedHintHorizontalAngle))",
+            "cachedHintAt=\(format(date: cachedHintAngleObservedAt))",
+            "within5m=\(isHiderWithinWarningRadius)",
+            "enteredAt=\(format(date: localEnteredWarningRadiusAt))",
+            "latestAt=\(format(date: latestObservedAt))",
+            "confirmedAt=\(format(date: localTaggerConfirmationSentAt))",
+            "isIslandExpanded=\(isIslandExpanded)",
+            "canCapturePhoto=\(canCapturePhoto)"
+        ].joined(separator: " ")
+    }
+
+    private var activeHiderIDSummary: String {
+        let ids = activeHiderIDs.map(shortID)
+        return ids.isEmpty ? "[]" : "[\(ids.joined(separator: ","))]"
+    }
+
+    private func debugLog(_ message: String, function: String = #function) {
+        #if DEBUG
+            print("[TaggerSearchViewModel] \(function) \(message)")
+        #endif
+    }
+
+    private func format(distance: Float?) -> String {
+        guard let distance else { return "nil" }
+        return String(format: "%.2fm", distance)
+    }
+
+    private func format(seconds: TimeInterval?) -> String {
+        guard let seconds else { return "nil" }
+        return String(format: "%.2fs", seconds)
+    }
+
+    private func format(angle: Float?) -> String {
+        guard let angle else { return "nil" }
+        return String(format: "%.2frad", angle)
+    }
+
+    private func format(angleRadians: Double?) -> String {
+        guard let angleRadians else { return "nil" }
+        return String(format: "%.3frad", angleRadians)
+    }
+
+    private func format(direction: DirectionVector?) -> String {
+        guard let direction else { return "nil" }
+        return String(
+            format: "(x: %.3f, y: %.3f, z: %.3f)",
+            direction.x,
+            direction.y,
+            direction.z
+        )
+    }
+
+    private func format(candidates: [HintCandidate]) -> String {
+        guard !candidates.isEmpty else { return "[]" }
+
+        return candidates
+            .map { candidate in
+                "hider=\(shortID(candidate.hiderID)) " +
+                    "distance=\(format(distance: candidate.distance)) " +
+                    "angle=\(format(angle: candidate.horizontalAngle)) " +
+                    "direction=\(format(direction: candidate.direction))"
+            }
+            .joined(separator: " | ")
+    }
+
+    private func format(date: Date?) -> String {
+        guard let date else { return "nil" }
+        return String(format: "%.3f", date.timeIntervalSince1970)
+    }
+
+    private func shortID(_ playerID: PlayerID) -> String {
+        String(playerID.rawValue.uuidString.prefix(8))
+    }
+
+    private func currentDistance(for hiderID: PlayerID, proximity: ProximityState?) -> Float? {
+        if hiderID == trackingTargetID, didReceiveLocalReading {
+            return latestObservedDistance
+        }
+
+        return proximity?.lastDistance
+    }
+
+    private func currentDirection(for hiderID: PlayerID, proximity: ProximityState?) -> DirectionVector? {
+        if hiderID == trackingTargetID, didReceiveLocalReading {
+            return latestObservedDirection
+        }
+
+        return proximity?.lastDirection
+    }
+
+    private func currentHorizontalAngle(for hiderID: PlayerID) -> Float? {
+        guard hiderID == trackingTargetID, didReceiveLocalReading else {
+            debugLog(
+                "currentHorizontalAngle nil hider=\(shortID(hiderID)) " +
+                    "trackingTarget=\(trackingTargetID.map(shortID) ?? "nil") " +
+                    "didReceiveLocalReading=\(didReceiveLocalReading) " +
+                    "latestAngle=\(format(angle: latestObservedHorizontalAngle))"
+            )
+            return nil
+        }
+
+        let angle = latestObservedHorizontalAngle ?? cachedHintHorizontalAngle
+        debugLog(
+            "currentHorizontalAngle hider=\(shortID(hiderID)) " +
+                "angle=\(format(angle: latestObservedHorizontalAngle)) " +
+                "cachedAngle=\(format(angle: cachedHintHorizontalAngle))"
+        )
+        return angle
+    }
+
+    private func hintResolution(from events: [GameEventEnvelope]) -> HintResolution? {
+        events.compactMap { envelope in
+            if case let .hintConsumed(resolution) = envelope.event {
+                return resolution
+            }
+
+            return nil
+        }
+        .first
+    }
+
+    private func observedHiderID() -> PlayerID? {
+        if let trackingTargetID, activeHiderIDs.contains(trackingTargetID) {
+            return trackingTargetID
+        }
+
+        trackingTargetID = activeHiderIDs.first
+        return trackingTargetID
     }
 }

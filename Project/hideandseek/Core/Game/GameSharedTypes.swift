@@ -164,6 +164,7 @@ nonisolated struct GameSessionDefinition: Codable, Hashable {
 nonisolated struct HintCandidate: Hashable {
     let hiderID: PlayerID
     let direction: DirectionVector?
+    let horizontalAngle: Float?
     let distance: Float?
 }
 
@@ -173,6 +174,7 @@ nonisolated struct HintResolution: Codable, Hashable {
     let remainingCount: Int
     let selectedHiderID: PlayerID?
     let direction: DirectionVector?
+    let horizontalAngle: Float?
 }
 
 nonisolated struct ProximityState: Codable, Hashable {

@@ -16,8 +16,8 @@ final class RoomFlowViewModel: ObservableObject {
 
     private var sessionEventTask: Task<Void, Never>?
     private var gameFlowTask: Task<Void, Never>?
+    private var phaseTransitionTask: Task<Void, Never>?
     private var playerIDByPeerRawID: [String: PlayerID] = [:]
-    private var peerIDByPlayerID: [PlayerID: PeerID] = [:]
 
     @Published private(set) var localPeer: PeerID
     @Published private(set) var discoveredRooms: [RoomLobbySnapshot] = []
@@ -30,6 +30,12 @@ final class RoomFlowViewModel: ObservableObject {
     @Published private(set) var gameModel: GameModel?
     @Published var selectedTaggerRawID: String?
     @Published var statusMessage: String?
+
+    @Published private(set) var isReconnecting = false
+
+    private var reconnectTask: Task<Void, Never>?
+    private var reconnectAttempt = 0
+    private let maxReconnectAttempts = 60 // 백오프 포함 수 분간 시도
 
     init(
         session: MultipeerGameSession = MultipeerGameSession(),
@@ -52,7 +58,17 @@ final class RoomFlowViewModel: ObservableObject {
     deinit {
         sessionEventTask?.cancel()
         gameFlowTask?.cancel()
+        phaseTransitionTask?.cancel()
         niManager.invalidateSession()
+        reconnectTask?.cancel()
+    }
+
+    var gameSession: MultipeerGameSession {
+        session
+    }
+
+    var nearbyInteractionManager: NearbyInteractionManager {
+        niManager
     }
 
     var isHostInActiveRoom: Bool {
@@ -60,19 +76,14 @@ final class RoomFlowViewModel: ObservableObject {
     }
 
     var canStartGame: Bool {
-        isHostInActiveRoom && sortedParticipants.count > 1
+        isHostInActiveRoom && currentPeers.count > 1
     }
 
-    var sortedParticipants: [GameParticipant] {
-        let hostRawID = activeRoom?.host.rawID
-
-        return (gameModel?.participants ?? []).sorted { lhs, rhs in
-            let lhsRawID = lhs.peerID?.rawID
-            let rhsRawID = rhs.peerID?.rawID
-
-            if lhsRawID == hostRawID { return true }
-            if rhsRawID == hostRawID { return false }
-            return lhs.name.localizedCompare(rhs.name) == .orderedAscending
+    var sortedParticipants: [PeerID] {
+        currentPeers.sorted { lhs, rhs in
+            if lhs.rawID == activeRoom?.host.rawID { return true }
+            if rhs.rawID == activeRoom?.host.rawID { return false }
+            return lhs.displayName.localizedCompare(rhs.displayName) == .orderedAscending
         }
     }
 
@@ -104,59 +115,85 @@ final class RoomFlowViewModel: ObservableObject {
             taggerSelectionPolicy: .random
         )
 
-        resetGameSessionState()
-        bootstrapHostedGameModel(settings: settings)
-
         session.stopBrowsing()
         session.configureHostedRoom(with: settings)
         session.startHosting()
 
         isBrowsing = false
+        joiningRoomID = nil
+        gameStarted = false
+        localAssignedRole = nil
+        selectedTaggerRawID = nil
         statusMessage = "참가자를 기다리는 중입니다"
+        gameModel = nil
+        playerIDByPeerRawID.removeAll()
         activeRoom = session.hostedRoom
         refreshSnapshot()
-        syncGameParticipants()
     }
 
     func joinRoom(_ room: RoomLobbySnapshot) {
         guard !room.isFull else { return }
 
-        resetGameSessionState()
-        bootstrapJoinedGameModel(for: room)
-
         joiningRoomID = room.id
         activeRoom = room
+        gameStarted = false
+        localAssignedRole = nil
+        selectedTaggerRawID = nil
         statusMessage = "\(room.name)에 연결하는 중입니다"
-        refreshSnapshot()
-        syncGameParticipants()
+        gameModel = nil
+        playerIDByPeerRawID.removeAll()
         session.invite(room.host)
     }
 
     func leaveActiveRoom() {
+        phaseTransitionTask?.cancel()
         session.disconnect()
         activeRoom = nil
         joiningRoomID = nil
+        selectedTaggerRawID = nil
+        localAssignedRole = nil
+        gameStarted = false
+        gameModel = nil
+        playerIDByPeerRawID.removeAll()
         statusMessage = nil
         currentPeers = [localPeer]
-        resetGameSessionState()
         activateLobby()
+        stopReconnect(reason: "left room")
     }
 
-    func toggleTagger(for participant: GameParticipant) {
+    func toggleTagger(for peer: PeerID) {
         guard isHostInActiveRoom else { return }
-        guard let peerRawID = participant.peerID?.rawID else { return }
-        selectedTaggerRawID = selectedTaggerRawID == peerRawID ? nil : peerRawID
+        selectedTaggerRawID = selectedTaggerRawID == peer.rawID ? nil : peer.rawID
     }
 
     func startGame() {
         guard isHostInActiveRoom else { return }
-        guard sortedParticipants.count > 1 else {
+        guard currentPeers.count > 1 else {
             statusMessage = "게임을 시작하려면 최소 2명이 필요합니다"
             return
         }
 
-        Task { @MainActor [weak self] in
-            await self?.startGameUsingCoreModel()
+        let fallbackTagger = sortedParticipants.randomElement()?.rawID
+        let taggerRawID = selectedTaggerRawID ?? fallbackTagger ?? localPeer.rawID
+        let gameModel = makeGameModel(selectedTaggerRawID: taggerRawID)
+
+        for peer in currentPeers where peer.rawID != localPeer.rawID {
+            let role: GameFlowRole = peer.rawID == taggerRawID ? .seeker : .hider
+            session.sendRoleAssigned(role, to: peer)
+        }
+
+        localAssignedRole = localPeer.rawID == taggerRawID ? .seeker : .hider
+        selectedTaggerRawID = taggerRawID
+        session.sendGameStarted()
+        session.sendCountdownStarted(seconds: gameModel.sharedState.session.settings.hideTimeSeconds)
+        gameStarted = true
+        statusMessage = "게임 시작 신호를 전송했습니다"
+
+        let taggerID = playerIDByPeerRawID[taggerRawID]
+        Task {
+            await gameModel.send(.assignTagger(taggerID))
+            await gameModel.send(.startHiding())
+            scheduleSearchStart(for: gameModel)
         }
     }
 
@@ -164,22 +201,23 @@ final class RoomFlowViewModel: ObservableObject {
         localPeer = session.localPeer
         currentPeers = session.currentPeers
         discoveredRooms = session.discoveredRooms
-        syncPublishedStateFromGameModel()
 
-        guard let activeRoom else { return }
-
-        let settings = gameModel?.sharedState.session.settings
-        let currentCount = max(1, sortedParticipants.count)
-        self.activeRoom = RoomLobbySnapshot(
-            id: activeRoom.id,
-            host: activeRoom.host,
-            name: settings?.name ?? activeRoom.name,
-            currentCount: currentCount,
-            maxCount: settings?.maxCount ?? activeRoom.maxCount,
-            hintCount: settings?.hintCount ?? activeRoom.hintCount,
-            hideTimeSeconds: settings?.hideTimeSeconds ?? activeRoom.hideTimeSeconds,
-            gameMinutes: settings?.gameMinutes ?? activeRoom.gameMinutes
-        )
+        if let activeRoom {
+            if isHostInActiveRoom {
+                self.activeRoom = session.hostedRoom
+            } else {
+                self.activeRoom = RoomLobbySnapshot(
+                    id: activeRoom.id,
+                    host: activeRoom.host,
+                    name: activeRoom.name,
+                    currentCount: currentPeers.count,
+                    maxCount: activeRoom.maxCount,
+                    hintCount: activeRoom.hintCount,
+                    hideTimeSeconds: activeRoom.hideTimeSeconds,
+                    gameMinutes: activeRoom.gameMinutes
+                )
+            }
+        }
     }
 
     private func observeSessionEvents() {
@@ -207,8 +245,6 @@ final class RoomFlowViewModel: ObservableObject {
 
         switch event {
         case let .peerConnected(peer):
-            syncGameParticipants()
-
             if joiningRoomID != nil, peer.rawID == activeRoom?.host.rawID {
                 joiningRoomID = nil
                 statusMessage = "\(activeRoom?.name ?? "방")에 참가했습니다"
@@ -216,16 +252,27 @@ final class RoomFlowViewModel: ObservableObject {
                 statusMessage = "\(peer.displayName) 님이 참가했습니다"
             }
 
+            if isReconnecting,
+               peer.rawID == activeRoom?.host.rawID || isHostInActiveRoom
+            {
+                stopReconnect(reason: "peer reconnected")
+                statusMessage = "다시 연결됐어요"
+            }
+
         case let .peerDisconnected(peer):
-            if !isHostInActiveRoom, peer.rawID == activeRoom?.host.rawID {
-                statusMessage = "호스트 연결이 끊어졌습니다"
-                activeRoom = nil
-                resetGameSessionState()
-                activateLobby()
+            if gameStarted {
+                statusMessage = "상대 연결이 끊어졌어요. 다시 연결 중…"
+                beginReconnect()
                 return
             }
 
-            syncGameParticipants()
+            if !isHostInActiveRoom, peer.rawID == activeRoom?.host.rawID {
+                statusMessage = "호스트 연결이 끊어졌습니다"
+                activeRoom = nil
+                joiningRoomID = nil
+                activateLobby()
+                return
+            }
 
             if isHostInActiveRoom {
                 statusMessage = "\(peer.displayName) 님이 나갔습니다"
@@ -239,13 +286,35 @@ final class RoomFlowViewModel: ObservableObject {
     private func handleGameFlowMessage(_ message: GameFlowMessage) {
         switch message.kind {
         case .roleAssigned:
-            Task { @MainActor [weak self] in
-                await self?.applyRoleAssignmentMessage(message)
+            localAssignedRole = message.role
+            if message.role == .seeker {
+                statusMessage = "당신이 술래입니다"
+            } else if message.role == .hider {
+                statusMessage = "숨는 역할이 배정됐습니다"
             }
 
         case .gameStarted:
-            Task { @MainActor [weak self] in
-                await self?.applyGameStartedMessage()
+            gameStarted = true
+            ensureGameModelForReceivedStart()
+            if statusMessage == nil {
+                statusMessage = "게임이 시작됐습니다"
+            }
+
+        case .countdownStarted:
+            let model = ensureGameModelForReceivedStart()
+            let taggerID = inferredTaggerIDForReceivedStart()
+            Task {
+                await model.send(.assignTagger(taggerID))
+                await model.send(.startHiding())
+                if let seconds = message.seconds {
+                    scheduleSearchStart(for: model, after: seconds)
+                }
+            }
+
+        case .searchStarted:
+            guard let gameModel else { return }
+            Task {
+                await gameModel.send(.startPlaying())
             }
 
         default:
@@ -253,277 +322,156 @@ final class RoomFlowViewModel: ObservableObject {
         }
     }
 
-    private func bootstrapHostedGameModel(settings: RoomSettings) {
-        let localPlayerID = PlayerID()
-        let localParticipant = GameParticipant(
-            id: localPlayerID,
-            peerID: localPeer,
-            name: localPeer.displayName,
-            isHost: true
-        )
-        let initialState = GameState(
-            session: GameSessionDefinition(
-                hostID: localPlayerID,
-                settings: settings
-            ),
-            participants: [localPlayerID: localParticipant],
-            participantOrder: [localPlayerID]
-        )
-
-        playerIDByPeerRawID[localPeer.rawID] = localPlayerID
-        peerIDByPlayerID[localPlayerID] = localPeer
-        gameModel = GameModel(
-            initialState: initialState,
-            localPlayerID: localPlayerID
-        )
-        syncPublishedStateFromGameModel()
-    }
-
-    private func bootstrapJoinedGameModel(for room: RoomLobbySnapshot) {
-        let hostPlayerID = PlayerID()
-        let localPlayerID = PlayerID()
+    private func makeGameModel(selectedTaggerRawID: String?) -> GameModel {
+        let room = activeRoom ?? session.hostedRoom
         let settings = RoomSettings(
             name: room.name,
             maxCount: room.maxCount,
             hintCount: room.hintCount,
             hideTimeSeconds: room.hideTimeSeconds,
             gameMinutes: room.gameMinutes,
-            taggerSelectionPolicy: .random
-        )
-        let hostParticipant = GameParticipant(
-            id: hostPlayerID,
-            peerID: room.host,
-            name: room.host.displayName,
-            isHost: true
-        )
-        let localParticipant = GameParticipant(
-            id: localPlayerID,
-            peerID: localPeer,
-            name: localPeer.displayName,
-            isHost: false
-        )
-        let initialState = GameState(
-            session: GameSessionDefinition(
-                hostID: hostPlayerID,
-                settings: settings
-            ),
-            participants: [
-                hostPlayerID: hostParticipant,
-                localPlayerID: localParticipant
-            ],
-            participantOrder: [
-                hostPlayerID,
-                localPlayerID
-            ]
+            taggerSelectionPolicy: selectedTaggerRawID == nil ? .random : .manual
         )
 
-        playerIDByPeerRawID[room.host.rawID] = hostPlayerID
-        peerIDByPlayerID[hostPlayerID] = room.host
-        playerIDByPeerRawID[localPeer.rawID] = localPlayerID
-        peerIDByPlayerID[localPlayerID] = localPeer
-        gameModel = GameModel(
+        let peers = sortedParticipants.isEmpty ? [localPeer] : sortedParticipants
+        for peer in peers where playerIDByPeerRawID[peer.rawID] == nil {
+            playerIDByPeerRawID[peer.rawID] = PlayerID()
+        }
+
+        let hostPeer = room.host
+        let hostID = playerIDByPeerRawID[hostPeer.rawID] ?? PlayerID()
+        playerIDByPeerRawID[hostPeer.rawID] = hostID
+
+        let participants = Dictionary(
+            uniqueKeysWithValues: peers.map { peer in
+                let playerID = playerIDByPeerRawID[peer.rawID] ?? PlayerID()
+                playerIDByPeerRawID[peer.rawID] = playerID
+                return (
+                    playerID,
+                    GameParticipant(
+                        id: playerID,
+                        peerID: peer,
+                        name: peer.displayName,
+                        isHost: peer.rawID == hostPeer.rawID
+                    )
+                )
+            }
+        )
+
+        let participantOrder = peers.compactMap { playerIDByPeerRawID[$0.rawID] }
+        let sessionDefinition = GameSessionDefinition(
+            hostID: hostID,
+            settings: settings
+        )
+        let initialState = GameState(
+            session: sessionDefinition,
+            participants: participants,
+            participantOrder: participantOrder
+        )
+        let localPlayerID = playerIDByPeerRawID[localPeer.rawID] ?? PlayerID()
+        let model = GameModel(
             initialState: initialState,
             localPlayerID: localPlayerID
         )
-        syncPublishedStateFromGameModel()
+
+        gameModel = model
+        return model
     }
 
-    private func resetGameSessionState() {
-        gameModel = nil
-        playerIDByPeerRawID.removeAll()
-        peerIDByPlayerID.removeAll()
-        gameStarted = false
-        localAssignedRole = nil
-        selectedTaggerRawID = nil
-        joiningRoomID = nil
+    @discardableResult
+    private func ensureGameModelForReceivedStart() -> GameModel {
+        if let gameModel {
+            return gameModel
+        }
+
+        return makeGameModel(selectedTaggerRawID: inferredTaggerRawIDForReceivedStart())
     }
 
-    private func syncGameParticipants() {
-        Task { @MainActor [weak self] in
-            await self?.syncGameParticipantsUsingCoreModel()
+    private func inferredTaggerIDForReceivedStart() -> PlayerID? {
+        guard let rawID = inferredTaggerRawIDForReceivedStart() else {
+            return nil
         }
+
+        return playerIDByPeerRawID[rawID]
     }
 
-    private func syncGameParticipantsUsingCoreModel() async {
-        guard let gameModel, let activeRoom else { return }
-
-        var activePeers = currentPeers
-        if !activePeers.contains(where: { $0.rawID == activeRoom.host.rawID }) {
-            activePeers.append(activeRoom.host)
-        }
-
-        var remainingParticipantIDs = Set(gameModel.sharedState.participantOrder)
-
-        for peer in activePeers {
-            let playerID = ensurePlayerID(
-                for: peer,
-                isHost: peer.rawID == activeRoom.host.rawID
-            )
-            let participant = GameParticipant(
-                id: playerID,
-                peerID: peer,
-                name: peer.displayName,
-                isHost: peer.rawID == activeRoom.host.rawID
-            )
-
-            remainingParticipantIDs.remove(playerID)
-            await gameModel.send(.upsertParticipant(participant), as: playerID)
-        }
-
-        for participantID in remainingParticipantIDs where participantID != gameModel.localPlayerID {
-            await gameModel.send(.removeParticipant(participantID), as: participantID)
-
-            if let peer = peerIDByPlayerID.removeValue(forKey: participantID) {
-                playerIDByPeerRawID.removeValue(forKey: peer.rawID)
-            }
-        }
-
-        syncPublishedStateFromGameModel()
-        refreshSnapshot()
-    }
-
-    private func startGameUsingCoreModel() async {
-        guard let gameModel else { return }
-
-        let fallbackTagger = sortedParticipants.randomElement()
-        let taggerRawID = selectedTaggerRawID ?? fallbackTagger?.peerID?.rawID ?? localPeer.rawID
-        let taggerPeer = peerIDByRawID(taggerRawID) ?? localPeer
-        let taggerPlayerID = ensurePlayerID(
-            for: taggerPeer,
-            isHost: taggerPeer.rawID == activeRoom?.host.rawID
-        )
-
-        await gameModel.send(.assignTagger(taggerPlayerID))
-        await gameModel.send(.startHiding())
-
-        syncPublishedStateFromGameModel()
-
-        for participant in sortedParticipants {
-            guard let peer = participant.peerID, peer.rawID != localPeer.rawID else { continue }
-
-            let role: GameFlowRole = participant.id == taggerPlayerID ? .seeker : .hider
-            session.sendRoleAssigned(
-                role,
-                taggerPeer: taggerPeer,
-                to: peer
-            )
-        }
-
-        session.sendGameStarted()
-        statusMessage = "게임 시작 신호를 전송했습니다"
-        refreshSnapshot()
-    }
-
-    private func applyRoleAssignmentMessage(_ message: GameFlowMessage) async {
-        localAssignedRole = message.role
-
-        guard let gameModel else {
-            updateStatusMessage(for: message.role)
-            return
-        }
-
-        let taggerPeer: PeerID
-        if let referencedPeer = message.referencedPeer {
-            taggerPeer = referencedPeer
-        } else if message.role == .seeker {
-            taggerPeer = localPeer
-        } else if let hostPeer = activeRoom?.host {
-            taggerPeer = hostPeer
-        } else {
-            updateStatusMessage(for: message.role)
-            return
-        }
-
-        let taggerPlayerID = ensurePlayerID(
-            for: taggerPeer,
-            isHost: taggerPeer.rawID == activeRoom?.host.rawID
-        )
-        await gameModel.send(.assignTagger(taggerPlayerID))
-        syncPublishedStateFromGameModel()
-        updateStatusMessage(for: message.role)
-        refreshSnapshot()
-    }
-
-    private func applyGameStartedMessage() async {
-        guard let gameModel else {
-            gameStarted = true
-            if statusMessage == nil {
-                statusMessage = "게임이 시작됐습니다"
-            }
-            return
-        }
-
-        await gameModel.send(.startHiding())
-        syncPublishedStateFromGameModel()
-
-        if statusMessage == nil {
-            statusMessage = "게임이 시작됐습니다"
-        }
-
-        refreshSnapshot()
-    }
-
-    private func updateStatusMessage(for role: GameFlowRole?) {
-        if role == .seeker {
-            statusMessage = "당신이 술래입니다"
-        } else if role == .hider {
-            statusMessage = "숨는 역할이 배정됐습니다"
-        }
-    }
-
-    private func syncPublishedStateFromGameModel() {
-        gameStarted = gameModel.map { $0.sharedState.phase != .lobby } ?? false
-
-        if let assignedTaggerID = gameModel?.sharedState.taggerID,
-           let taggerPeer = peerIDByPlayerID[assignedTaggerID]
-        {
-            selectedTaggerRawID = taggerPeer.rawID
-        }
-
-        if let role = mapRole(gameModel?.localParticipant?.role) {
-            localAssignedRole = role
-        } else if gameModel == nil {
-            localAssignedRole = nil
-        }
-    }
-
-    private func mapRole(_ role: PlayerRole?) -> GameFlowRole? {
-        switch role {
-        case .tagger:
-            .seeker
+    private func inferredTaggerRawIDForReceivedStart() -> String? {
+        switch localAssignedRole {
+        case .seeker:
+            localPeer.rawID
         case .hider:
-            .hider
-        case .unassigned, .none:
-            nil
+            sortedParticipants.first { $0.rawID != localPeer.rawID }?.rawID
+        case nil:
+            selectedTaggerRawID
         }
     }
 
-    private func ensurePlayerID(for peer: PeerID, isHost: Bool) -> PlayerID {
-        if let existingPlayerID = playerIDByPeerRawID[peer.rawID] {
-            peerIDByPlayerID[existingPlayerID] = peer
-            return existingPlayerID
+    private func scheduleSearchStart(for model: GameModel, after seconds: Int? = nil) {
+        phaseTransitionTask?.cancel()
+        let hideSeconds = seconds ?? model.sharedState.session.settings.hideTimeSeconds
+
+        phaseTransitionTask = Task { [weak self, session] in
+            try? await Task.sleep(nanoseconds: UInt64(max(0, hideSeconds)) * 1_000_000_000)
+            guard !Task.isCancelled else { return }
+
+            await model.send(.startPlaying())
+
+            await MainActor.run {
+                if self?.isHostInActiveRoom == true {
+                    session.sendSearchStarted()
+                }
+            }
         }
-
-        let playerID = PlayerID()
-        playerIDByPeerRawID[peer.rawID] = playerID
-        peerIDByPlayerID[playerID] = peer
-
-        if isHost, gameModel?.sharedState.session.hostID != playerID {
-            // host는 초기 상태에서 반드시 고정되도록 bootstrap 단계에서 먼저 생성한다.
-        }
-
-        return playerID
     }
 
-    private func peerIDByRawID(_ rawID: String) -> PeerID? {
-        if rawID == localPeer.rawID {
-            return localPeer
+    private func beginReconnect() {
+        guard !isReconnecting else { return }
+        isReconnecting = true
+
+        if isHostInActiveRoom {
+            // 호스트: 광고만 유지하면 클라이언트가 재초대한다.
+            session.startHosting()
+            return
         }
 
-        if let matchedPeer = currentPeers.first(where: { $0.rawID == rawID }) {
-            return matchedPeer
-        }
+        // 클라이언트: 호스트를 다시 탐색해서 재초대 (백오프 반복).
+        reconnectAttempt = 0
+        reconnectTask?.cancel()
+        reconnectTask = Task { [weak self] in
+            guard let self else { return }
+            self.session.startBrowsing() // 끊고 멈췄던 탐색 재개
 
-        return activeRoom?.host.rawID == rawID ? activeRoom?.host : nil
+            while !Task.isCancelled,
+                  self.isReconnecting,
+                  self.reconnectAttempt < self.maxReconnectAttempts
+            {
+                self.reconnectAttempt += 1
+
+                if let host = self.activeRoom?.host,
+                   self.session.discoveredRooms.contains(where: { $0.host.rawID == host.rawID })
+                {
+                    self.session.invite(host) // 재발견되면 재초대
+                    self.statusMessage = "다시 연결 중… (\(self.reconnectAttempt))"
+                }
+
+                let delay = min(8, 2 * Double(self.reconnectAttempt)) // 2→4→6→8s 캡
+                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            }
+
+            if self.isReconnecting {
+                await MainActor.run {
+                    self.statusMessage = "재연결에 실패했어요. 방을 나가 다시 시도해 주세요."
+                }
+            }
+        }
+    }
+
+    private func stopReconnect(reason: String) {
+        guard isReconnecting else { return }
+        isReconnecting = false
+        reconnectTask?.cancel()
+        reconnectTask = nil
+        reconnectAttempt = 0
+        session.stopBrowsing() // 재연결 끝나면 다시 탐색 정리
     }
 }

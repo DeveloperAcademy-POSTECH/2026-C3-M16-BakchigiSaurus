@@ -14,44 +14,25 @@ struct CameraRecordingView: View {
     let isTaggerNearby: Bool // 술래가 가까운지 여부
     let onRecordingFinished: () -> Void // 녹화가 끝난 뒤 상위View에 알려주기 위한 클로저
 
+    /// NOTE: 숨는 사람 촬영 UX는 다음 단계로 미룸. 이 화면은 녹화 제거 이후 컴파일만
+    /// 맞춰둔 임시 상태다. (실제 사진 촬영은 추후 HiderModeView에 CaptureButton으로 붙임)
     var body: some View {
         ZStack {
             GameCameraBackground(
                 camera: camera, // 상위에서 받은 카메라 객체 넘김
-                isRevealed: isTaggerNearby, // 카메라 화면 공개
-                isRecording: isTaggerNearby // 녹화 시작
+                isRevealed: isTaggerNearby // 촬영 가능 여부=블러
             )
 
             GameTimer(timeLeft: timeLeft)
                 .frame(width: 171, height: 67)
                 .padding(.top, 84)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-
-            Text("녹화중이에요")
-                .font(.largeTitle.bold())
-                .foregroundStyle(.secondary)
-                .padding(.leading, 36)
-                .padding(.bottom, 54)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
         }
         .ignoresSafeArea()
-        // 화면이 나타나면 .task 실행
         .task {
             try? await Task.sleep(nanoseconds: 2_000_000_000)
-
-            guard !Task.isCancelled else {
-                return
-            }
-
-            // 카메라 녹화 멈춤
-            await camera.setRecording(false)
-            onRecordingFinished() // 녹화가 끝났다는 사실 상위View에 알려줌
-        }
-        // 카메라 뷰가 화면에서 사라지는 순간, 카메라 녹화 종료
-        .onDisappear {
-            Task {
-                await camera.setRecording(false)
-            }
+            guard !Task.isCancelled else { return }
+            onRecordingFinished()
         }
     }
 }
