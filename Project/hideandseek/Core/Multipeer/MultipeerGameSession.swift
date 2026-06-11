@@ -1013,6 +1013,7 @@ extension MultipeerGameSession {
             }
         }
     }
+
     /// 게임 시작 메시지를 전송한다.
     func sendGameStarted(
         participants: [PeerID]? = nil,

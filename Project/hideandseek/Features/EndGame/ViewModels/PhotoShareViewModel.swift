@@ -84,13 +84,12 @@ final class PhotoShareViewModel {
     var rows: [Row] {
         participants.map { participant in
             let rawID = participant.peer.rawID
-            let status: Status
-            if failedPeerRawIDs.contains(rawID) {
-                status = .failed
+            let status: Status = if failedPeerRawIDs.contains(rawID) {
+                .failed
             } else if receivedPeerRawIDs.contains(rawID) {
-                status = (photoCountByPeerRawID[rawID] ?? 0) > 0 ? .received : .noPhotos
+                (photoCountByPeerRawID[rawID] ?? 0) > 0 ? .received : .noPhotos
             } else {
-                status = .waiting
+                .waiting
             }
 
             return Row(
@@ -156,7 +155,7 @@ final class PhotoShareViewModel {
         }
 
         debugLog(
-            "retryFailedTransfers targets=\(retryTargets.map { $0.peer.displayName }) " +
+            "retryFailedTransfers targets=\(retryTargets.map(\.peer.displayName)) " +
                 "localPhotos=\(photoStore.count) gameID=\(gameID)"
         )
 
@@ -302,7 +301,7 @@ final class PhotoShareViewModel {
     }
 }
 
-private extension Array where Element == CapturedPhoto {
+private extension [CapturedPhoto] {
     var totalImageBytes: Int {
         reduce(0) { $0 + $1.imageData.count }
     }

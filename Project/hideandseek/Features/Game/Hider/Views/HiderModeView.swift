@@ -41,16 +41,16 @@ struct HiderModeView: View {
                 .padding(.bottom, 176)
             }
         }
-            .onAppear {
-                viewModel.startHiding() // 처음 화면
-                debugLog("appear")
-            }
-            .onChange(of: viewModel.state, initial: true) { _, state in
-                debugLog("state changed -> \(state)")
-            }
-            .onChange(of: camera.isSessionRunning, initial: true) { _, isRunning in
-                debugLog("camera.isSessionRunning changed -> \(isRunning)")
-            }
+        .onAppear {
+            viewModel.startHiding() // 처음 화면
+            debugLog("appear")
+        }
+        .onChange(of: viewModel.state, initial: true) { _, state in
+            debugLog("state changed -> \(state)")
+        }
+        .onChange(of: camera.isSessionRunning, initial: true) { _, isRunning in
+            debugLog("camera.isSessionRunning changed -> \(isRunning)")
+        }
     }
 
     @ViewBuilder // 여러 종류 View를 조건에 따라 반환
@@ -90,18 +90,18 @@ struct HiderModeView: View {
     private var shouldShowCamera: Bool {
         switch viewModel.state {
         case .hiding, .taggerNearby:
-            return true
+            true
         case .taggedCheck, .captured:
-            return false
+            false
         }
     }
 
     private var shouldShowCaptureButton: Bool {
         switch viewModel.state {
         case .hiding, .taggerNearby:
-            return true
+            true
         case .taggedCheck, .captured:
-            return false
+            false
         }
     }
 

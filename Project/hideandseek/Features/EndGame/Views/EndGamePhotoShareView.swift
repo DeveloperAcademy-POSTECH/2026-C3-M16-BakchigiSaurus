@@ -201,61 +201,61 @@ private struct PhotoShareParticipantRow: View {
     private var detailText: String {
         switch row.status {
         case .waiting:
-            return "대기중"
+            "대기중"
         case .received:
-            return "\(row.photoCount)장 수신"
+            "\(row.photoCount)장 수신"
         case .noPhotos:
-            return "보낸 사진 없음"
+            "보낸 사진 없음"
         case .failed:
-            return "수신 실패"
+            "수신 실패"
         }
     }
 
     private var roleText: String {
         switch row.role {
         case .tagger:
-            return "술래"
+            "술래"
         case .hider:
-            return "숨는 사람"
+            "숨는 사람"
         case .unassigned:
-            return "참여자"
+            "참여자"
         }
     }
 
     private var roleColor: Color {
         switch row.role {
         case .tagger:
-            return .orange
+            .orange
         case .hider:
-            return .green
+            .green
         case .unassigned:
-            return .secondary
+            .secondary
         }
     }
 
     private var rowBackground: Color {
         switch row.status {
         case .waiting:
-            return Color.white.opacity(0.07)
+            Color.white.opacity(0.07)
         case .received:
-            return Color.green.opacity(0.16)
+            Color.green.opacity(0.16)
         case .noPhotos:
-            return Color.white.opacity(0.08)
+            Color.white.opacity(0.08)
         case .failed:
-            return Color.orange.opacity(0.18)
+            Color.orange.opacity(0.18)
         }
     }
 
     private var rowBorder: Color {
         switch row.status {
         case .waiting:
-            return Color.white.opacity(0.12)
+            Color.white.opacity(0.12)
         case .received:
-            return Color.green.opacity(0.34)
+            Color.green.opacity(0.34)
         case .noPhotos:
-            return Color.white.opacity(0.18)
+            Color.white.opacity(0.18)
         case .failed:
-            return Color.orange.opacity(0.34)
+            Color.orange.opacity(0.34)
         }
     }
 

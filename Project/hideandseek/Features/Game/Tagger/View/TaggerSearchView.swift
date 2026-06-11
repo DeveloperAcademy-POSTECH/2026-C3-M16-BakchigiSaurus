@@ -136,27 +136,27 @@ struct TaggerSearchView: View {
     }
 
     private var cameraActions: some View {
-            ZStack {
-                HStack {
-                    hintButton
-                        .padding(.leading, 30)
-                    
-                    Spacer()
-                }
-                // 촬영 버튼: 아일랜드 확장(촬영 가능) + 카메라 세션 실행 중일 때만.
-                CaptureButton(isEnabled: viewModel.canCapturePhoto && camera.isSessionRunning) {
-                    Task {
-                        let localParticipant = viewModel.gameModel.localParticipant
-                        if let photo = await camera.capturePhoto(
-                            photographerID: localParticipant?.id ?? viewModel.gameModel.localPlayerID,
-                            photographerName: localParticipant?.name,
-                            photographerRole: localParticipant?.role ?? .tagger
-                        ) {
-                            photoStore.add(photo)
-                        }
+        ZStack {
+            HStack {
+                hintButton
+                    .padding(.leading, 30)
+
+                Spacer()
+            }
+            // 촬영 버튼: 아일랜드 확장(촬영 가능) + 카메라 세션 실행 중일 때만.
+            CaptureButton(isEnabled: viewModel.canCapturePhoto && camera.isSessionRunning) {
+                Task {
+                    let localParticipant = viewModel.gameModel.localParticipant
+                    if let photo = await camera.capturePhoto(
+                        photographerID: localParticipant?.id ?? viewModel.gameModel.localPlayerID,
+                        photographerName: localParticipant?.name,
+                        photographerRole: localParticipant?.role ?? .tagger
+                    ) {
+                        photoStore.add(photo)
                     }
                 }
             }
+        }
     }
 
     private var hintButton: some View {
