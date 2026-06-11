@@ -279,7 +279,9 @@ final class NearbyInteractionManager: NSObject {
             return await enableDirectionMode(forPeerRawID: peer.rawID)
         }
 
-        if let rawID = activeDirectionPeerRawID ?? lastReadingPeerRawID ?? peerDiscoveryTokensByRawID.keys.sorted().first {
+        if let rawID = activeDirectionPeerRawID ?? lastReadingPeerRawID ?? peerDiscoveryTokensByRawID.keys.sorted()
+            .first
+        {
             return await enableDirectionMode(forPeerRawID: rawID)
         }
 
