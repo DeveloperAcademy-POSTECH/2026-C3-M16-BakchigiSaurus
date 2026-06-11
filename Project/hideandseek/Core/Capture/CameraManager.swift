@@ -32,6 +32,7 @@
 
 import AVFoundation
 import SwiftUI
+import UIKit
 
 // =====================================================================
 // MARK: - PhotoCaptureProcessor
@@ -271,19 +272,82 @@ final class CameraModel {
     }
 
     /// 한 장 촬영한다. 세션이 안 켜져 있으면 nil. 성공 시 ``CapturedPhoto``를 돌려준다.
-    /// - Parameter ownerRole: 촬영자 역할(표시/필터용). 필요 없으면 생략.
+    /// - Parameters:
+    ///   - photographerID: 촬영자의 안정적인 게임 참가자 ID.
+    ///   - photographerName: 촬영 시점의 표시 이름.
+    ///   - photographerRole: 촬영자 역할.
     /// - Returns: 촬영본. 호출 측에서 ``CapturedPhotoStore/add(_:)``로 저장한다.
     @discardableResult
-    func capturePhoto(ownerRole: PlayerRole? = nil) async -> CapturedPhoto? {
+    func capturePhoto(
+        photographerID: PlayerID? = nil,
+        photographerName: String? = nil,
+        photographerRole: PlayerRole? = nil
+    ) async -> CapturedPhoto? {
         guard isSessionRunning else { return nil }
 
         do {
-            let data = try await service.capturePhoto()
-            return CapturedPhoto(imageData: data, capturedAt: Date(), ownerRole: ownerRole)
+            let rawData = try await service.capturePhoto()
+            let data = normalizedPhotoDataForStory(from: rawData)
+            debugLog(
+                "capturePhoto succeeded rawBytes=\(rawData.count) storedBytes=\(data.count) " +
+                    "photographer=\(photographerName ?? "nil") role=\(String(describing: photographerRole))"
+            )
+            return CapturedPhoto(
+                imageData: data,
+                capturedAt: Date(),
+                photographerID: photographerID,
+                photographerName: photographerName,
+                photographerRole: photographerRole
+            )
         } catch {
             print("photo capture error:", error)
             return nil
         }
+    }
+
+    /// MC data 메시지로도 안정적으로 보낼 수 있게 스토리용 크기로 정규화한다.
+    private func normalizedPhotoDataForStory(
+        from data: Data,
+        maxPixel: CGFloat = 1440,
+        compressionQuality: CGFloat = 0.72
+    ) -> Data {
+        guard let image = UIImage(data: data) else {
+            debugLog("normalize skipped: UIImage decode failed bytes=\(data.count)")
+            return data
+        }
+
+        let size = image.size
+        let longestSide = max(size.width, size.height)
+        guard longestSide > 0 else {
+            return data
+        }
+
+        let scale = min(1, maxPixel / longestSide)
+        let targetSize = CGSize(
+            width: max(1, floor(size.width * scale)),
+            height: max(1, floor(size.height * scale))
+        )
+
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = true
+
+        let renderer = UIGraphicsImageRenderer(size: targetSize, format: format)
+        let renderedImage = renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: targetSize))
+        }
+
+        guard let jpegData = renderedImage.jpegData(compressionQuality: compressionQuality) else {
+            debugLog("normalize skipped: JPEG encode failed bytes=\(data.count)")
+            return data
+        }
+
+        debugLog(
+            "normalize photo originalSize=\(Int(size.width))x\(Int(size.height)) " +
+                "targetSize=\(Int(targetSize.width))x\(Int(targetSize.height)) " +
+                "rawBytes=\(data.count) jpegBytes=\(jpegData.count)"
+        )
+        return jpegData
     }
 
     /// 카메라 권한을 요청한다. (마이크는 사용하지 않음)

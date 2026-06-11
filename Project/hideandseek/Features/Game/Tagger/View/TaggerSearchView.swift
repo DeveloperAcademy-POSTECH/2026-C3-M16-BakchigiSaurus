@@ -54,8 +54,10 @@ struct TaggerSearchView: View {
                         type: .hiderNearby
                     )
                 }
+                .fixedSize()
                 .padding(.top, 12)
                 .ignoresSafeArea()
+                .zIndex(10)
             }
         }
         .animation(.easeInOut(duration: 0.2), value: activeHintResult)
@@ -82,48 +84,20 @@ struct TaggerSearchView: View {
 
     private var searchContent: some View {
         ZStack {
+            CameraFrameOverlay()
+            CameraBottomGradient()
+
             VStack {
                 GameTimer(timeLeft: timeLeft)
                 Spacer()
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text("주변에")
-                            .font(.largeTitle.bold())
-                            .foregroundStyle(.secondary)
-                        HStack {
-                            Text("숨은 사람")
-                                .font(.largeTitle.bold())
-                                .foregroundStyle(.primary)
-                            Text("을 찾는 중")
-                                .font(.largeTitle.bold())
-                                .foregroundStyle(.secondary)
-                        }
-                        Button {
-                            showHintAlert = true
-                        } label: {
-                            Label("힌트 \(viewModel.hintCountRemaining)개 남음", systemImage: "magnifyingglass")
-                                .padding(.vertical, 10)
-                                .font(.title3)
-                        }
-                        .buttonStyle(.glass)
-                        .cornerRadius(20)
-                        .padding(.bottom, 7)
-                        .disabled(!viewModel.canUseHint || isMeasuringHint)
-                    }
-                    Spacer()
-                }
+                bottomSearchLabel
+                    .padding(.leading, 36)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            // 촬영 버튼: 아일랜드 확장(촬영 가능) + 카메라 세션 실행 중일 때만.
-            CaptureButton(isEnabled: viewModel.canCapturePhoto && camera.isSessionRunning) {
-                Task {
-                    if let photo = await camera.capturePhoto(ownerRole: .tagger) {
-                        photoStore.add(photo)
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-            .padding(.bottom, 24)
+            cameraActions
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                .padding(.bottom, 176)
         }
         .alert("힌트를 사용할까요?", isPresented: $showHintAlert) {
             Button("네", role: .none) {
@@ -148,7 +122,74 @@ struct TaggerSearchView: View {
         } message: {
             Text(hintAlertMessage)
         }
-        .padding(.horizontal, 36)
+    }
+
+    private var bottomSearchLabel: some View {
+        VStack(alignment: .leading) {
+            Text("주변에")
+                .foregroundStyle(.secondary)
+
+            Text("\(Text("숨은 사람").foregroundStyle(.primary))을 찾는 중")
+                .foregroundStyle(.secondary)
+        }
+        .font(.largeTitle.bold())
+    }
+
+    private var cameraActions: some View {
+        ZStack {
+            HStack {
+                hintButton
+                    .padding(.leading, 30)
+
+                Spacer()
+            }
+            // 촬영 버튼: 아일랜드 확장(촬영 가능) + 카메라 세션 실행 중일 때만.
+            CaptureButton(isEnabled: viewModel.canCapturePhoto && camera.isSessionRunning) {
+                Task {
+                    let localParticipant = viewModel.gameModel.localParticipant
+                    if let photo = await camera.capturePhoto(
+                        photographerID: localParticipant?.id ?? viewModel.gameModel.localPlayerID,
+                        photographerName: localParticipant?.name,
+                        photographerRole: localParticipant?.role ?? .tagger
+                    ) {
+                        photoStore.add(photo)
+                    }
+                }
+            }
+        }
+    }
+
+    private var hintButton: some View {
+        Button {
+            showHintAlert = true
+        } label: {
+            ZStack(alignment: .topTrailing) {
+                Circle()
+                    .fill(.black.opacity(0.36))
+                    .frame(width: 62, height: 62)
+                    .overlay {
+                        Circle()
+                            .stroke(.white.opacity(0.5), lineWidth: 1)
+                    }
+                    .overlay {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundStyle(.white)
+                    }
+
+                Text("\(viewModel.hintCountRemaining)")
+                    .font(.caption2.bold())
+                    .foregroundStyle(.black)
+                    .frame(width: 20, height: 20)
+                    .background(.white, in: Circle())
+                    .offset(x: 2, y: -2)
+            }
+            .frame(width: 62, height: 62)
+        }
+        .buttonStyle(.plain)
+        .disabled(!viewModel.canUseHint || isMeasuringHint)
+        .opacity((viewModel.canUseHint && !isMeasuringHint) ? 1 : 0.45)
+        .accessibilityLabel("힌트 \(viewModel.hintCountRemaining)개 남음")
     }
 
     private var hintMeasuringContent: some View {
@@ -237,4 +278,55 @@ struct TaggerSearchView: View {
         guard let date else { return "nil" }
         return String(format: "%.3f", date.timeIntervalSince1970)
     }
+}
+
+#Preview("아일랜드 확장(촬영 가능)") {
+    let localID = PlayerID()
+    let hiderID = PlayerID()
+
+    let initialState = GameState(
+        session: GameSessionDefinition(hostID: localID, settings: .default),
+        phase: .playing,
+        participants: [
+            localID: GameParticipant(
+                id: localID,
+                peerID: nil,
+                name: "술래",
+                isHost: true,
+                role: .tagger,
+                status: .seeking
+            ),
+            hiderID: GameParticipant(
+                id: hiderID,
+                peerID: nil,
+                name: "숨은 사람",
+                isHost: false,
+                role: .hider,
+                status: .hiding
+            )
+        ],
+        participantOrder: [localID, hiderID],
+        taggerID: localID,
+        hintCountRemaining: 3
+    )
+
+    let gameModel = GameModel(initialState: initialState, localPlayerID: localID)
+    let viewModel = TaggerSearchViewModel(
+        gameModel: gameModel,
+        mcSession: MultipeerGameSession(displayName: "술래", isHost: true),
+        niManager: NearbyInteractionManager()
+    )
+
+    // 아일랜드 확장 4조건 중 VM 측 2개를 강제 충족.
+    viewModel.didReceiveLocalReading = true
+    viewModel.latestObservedDistance = 2.4
+    viewModel.isHiderWithinWarningRadius = true
+    viewModel.localTaggerConfirmationSentAt = Date()
+
+    return TaggerSearchView(
+        camera: CameraModel(),
+        viewModel: viewModel,
+        photoStore: CapturedPhotoStore(),
+        timeLeft: 180
+    )
 }

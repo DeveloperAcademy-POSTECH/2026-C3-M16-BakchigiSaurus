@@ -20,6 +20,10 @@ enum MultipeerMessageKind: String {
     case niDiscoveryToken
     /// 숨바꼭질 게임 진행 상태를 동기화하기 위한 메시지.
     case gameFlowMessage
+    /// 게임 종료 후 촬영 사진 묶음을 공유하기 위한 메시지.
+    case capturedPhotoBatch
+    /// 사진 수신 실패 후 상대에게 사진 재전송을 요청하기 위한 메시지.
+    case capturedPhotoShareRequest
 }
 
 extension MultipeerMessageKind: Codable {

@@ -15,15 +15,16 @@ struct CaptureButton: View {
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: "camera.fill")
-                .font(.system(size: 28, weight: .bold))
-                .foregroundStyle(.white)
-                .frame(width: 72, height: 72)
-                .background(Circle().fill(.white.opacity(isEnabled ? 0.25 : 0.08)))
-                .overlay(Circle().stroke(.white, lineWidth: 3))
+            Image("btn")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 88, height: 88)
+                .opacity(isEnabled ? 1 : 0.45)
         }
         .disabled(!isEnabled)
-        .opacity(isEnabled ? 1 : 0.5)
+        .buttonStyle(.plain)
+        .contentShape(Circle())
+        .accessibilityLabel("사진 촬영")
     }
 }
 

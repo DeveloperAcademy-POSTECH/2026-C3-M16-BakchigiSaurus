@@ -102,7 +102,11 @@ struct GameRootView: View {
             } else {
                 HiderModeView(
                     camera: camera,
-                    timeLeft: timeLeft
+                    photoStore: photoStore,
+                    timeLeft: timeLeft,
+                    photographerID: gameModel.localParticipant?.id ?? gameModel.localPlayerID,
+                    photographerName: gameModel.localParticipant?.name,
+                    photographerRole: gameModel.localParticipant?.role ?? .hider
                 ) {
                     Task {
                         await gameModel.send(.confirmCapture(hiderID: gameModel.localPlayerID))
@@ -111,36 +115,11 @@ struct GameRootView: View {
             }
 
         case .ended:
-            if hasConfirmedGameEnd {
-                transferContent
-            } else {
-                GameEndedView {
-                    ensureTransferViewModelIfNeeded()
-                    hasConfirmedGameEnd = true
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var transferContent: some View {
-        if let transferViewModel {
-            TransferStatusView(
-                viewModel: transferViewModel,
-                onBack: { hasConfirmedGameEnd = false },
-                onStart: {
-                    // 실제 클립 전송/병합은 feat/clip-transfer에서 연결한다.
-                },
-                onAllReceived: nil
+            EndGamePhotoShareView(
+                gameModel: gameModel,
+                mcSession: mcSession,
+                photoStore: photoStore
             )
-            .task {
-                await collectorSession?.observe()
-            }
-            .task {
-                await clipTransferService?.collectIncoming()
-            }
-        } else {
-            waitingView(title: "게임이 종료됐어요")
         }
     }
 
