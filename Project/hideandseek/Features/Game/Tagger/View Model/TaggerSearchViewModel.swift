@@ -174,6 +174,7 @@ final class TaggerSearchViewModel {
                 if shouldLogReading {
                     self.debugLog(
                         "NI reading received distance=\(self.format(distance: reading.distance)) " +
+                            "peer=\(self.format(peer: reading.peer)) " +
                             "horizontalAngle=\(self.format(angle: reading.horizontalAngle)) " +
                             "direction=\(self.format(direction: convertedDirection)) " +
                             "timestamp=\(self.format(date: reading.timestamp)) " +
@@ -190,9 +191,26 @@ final class TaggerSearchViewModel {
                     return
                 }
 
-                guard let hiderID = self.observedHiderID() else {
-                    self.debugLog("NI reading ignored: no active hider to track")
+                guard let hiderID = self.observedHiderID(for: reading.peer) else {
+                    self.debugLog(
+                        "NI reading ignored: no active hider to track " +
+                            "peer=\(self.format(peer: reading.peer))"
+                    )
                     self.resetProximityTracking(reason: "no active hider")
+                    return
+                }
+
+                guard self.shouldUseReading(for: hiderID, distance: reading.distance) else {
+                    if shouldLogReading {
+                        self.debugLog(
+                            "NI reading ignored: non-target hider=\(self.shortID(hiderID)) " +
+                                "peer=\(self.format(peer: reading.peer)) " +
+                                "distance=\(self.format(distance: reading.distance)) " +
+                                "trackingTarget=\(self.trackingTargetID.map(self.shortID) ?? "nil") " +
+                                "within5m=\(self.isHiderWithinWarningRadius) " +
+                                "confirmedAt=\(self.format(date: self.localTaggerConfirmationSentAt))"
+                        )
+                    }
                     return
                 }
 
@@ -239,10 +257,12 @@ final class TaggerSearchViewModel {
             return nil
         }
 
-        guard niManager.canEnterDirectionMode else {
+        let directionPeer = trackingTargetID.flatMap(peerForHiderID)
+        guard niManager.canEnterDirectionMode(for: directionPeer) else {
             debugLog(
                 "aborted before camera: NI unavailable " +
-                    "state=\(niManager.state) hasSession=\(niManager.canEnterDirectionMode)"
+                    "state=\(niManager.state) hasSession=\(niManager.canEnterDirectionMode) " +
+                    "directionPeer=\(format(peer: directionPeer))"
             )
             return .failure
         }
@@ -263,7 +283,7 @@ final class TaggerSearchViewModel {
         )
         try? await Task.sleep(nanoseconds: cameraToDirectionHandoffDelayNanos)
 
-        let didEnableDirectionMode = await niManager.enableDirectionMode()
+        let didEnableDirectionMode = await niManager.enableDirectionMode(for: directionPeer)
         guard didEnableDirectionMode else {
             await camera.openSession()
             debugLog("beginHintWithDirection aborted: direction mode unavailable")
@@ -834,6 +854,11 @@ final class TaggerSearchViewModel {
         )
     }
 
+    private func format(peer: PeerID?) -> String {
+        guard let peer else { return "nil" }
+        return "\(peer.displayName)(\(String(peer.rawID.prefix(8))))"
+    }
+
     private func format(candidates: [HintCandidate]) -> String {
         guard !candidates.isEmpty else { return "[]" }
 
@@ -901,6 +926,66 @@ final class TaggerSearchViewModel {
             return nil
         }
         .first
+    }
+
+    private func peerForHiderID(_ hiderID: PlayerID) -> PeerID? {
+        gameModel.participants.first { participant in
+            participant.id == hiderID
+        }?.peerID
+    }
+
+    private func observedHiderID(for peer: PeerID?) -> PlayerID? {
+        if let peer {
+            return gameModel.participants.first { participant in
+                participant.id != gameModel.localPlayerID &&
+                    participant.role != .tagger &&
+                    participant.status != .captured &&
+                    participant.peerID?.rawID == peer.rawID
+            }?.id
+        }
+
+        return observedHiderID()
+    }
+
+    private func shouldUseReading(for hiderID: PlayerID, distance: Float?) -> Bool {
+        guard let trackingTargetID, trackingTargetID != hiderID else {
+            self.trackingTargetID = hiderID
+            return true
+        }
+
+        if isHiderWithinWarningRadius || localTaggerConfirmationSentAt != nil {
+            return false
+        }
+
+        if let distance, distance <= warningRadiusMeters {
+            debugLog(
+                "switch tracking target old=\(shortID(trackingTargetID)) " +
+                    "new=\(shortID(hiderID)) distance=\(format(distance: distance))"
+            )
+            resetProximityTrackingForTargetSwitch(to: hiderID)
+            return true
+        }
+
+        self.trackingTargetID = hiderID
+        return true
+    }
+
+    private func resetProximityTrackingForTargetSwitch(to hiderID: PlayerID) {
+        proximityConfirmationTask?.cancel()
+        proximityConfirmationTask = nil
+        proximityStalenessTask?.cancel()
+        proximityStalenessTask = nil
+        localEnteredWarningRadiusAt = nil
+        localTaggerConfirmationSentAt = nil
+        latestObservedDistance = nil
+        latestObservedDirection = nil
+        latestObservedHorizontalAngle = nil
+        latestObservedAt = nil
+        resetHintDirectionSample()
+        didReceiveLocalReading = false
+        isHiderWithinWarningRadius = false
+        lastLoggedWithinWarningRadius = nil
+        trackingTargetID = hiderID
     }
 
     private func observedHiderID() -> PlayerID? {

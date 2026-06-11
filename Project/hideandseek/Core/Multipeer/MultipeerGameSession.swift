@@ -235,6 +235,10 @@ private extension MultipeerGameSession {
         static let gameMinutes = "roomGameMinutes"
     }
 
+    struct PeerIdentityContext: Codable {
+        let peer: PeerID
+    }
+
     /// currentPeers에 같은 PeerID가 중복으로 들어가지 않도록 정리한다.
     func uniquePeers(_ peers: [PeerID]) -> [PeerID] {
         var seenRawIDs = Set<String>()
@@ -298,6 +302,15 @@ private extension MultipeerGameSession {
             DiscoveryKey.hideTimeSeconds: String(room.hideTimeSeconds),
             DiscoveryKey.gameMinutes: String(room.gameMinutes)
         ]
+    }
+
+    func makeInvitationContext() -> Data? {
+        try? JSONEncoder().encode(PeerIdentityContext(peer: localPeer))
+    }
+
+    func peerIdentity(from context: Data?) -> PeerID? {
+        guard let context else { return nil }
+        return try? JSONDecoder().decode(PeerIdentityContext.self, from: context).peer
     }
 
     /// 이미 discoveryInfo를 통해 알고 있는 PeerID가 있으면 해당 값을 사용한다.
@@ -375,6 +388,27 @@ private extension MultipeerGameSession {
             continuation.yield(event)
         }
     }
+
+    func sendLocalPeerIdentityOnStateQueue(to targetPeers: [MCPeerID]) {
+        guard !targetPeers.isEmpty else { return }
+
+        do {
+            let payload = try JSONEncoder().encode(localPeer)
+            let message = MultipeerMessage(
+                kind: .peerIdentity,
+                payload: payload
+            )
+            let messageData = try JSONEncoder().encode(message)
+
+            try session.send(
+                messageData,
+                toPeers: targetPeers,
+                with: .reliable
+            )
+        } catch {
+            print("Failed to send local peer identity:", error.localizedDescription)
+        }
+    }
 }
 
 private extension PeerID {
@@ -401,6 +435,7 @@ extension MultipeerGameSession: MCSessionDelegate {
             case .connected:
                 self.knownPeerIDsByDisplayName[peerID.displayName] = peer
                 self.stopBrowsingOnStateQueue()
+                self.sendLocalPeerIdentityOnStateQueue(to: session.connectedPeers)
                 self.yieldSessionEvent(.peerConnected(peer))
                 Task { @MainActor in
                     self.refreshHostingAdvertisementIfNeeded()
@@ -436,6 +471,20 @@ extension MultipeerGameSession: MCSessionDelegate {
                 )
 
                 switch message.kind {
+                case .peerIdentity:
+                    let peerIdentity = try JSONDecoder().decode(
+                        PeerID.self,
+                        from: message.payload
+                    )
+                    let previousPeer = self.makeKnownPeerID(from: peerID)
+
+                    self.knownPeerIDsByDisplayName[peerID.displayName] = peerIdentity
+                    if previousPeer.rawID != peerIdentity.rawID {
+                        self.yieldSessionEvent(.peerConnected(peerIdentity))
+                    } else {
+                        self.yieldSessionEvent(.discoveredRoomsChanged)
+                    }
+
                 case .niDiscoveryToken:
                     let token = try NIDiscoveryTokenCoding.decode(
                         from: message.payload
@@ -595,7 +644,7 @@ extension MultipeerGameSession {
             self.browser?.invitePeer(
                 mcPeerID,
                 to: self.session,
-                withContext: nil,
+                withContext: self.makeInvitationContext(),
                 timeout: timeout
             )
         }
@@ -688,9 +737,16 @@ extension MultipeerGameSession {
     }
 
     /// 게임 시작 메시지를 전송한다.
-    func sendGameStarted(to peer: PeerID? = nil) {
+    func sendGameStarted(
+        participants: [PeerID]? = nil,
+        taggerPeer: PeerID? = nil,
+        to peer: PeerID? = nil
+    ) {
         sendGameFlowMessage(
-            .gameStarted(),
+            .gameStarted(
+                participants: participants,
+                taggerPeer: taggerPeer
+            ),
             to: peer
         )
     }
@@ -758,7 +814,18 @@ extension MultipeerGameSession: MCNearbyServiceAdvertiserDelegate {
         withContext context: Data?,
         invitationHandler: @escaping (Bool, MCSession?) -> Void
     ) {
-        invitationHandler(true, session)
+        stateQueue.async {
+            let peer = self.peerIdentity(from: context) ?? PeerID(mcPeerID: peerID)
+            self.knownPeerIDsByDisplayName[peerID.displayName] = peer
+
+            let room = self.makeHostedRoomSnapshot()
+            let isAlreadyConnected = self.connectedMCPeers.contains { connectedPeer in
+                connectedPeer.displayName == peerID.displayName
+            }
+            let canAccept = isAlreadyConnected || room.currentCount < room.maxCount
+
+            invitationHandler(canAccept, canAccept ? self.session : nil)
+        }
     }
 
     /// 호스트 광고 시작에 실패했을 때 호출된다.

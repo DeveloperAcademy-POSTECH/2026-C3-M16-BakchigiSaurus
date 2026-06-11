@@ -18,6 +18,7 @@ final class RoomFlowViewModel: ObservableObject {
     private var gameFlowTask: Task<Void, Never>?
     private var phaseTransitionTask: Task<Void, Never>?
     private var playerIDByPeerRawID: [String: PlayerID] = [:]
+    private var participantRosterFromHost: [PeerID]?
 
     @Published private(set) var localPeer: PeerID
     @Published private(set) var discoveredRooms: [RoomLobbySnapshot] = []
@@ -126,6 +127,7 @@ final class RoomFlowViewModel: ObservableObject {
         selectedTaggerRawID = nil
         statusMessage = "참가자를 기다리는 중입니다"
         gameModel = nil
+        participantRosterFromHost = nil
         playerIDByPeerRawID.removeAll()
         activeRoom = session.hostedRoom
         refreshSnapshot()
@@ -141,6 +143,7 @@ final class RoomFlowViewModel: ObservableObject {
         selectedTaggerRawID = nil
         statusMessage = "\(room.name)에 연결하는 중입니다"
         gameModel = nil
+        participantRosterFromHost = nil
         playerIDByPeerRawID.removeAll()
         session.invite(room.host)
     }
@@ -154,6 +157,7 @@ final class RoomFlowViewModel: ObservableObject {
         localAssignedRole = nil
         gameStarted = false
         gameModel = nil
+        participantRosterFromHost = nil
         playerIDByPeerRawID.removeAll()
         statusMessage = nil
         currentPeers = [localPeer]
@@ -173,18 +177,27 @@ final class RoomFlowViewModel: ObservableObject {
             return
         }
 
-        let fallbackTagger = sortedParticipants.randomElement()?.rawID
+        let participantRoster = sortedParticipants
+        let fallbackTagger = participantRoster.randomElement()?.rawID
         let taggerRawID = selectedTaggerRawID ?? fallbackTagger ?? localPeer.rawID
         let gameModel = makeGameModel(selectedTaggerRawID: taggerRawID)
+        let taggerPeer = participantRoster.first { $0.rawID == taggerRawID }
 
-        for peer in currentPeers where peer.rawID != localPeer.rawID {
+        for peer in participantRoster where peer.rawID != localPeer.rawID {
             let role: GameFlowRole = peer.rawID == taggerRawID ? .seeker : .hider
-            session.sendRoleAssigned(role, to: peer)
+            session.sendRoleAssigned(
+                role,
+                taggerPeer: taggerPeer,
+                to: peer
+            )
         }
 
         localAssignedRole = localPeer.rawID == taggerRawID ? .seeker : .hider
         selectedTaggerRawID = taggerRawID
-        session.sendGameStarted()
+        session.sendGameStarted(
+            participants: participantRoster,
+            taggerPeer: taggerPeer
+        )
         session.sendCountdownStarted(seconds: gameModel.sharedState.session.settings.hideTimeSeconds)
         gameStarted = true
         statusMessage = "게임 시작 신호를 전송했습니다"
@@ -287,6 +300,10 @@ final class RoomFlowViewModel: ObservableObject {
         switch message.kind {
         case .roleAssigned:
             localAssignedRole = message.role
+            if let taggerPeer = message.referencedPeer {
+                selectedTaggerRawID = taggerPeer.rawID
+            }
+
             if message.role == .seeker {
                 statusMessage = "당신이 술래입니다"
             } else if message.role == .hider {
@@ -294,6 +311,13 @@ final class RoomFlowViewModel: ObservableObject {
             }
 
         case .gameStarted:
+            if let participants = message.participantPeers {
+                participantRosterFromHost = normalizedRoster(participants)
+            }
+            if let taggerPeer = message.referencedPeer {
+                selectedTaggerRawID = taggerPeer.rawID
+            }
+
             gameStarted = true
             ensureGameModelForReceivedStart()
             if statusMessage == nil {
@@ -333,7 +357,8 @@ final class RoomFlowViewModel: ObservableObject {
             taggerSelectionPolicy: selectedTaggerRawID == nil ? .random : .manual
         )
 
-        let peers = sortedParticipants.isEmpty ? [localPeer] : sortedParticipants
+        let roster = participantRosterFromHost ?? sortedParticipants
+        let peers = normalizedRoster(roster.isEmpty ? [localPeer] : roster)
         for peer in peers where playerIDByPeerRawID[peer.rawID] == nil {
             playerIDByPeerRawID[peer.rawID] = PlayerID()
         }
@@ -400,9 +425,26 @@ final class RoomFlowViewModel: ObservableObject {
         case .seeker:
             localPeer.rawID
         case .hider:
-            sortedParticipants.first { $0.rawID != localPeer.rawID }?.rawID
+            selectedTaggerRawID ?? sortedParticipants.first { $0.rawID != localPeer.rawID }?.rawID
         case nil:
             selectedTaggerRawID
+        }
+    }
+
+    private func normalizedRoster(_ peers: [PeerID]) -> [PeerID] {
+        var seenRawIDs = Set<String>()
+        var normalizedPeers = peers.filter { peer in
+            seenRawIDs.insert(peer.rawID).inserted
+        }
+
+        if !seenRawIDs.contains(localPeer.rawID) {
+            normalizedPeers.append(localPeer)
+        }
+
+        return normalizedPeers.sorted { lhs, rhs in
+            if lhs.rawID == activeRoom?.host.rawID { return true }
+            if rhs.rawID == activeRoom?.host.rawID { return false }
+            return lhs.displayName.localizedCompare(rhs.displayName) == .orderedAscending
         }
     }
 

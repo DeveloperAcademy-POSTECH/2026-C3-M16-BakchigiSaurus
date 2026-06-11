@@ -33,6 +33,12 @@ enum NIMeasurementMode {
 
 final class NearbyInteractionManager: NSObject {
     private var session: NISession?
+    private var sessionsByPeerRawID: [String: NISession] = [:]
+    private var peerRawIDBySessionID: [ObjectIdentifier: String] = [:]
+    private var peersByRawID: [String: PeerID] = [:]
+    private var peerDiscoveryTokensByRawID: [String: NIDiscoveryToken] = [:]
+    private var activeDirectionPeerRawID: String?
+    private var lastReadingPeerRawID: String?
     var onReadingUpdated: ((NearbyInteractionReading) -> Void)? // 거리, 방향 값 들어왔을 때 외부에 콜백
     var onSessionRestartRequired: (() -> Void)? // 연결 객체에 재시작 필요를 알려주는 콜백
 
@@ -49,7 +55,7 @@ final class NearbyInteractionManager: NSObject {
     private var directionModeStartedAt: Date?
 
     var isDirectionModeActive: Bool {
-        mode == .direction && session != nil
+        mode == .direction && activeDirectionPeerRawID != nil
     }
 
     var supportsDirectionMeasurement: Bool {
@@ -65,7 +71,15 @@ final class NearbyInteractionManager: NSObject {
     }
 
     var canEnterDirectionMode: Bool {
-        session != nil && peerDiscoveryToken != nil && NISession.deviceCapabilities.supportsCameraAssistance
+        supportsCameraAssistedDirection &&
+            (peerDiscoveryToken != nil || !peerDiscoveryTokensByRawID.isEmpty)
+    }
+
+    func canEnterDirectionMode(for peer: PeerID?) -> Bool {
+        guard supportsCameraAssistedDirection else { return false }
+        guard let peer else { return canEnterDirectionMode }
+        return sessionsByPeerRawID[peer.rawID] != nil &&
+            peerDiscoveryTokensByRawID[peer.rawID] != nil
     }
 
     /// 초기화 함수
@@ -76,6 +90,12 @@ final class NearbyInteractionManager: NSObject {
     /// NI 세션을 시작 준비하는 함수
     /// NISession만 생성한다(거리 전용 준비 상태). 방향 모드 진입 시 camera assistance만 켠다.
     func startSession() {
+        startSession(for: nil)
+    }
+
+    /// 특정 peer와의 NI 세션을 준비한다.
+    /// 다자 연결에서는 peer마다 별도 NISession/DiscoveryToken을 유지한다.
+    func startSession(for peer: PeerID?) {
         #if DEBUG
             let caps = NISession.deviceCapabilities
             print("[NIDiag] supportsPreciseDistance=\(caps.supportsPreciseDistanceMeasurement)")
@@ -105,33 +125,59 @@ final class NearbyInteractionManager: NSObject {
             return
         }
 
-        if let session {
+        if let peer {
+            if let existingSession = sessionsByPeerRawID[peer.rawID] {
+                existingSession.delegate = nil
+                existingSession.pause()
+                existingSession.invalidate()
+                peerRawIDBySessionID.removeValue(forKey: ObjectIdentifier(existingSession))
+            }
+
+            peerDiscoveryTokensByRawID.removeValue(forKey: peer.rawID)
+            peersByRawID[peer.rawID] = peer
+            if activeDirectionPeerRawID == peer.rawID {
+                activeDirectionPeerRawID = nil
+                mode = .distance
+            }
+        } else if let session {
             session.delegate = nil
             session.pause()
             session.invalidate()
         }
 
         // 기본은 거리 전용 → camera assistance는 켜지 않는다(카메라와 경합 방지).
-        mode = .distance
+        if activeDirectionPeerRawID == nil {
+            mode = .distance
+        }
 
         let newSession = NISession()
         newSession.delegate = self
 
-        session = newSession
-        sharedTokenWithPeer = false
-        peerDiscoveryToken = nil
+        if let peer {
+            sessionsByPeerRawID[peer.rawID] = newSession
+            peerRawIDBySessionID[ObjectIdentifier(newSession)] = peer.rawID
+        } else {
+            session = newSession
+            peerDiscoveryToken = nil
+            sharedTokenWithPeer = false
+        }
         lastUpdateDebugLogAt = nil
         lastDirectionSampleDebugLogAt = nil
         didLogFirstDirectionSampleInCurrentRun = false
         state = .ready
         #if DEBUG
-            print("[NIDiag] startSession (distance-only, no ARSession)")
+            print("[NIDiag] startSession peer=\(peer?.displayName ?? "legacy") (distance-only, no ARSession)")
         #endif
     }
 
     /// 상대에게 전송할 내 NI DiscoveryToken 반환 (가져오기)
     func getMyDiscoveryToken() -> NIDiscoveryToken? {
         session?.discoveryToken
+    }
+
+    /// 특정 peer에게 전송할 내 NI DiscoveryToken 반환.
+    func getMyDiscoveryToken(for peer: PeerID) -> NIDiscoveryToken? {
+        sessionsByPeerRawID[peer.rawID]?.discoveryToken
     }
 
     /// NI Session 실행 함수 (기본: 거리 전용 모드)
@@ -157,8 +203,52 @@ final class NearbyInteractionManager: NSObject {
         )
     }
 
+    /// 특정 peer의 token으로 거리 측정을 시작한다.
+    func run(with peerToken: NIDiscoveryToken, peer: PeerID) {
+        if sessionsByPeerRawID[peer.rawID] == nil {
+            startSession(for: peer)
+        }
+
+        guard let session = sessionsByPeerRawID[peer.rawID] else {
+            state = .failed(.missingSession)
+            return
+        }
+
+        peersByRawID[peer.rawID] = peer
+        peerDiscoveryTokensByRawID[peer.rawID] = peerToken
+        if activeDirectionPeerRawID == nil {
+            mode = .distance
+        }
+        directionNilUpdateCount = 0
+        directionModeStartedAt = nil
+        lastDirectionSampleDebugLogAt = nil
+        didLogFirstDirectionSampleInCurrentRun = false
+        session.run(distanceConfiguration(peerToken: peerToken))
+        sharedTokenWithPeer = true
+        state = .running
+        debugLog(
+            "run (distance mode) peer=\(peerSummary(peer)) " +
+                "trackedPeers=\(peerDiscoveryTokensByRawID.count) " +
+                "localCaps={\(localCapabilitySummary)} " +
+                "peerCaps={\(peerCapabilitySummary(peerToken))}"
+        )
+    }
+
     @discardableResult
     func resumeSessionIfPossible() -> Bool {
+        if !peerDiscoveryTokensByRawID.isEmpty {
+            var didResume = false
+            for (rawID, token) in peerDiscoveryTokensByRawID {
+                guard let session = sessionsByPeerRawID[rawID] else { continue }
+                let configuration = configuration(for: rawID, peerToken: token)
+                session.run(configuration)
+                didResume = true
+            }
+
+            debugLog("resumeSessionIfPossible rerun requested peers=\(peerDiscoveryTokensByRawID.count)")
+            return didResume
+        }
+
         guard let peerDiscoveryToken else {
             debugLog("resumeSessionIfPossible skipped: peerDiscoveryToken=nil")
             return false
@@ -184,7 +274,15 @@ final class NearbyInteractionManager: NSObject {
     /// - Important: **카메라 세션이 닫힌 상태에서** 호출해야 한다(자원 경합 → -5883 회피).
     ///   별도 ARSession을 주입하지 않고 NI가 자동으로 호환 ARSession을 만들게 둔다.
     @discardableResult
-    func enableDirectionMode() async -> Bool {
+    func enableDirectionMode(for peer: PeerID? = nil) async -> Bool {
+        if let peer {
+            return await enableDirectionMode(forPeerRawID: peer.rawID)
+        }
+
+        if let rawID = activeDirectionPeerRawID ?? lastReadingPeerRawID ?? peerDiscoveryTokensByRawID.keys.sorted().first {
+            return await enableDirectionMode(forPeerRawID: rawID)
+        }
+
         guard let session, let peerToken = peerDiscoveryToken else {
             debugLog("enableDirectionMode skipped: session/peerToken nil")
             return false
@@ -213,9 +311,73 @@ final class NearbyInteractionManager: NSObject {
         return true
     }
 
+    @discardableResult
+    private func enableDirectionMode(forPeerRawID rawID: String) async -> Bool {
+        guard let session = sessionsByPeerRawID[rawID],
+              let peerToken = peerDiscoveryTokensByRawID[rawID]
+        else {
+            debugLog("enableDirectionMode skipped: session/peerToken nil peer=\(shortRawID(rawID))")
+            return false
+        }
+
+        guard supportsCameraAssistedDirection else {
+            debugLog("enableDirectionMode skipped: camera assistance unsupported peer=\(shortRawID(rawID))")
+            return false
+        }
+
+        if let previousRawID = activeDirectionPeerRawID,
+           previousRawID != rawID,
+           let previousSession = sessionsByPeerRawID[previousRawID],
+           let previousToken = peerDiscoveryTokensByRawID[previousRawID]
+        {
+            previousSession.pause()
+            previousSession.run(distanceConfiguration(peerToken: previousToken))
+        }
+
+        activeDirectionPeerRawID = rawID
+        mode = .direction
+        directionRunSequence += 1
+        directionNilUpdateCount = 0
+        directionModeStartedAt = Date()
+        lastDirectionSampleDebugLogAt = nil
+        didLogFirstDirectionSampleInCurrentRun = false
+        let directionConfig = NINearbyPeerConfiguration(peerToken: peerToken)
+        directionConfig.isCameraAssistanceEnabled = true
+        session.run(directionConfig)
+        debugLog(
+            "enableDirectionMode run directionRun=\(directionRunSequence) " +
+                "peer=\(peerSummary(peersByRawID[rawID])) " +
+                "cameraAssist=\(directionConfig.isCameraAssistanceEnabled) autoARSession=true " +
+                "stateBeforeRun=\(state) localCaps={\(localCapabilitySummary)} " +
+                "peerCaps={\(peerCapabilitySummary(peerToken))}"
+        )
+        return true
+    }
+
     /// 방향 모드 종료 → 거리 전용으로 복귀하고 ARSession을 내린다.
     /// (NISession/토큰은 그대로라 재핸드셰이크 불필요)
     func disableDirectionMode() {
+        if let rawID = activeDirectionPeerRawID {
+            guard let session = sessionsByPeerRawID[rawID],
+                  let peerToken = peerDiscoveryTokensByRawID[rawID]
+            else {
+                activeDirectionPeerRawID = nil
+                mode = .distance
+                return
+            }
+
+            session.pause()
+            activeDirectionPeerRawID = nil
+            mode = .distance
+            directionNilUpdateCount = 0
+            directionModeStartedAt = nil
+            lastDirectionSampleDebugLogAt = nil
+            didLogFirstDirectionSampleInCurrentRun = false
+            session.run(distanceConfiguration(peerToken: peerToken))
+            debugLog("disableDirectionMode -> distance peer=\(shortRawID(rawID)) pausedBeforeRun=true")
+            return
+        }
+
         guard let session, let peerToken = peerDiscoveryToken else {
             mode = .distance
             return
@@ -241,7 +403,18 @@ final class NearbyInteractionManager: NSObject {
         session?.delegate = nil
         session?.pause()
         session?.invalidate()
+        for session in sessionsByPeerRawID.values {
+            session.delegate = nil
+            session.pause()
+            session.invalidate()
+        }
         session = nil
+        sessionsByPeerRawID.removeAll()
+        peerRawIDBySessionID.removeAll()
+        peersByRawID.removeAll()
+        peerDiscoveryTokensByRawID.removeAll()
+        activeDirectionPeerRawID = nil
+        lastReadingPeerRawID = nil
         peerDiscoveryToken = nil
         sharedTokenWithPeer = false
         mode = .distance
@@ -258,6 +431,11 @@ final class NearbyInteractionManager: NSObject {
         session?.delegate = nil
         session?.pause()
         session?.invalidate()
+        for session in sessionsByPeerRawID.values {
+            session.delegate = nil
+            session.pause()
+            session.invalidate()
+        }
     }
 
     /// 현재 모드에 맞는 NI 설정.
@@ -277,6 +455,20 @@ final class NearbyInteractionManager: NSObject {
         configuration.isCameraAssistanceEnabled = false
         return configuration
     }
+
+    private func configuration(for rawID: String, peerToken: NIDiscoveryToken) -> NINearbyPeerConfiguration {
+        if mode == .direction, activeDirectionPeerRawID == rawID {
+            let configuration = NINearbyPeerConfiguration(peerToken: peerToken)
+            configuration.isCameraAssistanceEnabled = true
+            return configuration
+        }
+
+        return distanceConfiguration(peerToken: peerToken)
+    }
+
+    private func peerRawID(for session: NISession) -> String? {
+        peerRawIDBySessionID[ObjectIdentifier(session)]
+    }
 }
 
 /// NI가 주변 기기 정보를 업데이트 했을 때 자동으로 호출되는 함수
@@ -290,19 +482,30 @@ extension NearbyInteractionManager: NISessionDelegate {
 
     /// 거리, 방향 값 들어왔을 때 업데이트 과정
     func session(_ session: NISession, didUpdate nearbyObjects: [NINearbyObject]) {
-        guard let peerDiscoveryToken else {
+        let peerRawID = peerRawID(for: session)
+        let matchedPeerToken = peerRawID.flatMap { peerDiscoveryTokensByRawID[$0] } ?? peerDiscoveryToken
+
+        guard let matchedPeerToken else {
             debugLog("didUpdate ignored: peerDiscoveryToken=nil objects=\(nearbyObjects.count)")
             return
         }
 
         guard let nearbyObject = nearbyObjects.first(where: {
-            $0.discoveryToken == peerDiscoveryToken
+            $0.discoveryToken == matchedPeerToken
         }) else {
-            debugLog("didUpdate ignored: no matching peer objects=\(nearbyObjects.count)")
+            debugLog(
+                "didUpdate ignored: no matching peer objects=\(nearbyObjects.count) " +
+                    "peer=\(peerRawID.map(shortRawID) ?? "legacy")"
+            )
             return
         }
 
+        if let peerRawID {
+            lastReadingPeerRawID = peerRawID
+        }
+
         let reading = NearbyInteractionReading(
+            peer: peerRawID.flatMap { peersByRawID[$0] },
             distance: nearbyObject.distance,
             direction: nearbyObject.direction,
             timestamp: Date(),
@@ -313,6 +516,7 @@ extension NearbyInteractionManager: NISessionDelegate {
         if shouldLogUpdate(for: reading) {
             debugLog(
                 "didUpdate matched distance=\(format(distance: reading.distance)) " +
+                    "peer=\(peerSummary(reading.peer)) " +
                     "horizontalAngle=\(format(angle: reading.horizontalAngle)) " +
                     "direction=\(format(direction: reading.direction)) mode=\(mode) " +
                     "directionRun=\(directionRunSequence) nilStreak=\(directionNilUpdateCount) " +
@@ -328,31 +532,51 @@ extension NearbyInteractionManager: NISessionDelegate {
         didRemove nearbyObjects: [NINearbyObject],
         reason: NINearbyObject.RemovalReason
     ) {
+        let peerRawID = peerRawID(for: session)
         switch reason {
         case .peerEnded:
             state = .peerEnded
-            debugLog("didRemove peerEnded objects=\(nearbyObjects.count)")
+            debugLog(
+                "didRemove peerEnded objects=\(nearbyObjects.count) " +
+                    "peer=\(peerRawID.map(shortRawID) ?? "legacy")"
+            )
 
         case .timeout:
             state = .peerLost
-            self.session = nil
-            peerDiscoveryToken = nil
-            sharedTokenWithPeer = false
+            if let peerRawID {
+                sessionsByPeerRawID.removeValue(forKey: peerRawID)
+                peerDiscoveryTokensByRawID.removeValue(forKey: peerRawID)
+                peersByRawID.removeValue(forKey: peerRawID)
+                peerRawIDBySessionID.removeValue(forKey: ObjectIdentifier(session))
+                if activeDirectionPeerRawID == peerRawID {
+                    activeDirectionPeerRawID = nil
+                    mode = .distance
+                }
+            } else {
+                self.session = nil
+                peerDiscoveryToken = nil
+            }
+            sharedTokenWithPeer = peerDiscoveryToken != nil || !peerDiscoveryTokensByRawID.isEmpty
             directionNilUpdateCount = 0
             directionModeStartedAt = nil
             onSessionRestartRequired?()
 
         default:
             state = .failed(.peerRemoved(reason))
-            debugLog("didRemove failed reason=\(reason) objects=\(nearbyObjects.count)")
+            debugLog(
+                "didRemove failed reason=\(reason) objects=\(nearbyObjects.count) " +
+                    "peer=\(peerRawID.map(shortRawID) ?? "legacy")"
+            )
         }
     }
 
     /// 세션이 일시중단 되었을 때
     func sessionWasSuspended(_ session: NISession) {
         state = .suspended
+        let peerRawID = peerRawID(for: session)
         debugLog(
             "sessionWasSuspended mode=\(mode) " +
+                "peer=\(peerRawID.map(shortRawID) ?? "legacy") " +
                 "cameraAssist=\(formatCameraAssistanceEnabled(session.configuration)) " +
                 "directionRun=\(directionRunSequence)"
         )
@@ -360,6 +584,24 @@ extension NearbyInteractionManager: NISessionDelegate {
 
     /// 세션 중단이 종료되었을 때 (= 재실행 가능 상태, 세션 재호출)
     func sessionSuspensionEnded(_ session: NISession) {
+        if let peerRawID = peerRawID(for: session) {
+            guard let peerDiscoveryToken = peerDiscoveryTokensByRawID[peerRawID] else {
+                state = .ready
+                debugLog("sessionSuspensionEnded without peer token peer=\(shortRawID(peerRawID))")
+                return
+            }
+
+            let configuration = configuration(for: peerRawID, peerToken: peerDiscoveryToken)
+            session.run(configuration)
+            debugLog(
+                "sessionSuspensionEnded rerun mode=\(mode) " +
+                    "peer=\(shortRawID(peerRawID)) " +
+                    "cameraAssist=\(formatCameraAssistanceEnabled(configuration)) " +
+                    "directionRun=\(directionRunSequence)"
+            )
+            return
+        }
+
         guard let peerDiscoveryToken else {
             state = .ready
             debugLog("sessionSuspensionEnded without peer token")
@@ -377,10 +619,25 @@ extension NearbyInteractionManager: NISessionDelegate {
 
     /// 세션이 에러와 함께 완전 종료되었을 때
     func session(_ session: NISession, didInvalidateWith error: Error) {
-        self.session = nil
-        peerDiscoveryToken = nil
-        sharedTokenWithPeer = false
-        mode = .distance
+        let invalidatedPeerRawID = peerRawID(for: session)
+
+        if let peerRawID = invalidatedPeerRawID {
+            sessionsByPeerRawID.removeValue(forKey: peerRawID)
+            peerDiscoveryTokensByRawID.removeValue(forKey: peerRawID)
+            peersByRawID.removeValue(forKey: peerRawID)
+            peerRawIDBySessionID.removeValue(forKey: ObjectIdentifier(session))
+            if activeDirectionPeerRawID == peerRawID {
+                activeDirectionPeerRawID = nil
+                mode = .distance
+            }
+        } else {
+            self.session = nil
+            peerDiscoveryToken = nil
+        }
+        sharedTokenWithPeer = peerDiscoveryToken != nil || !peerDiscoveryTokensByRawID.isEmpty
+        if activeDirectionPeerRawID == nil {
+            mode = .distance
+        }
         lastUpdateDebugLogAt = nil
         lastConvergenceDebugLogAt = nil
         lastDirectionSampleDebugLogAt = nil
@@ -388,7 +645,10 @@ extension NearbyInteractionManager: NISessionDelegate {
         directionNilUpdateCount = 0
         directionModeStartedAt = nil
         state = .failed(.sessionInvalidated(error))
-        debugLog("didInvalidateWith error=\(error)")
+        debugLog(
+            "didInvalidateWith error=\(error) " +
+                "peer=\(invalidatedPeerRawID.map(shortRawID) ?? "legacy")"
+        )
         onSessionRestartRequired?()
     }
 
@@ -399,11 +659,13 @@ extension NearbyInteractionManager: NISessionDelegate {
     ) {
         guard shouldLogConvergenceUpdate(for: convergence) else { return }
 
-        let isPeerObject = object?.discoveryToken == peerDiscoveryToken
+        let peerRawID = peerRawID(for: session)
+        let matchedPeerToken = peerRawID.flatMap { peerDiscoveryTokensByRawID[$0] } ?? peerDiscoveryToken
+        let isPeerObject = object?.discoveryToken == matchedPeerToken
         debugLog(
             "didUpdateAlgorithmConvergence status=\(format(convergence.status)) " +
                 "object=\(object == nil ? "session" : "nearbyObject") " +
-                "isPeerObject=\(isPeerObject) mode=\(mode) " +
+                "isPeerObject=\(isPeerObject) peer=\(peerRawID.map(shortRawID) ?? "legacy") mode=\(mode) " +
                 "directionRun=\(directionRunSequence) elapsed=\(format(seconds: directionModeElapsed))"
         )
     }
@@ -471,6 +733,7 @@ extension NearbyInteractionManager: NISessionDelegate {
 
     private func recordDirectionUpdateDiagnostics(_ reading: NearbyInteractionReading) {
         guard mode == .direction else { return }
+        guard reading.peer?.rawID == activeDirectionPeerRawID else { return }
 
         if reading.horizontalAngle == nil, reading.direction == nil {
             directionNilUpdateCount += 1
@@ -577,5 +840,14 @@ extension NearbyInteractionManager: NISessionDelegate {
             direction.y,
             direction.z
         )
+    }
+
+    private func peerSummary(_ peer: PeerID?) -> String {
+        guard let peer else { return "legacy" }
+        return "\(peer.displayName)(\(shortRawID(peer.rawID)))"
+    }
+
+    private func shortRawID(_ rawID: String) -> String {
+        String(rawID.prefix(8))
     }
 }

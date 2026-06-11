@@ -14,6 +14,8 @@ import Foundation
 /// MCSession을 통해 주고받는 메시지 종류.
 /// 수신 측은 kind를 보고 payload를 어떤 방식으로 해석할지 결정한다.
 enum MultipeerMessageKind: String {
+    /// MC 연결 이후 안정적인 앱 내부 PeerID를 교환하기 위한 메시지.
+    case peerIdentity
     /// NearbyInteraction을 시작하기 위한 NIDiscoveryToken 메시지.
     case niDiscoveryToken
     /// 숨바꼭질 게임 진행 상태를 동기화하기 위한 메시지.
