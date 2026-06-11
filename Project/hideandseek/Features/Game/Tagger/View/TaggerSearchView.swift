@@ -241,23 +241,7 @@ struct TaggerSearchView: View {
             : "가까운 숨은 사람이 있는지 잠시동안 표시됩니다"
     }
 
-    private func logRenderState(_ message: String) {
-        #if DEBUG
-            print(
-                "[TaggerSearchView] \(message)",
-                "isIslandExpanded=\(viewModel.isIslandExpanded)",
-                "canCapturePhoto=\(viewModel.canCapturePhoto)",
-                "sessionRunning=\(camera.isSessionRunning)",
-                "activeHintResult=\(String(describing: activeHintResult))",
-                "isMeasuringHint=\(isMeasuringHint)",
-                "distance=\(format(distance: viewModel.latestObservedDistance))",
-                "angle=\(format(angle: viewModel.latestObservedHorizontalAngle))",
-                "hintAngle=\(format(angleRadians: viewModel.currentHintAngleRadians))",
-                "within5m=\(viewModel.isHiderWithinWarningRadius)",
-                "confirmedAt=\(format(date: viewModel.localTaggerConfirmationSentAt))"
-            )
-        #endif
-    }
+    private func logRenderState(_ message: String) {}
 
     private func format(distance: Float?) -> String {
         guard let distance else { return "nil" }

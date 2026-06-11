@@ -74,11 +74,6 @@ final class PhotoShareViewModel {
         self.participants = snapshots.filter { snapshot in
             seenRawIDs.insert(snapshot.peer.rawID).inserted
         }
-
-        debugLog(
-            "init gameID=\(gameID) participants=\(participants.count) " +
-                "localPeer=\(localPeer.displayName)(\(localPeer.rawID)) localPhotos=\(photoStore.count)"
-        )
     }
 
     var rows: [Row] {
@@ -126,16 +121,11 @@ final class PhotoShareViewModel {
 
     func startSharingIfNeeded() {
         guard !didStartSharing else {
-            debugLog("startSharing skipped: already started")
             return
         }
         didStartSharing = true
 
         let localPeer = session.localPeer
-        debugLog(
-            "startSharing localPeer=\(localPeer.displayName)(\(localPeer.rawID)) " +
-                "photoCount=\(photoStore.photos.count) bytes=\(photoStore.photos.totalImageBytes) gameID=\(gameID)"
-        )
         markReceived(peer: localPeer, photoCount: photoStore.photos.count)
         observeIncomingBatches()
         observeIncomingRequests()
@@ -150,14 +140,8 @@ final class PhotoShareViewModel {
         }
 
         guard !retryTargets.isEmpty else {
-            debugLog("retry skipped: no target peers")
             return
         }
-
-        debugLog(
-            "retryFailedTransfers targets=\(retryTargets.map(\.peer.displayName)) " +
-                "localPhotos=\(photoStore.count) gameID=\(gameID)"
-        )
 
         for participant in retryTargets {
             failedPeerRawIDs.remove(participant.peer.rawID)
@@ -169,10 +153,6 @@ final class PhotoShareViewModel {
     }
 
     func cancel() {
-        debugLog(
-            "cancel receiveTask=\(receiveTask != nil) requestTask=\(requestTask != nil) " +
-                "timeoutTask=\(timeoutTask != nil)"
-        )
         receiveTask?.cancel()
         receiveTask = nil
         requestTask?.cancel()
@@ -183,7 +163,6 @@ final class PhotoShareViewModel {
 
     private func observeIncomingBatches() {
         receiveTask?.cancel()
-        debugLog("observeIncomingBatches start")
         receiveTask = Task { [weak self, session] in
             for await event in session.makeCapturedPhotoBatchStream() {
                 await self?.handle(event)
@@ -193,7 +172,6 @@ final class PhotoShareViewModel {
 
     private func observeIncomingRequests() {
         requestTask?.cancel()
-        debugLog("observeIncomingRequests start")
         requestTask = Task { [weak self, session] in
             for await event in session.makeCapturedPhotoShareRequestStream() {
                 await self?.handle(event)
@@ -202,23 +180,13 @@ final class PhotoShareViewModel {
     }
 
     private func handle(_ event: CapturedPhotoBatchEvent) {
-        debugLog(
-            "handle event sender=\(event.batch.sender.displayName)(\(event.batch.sender.rawID)) " +
-                "eventGameID=\(event.batch.gameID) expectedGameID=\(gameID) " +
-                "photoCount=\(event.batch.photos.count) bytes=\(event.batch.photos.totalImageBytes) " +
-                "sentAt=\(event.batch.sentAt.timeIntervalSince1970)"
-        )
         guard isExpectedParticipant(event.batch.sender) else {
-            debugLog("ignore batch: sender is not current participant")
             return
         }
         guard isRecentEnough(event.batch.sentAt) else {
-            debugLog("ignore batch: sentAt is too old")
             return
         }
-        if event.batch.gameID != gameID {
-            debugLog("accept batch despite gameID mismatch event=\(event.batch.gameID) expected=\(gameID)")
-        }
+        if event.batch.gameID != gameID {}
 
         photoStore.mergeRemote(event.batch.photos)
         let peerRawID = event.batch.sender.rawID
@@ -235,21 +203,13 @@ final class PhotoShareViewModel {
     }
 
     private func handle(_ event: CapturedPhotoShareRequestEvent) {
-        debugLog(
-            "handle request requester=\(event.request.requester.displayName)(\(event.request.requester.rawID)) " +
-                "requestGameID=\(event.request.gameID) expectedGameID=\(gameID)"
-        )
         guard isExpectedParticipant(event.request.requester) else {
-            debugLog("ignore request: requester is not current participant")
             return
         }
         guard isRecentEnough(event.request.requestedAt) else {
-            debugLog("ignore request: requestedAt is too old")
             return
         }
-        if event.request.gameID != gameID {
-            debugLog("accept request despite gameID mismatch event=\(event.request.gameID) expected=\(gameID)")
-        }
+        if event.request.gameID != gameID {}
 
         session.sendCapturedPhotos(photoStore.photos, gameID: gameID, to: event.request.requester)
     }
@@ -258,15 +218,10 @@ final class PhotoShareViewModel {
         receivedPeerRawIDs.insert(peer.rawID)
         failedPeerRawIDs.remove(peer.rawID)
         photoCountByPeerRawID[peer.rawID] = photoCount
-        debugLog(
-            "markReceived peer=\(peer.displayName)(\(peer.rawID)) photoCount=\(photoCount) " +
-                "progress=\(progress) finished=\(isFinishedCollecting)"
-        )
     }
 
     private func scheduleTimeout() {
         timeoutTask?.cancel()
-        debugLog("scheduleTimeout seconds=\(timeoutSeconds)")
         timeoutTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(timeoutSeconds * 1_000_000_000))
             guard !Task.isCancelled else { return }
@@ -282,7 +237,6 @@ final class PhotoShareViewModel {
             let rawID = participant.peer.rawID
             guard !receivedPeerRawIDs.contains(rawID) else { continue }
             failedPeerRawIDs.insert(rawID)
-            debugLog("markFailed peer=\(participant.peer.displayName)(\(participant.peer.rawID))")
         }
     }
 
@@ -292,12 +246,6 @@ final class PhotoShareViewModel {
 
     private func isRecentEnough(_ date: Date) -> Bool {
         date >= collectionStartedAt.addingTimeInterval(-acceptedBatchAgeBeforeCollection)
-    }
-
-    private func debugLog(_ message: String) {
-        #if DEBUG
-            print("[PhotoShareViewModel] \(message)")
-        #endif
     }
 }
 

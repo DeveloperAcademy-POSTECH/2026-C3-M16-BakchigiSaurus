@@ -247,7 +247,7 @@ final class RoomFlowViewModel: ObservableObject {
         gameFlowTask = Task { [weak self, session] in
             for await event in session.makeGameFlowMessageStream() {
                 await MainActor.run {
-                    self?.handleGameFlowMessage(event.message)
+                    self?.handleGameFlowMessage(event.message, from: event.peer)
                 }
             }
         }
@@ -296,7 +296,7 @@ final class RoomFlowViewModel: ObservableObject {
         }
     }
 
-    private func handleGameFlowMessage(_ message: GameFlowMessage) {
+    private func handleGameFlowMessage(_ message: GameFlowMessage, from peer: PeerID) {
         switch message.kind {
         case .roleAssigned:
             localAssignedRole = message.role
@@ -341,9 +341,127 @@ final class RoomFlowViewModel: ObservableObject {
                 await gameModel.send(.startPlaying())
             }
 
+        case .captureRequested:
+            guard let hiderPeer = message.referencedPeer else {
+                return
+            }
+
+            handleCaptureRequested(for: hiderPeer, from: peer)
+
+        case .captureRejected:
+            guard let hiderPeer = message.referencedPeer else {
+                return
+            }
+
+            handleCaptureRejected(for: hiderPeer, from: peer)
+
+        case .captureConfirmed:
+            guard let hiderPeer = message.referencedPeer else {
+                return
+            }
+
+            handleCaptureConfirmed(for: hiderPeer, from: peer)
+
         default:
             break
         }
+    }
+
+    private func handleCaptureRejected(for hiderPeer: PeerID, from senderPeer: PeerID) {
+        guard let gameModel else {
+            return
+        }
+
+        guard let hiderID = playerID(for: hiderPeer) else {
+            return
+        }
+
+        guard senderPeer.rawID == hiderPeer.rawID else {
+            return
+        }
+
+        Task {
+            let events = await gameModel.send(.rejectCapture(hiderID: hiderID), as: hiderID)
+            await MainActor.run {}
+        }
+    }
+
+    private func handleCaptureRequested(for hiderPeer: PeerID, from senderPeer: PeerID) {
+        guard let gameModel else {
+            return
+        }
+
+        guard let taggerID = playerID(for: senderPeer),
+              let hiderID = playerID(for: hiderPeer)
+        else {
+            return
+        }
+
+        Task {
+            let events = await gameModel.send(
+                .observeProximity(
+                    hiderID: hiderID,
+                    distance: GameProximityRules.captureDistanceThresholdMeters,
+                    direction: nil
+                ),
+                as: taggerID
+            )
+            await MainActor.run {}
+        }
+    }
+
+    private func handleCaptureConfirmed(for hiderPeer: PeerID, from senderPeer: PeerID) {
+        guard let gameModel else {
+            return
+        }
+
+        guard let hiderID = playerID(for: hiderPeer) else {
+            return
+        }
+
+        guard senderPeer.rawID == hiderPeer.rawID else {
+            return
+        }
+
+        Task {
+            await self.ensureLocalCaptureRequestIfNeeded(for: hiderID, in: gameModel)
+            let events = await gameModel.send(.confirmCapture(hiderID: hiderID), as: hiderID)
+            await MainActor.run {}
+        }
+    }
+
+    private func ensureLocalCaptureRequestIfNeeded(for hiderID: PlayerID, in gameModel: GameModel) async {
+        guard gameModel.sharedState.activeCaptureRequests[hiderID] == nil else {
+            return
+        }
+
+        guard let taggerID = gameModel.sharedState.taggerID else {
+            return
+        }
+
+        await gameModel.send(
+            .observeProximity(
+                hiderID: hiderID,
+                distance: GameProximityRules.captureDistanceThresholdMeters,
+                direction: nil
+            ),
+            as: taggerID
+        )
+    }
+
+    private func playerID(for peer: PeerID) -> PlayerID? {
+        if let playerID = playerIDByPeerRawID[peer.rawID] {
+            return playerID
+        }
+
+        guard let participant = gameModel?.participants.first(where: { participant in
+            participant.peerID?.rawID == peer.rawID
+        }) else {
+            return nil
+        }
+
+        playerIDByPeerRawID[peer.rawID] = participant.id
+        return participant.id
     }
 
     private func makeGameModel(selectedTaggerRawID: String?) -> GameModel {

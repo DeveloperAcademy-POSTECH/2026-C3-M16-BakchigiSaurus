@@ -81,6 +81,12 @@ nonisolated struct RoomSettings: Codable, Hashable {
     )
 }
 
+nonisolated enum GameProximityRules {
+    /// 술래와 숨는 사람의 기기가 거의 맞닿은 것으로 보는 거리.
+    /// 0.05m = 5cm.
+    static let captureDistanceThresholdMeters: Float = 0.05
+}
+
 nonisolated struct PlayerID: Codable, Hashable, Identifiable, Comparable {
     let rawValue: UUID
 

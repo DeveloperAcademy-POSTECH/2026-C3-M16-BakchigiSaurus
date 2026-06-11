@@ -15,7 +15,7 @@ final class HiderModeViewModel {
     var timeLeft: Int = 600 // 남은 게임 시간
     var taggerDistance: Float? // 술래와의 거리 (값이 있을수도 없을수도)
 
-    private let taggedDistanceThresholdMeters: Float = 0.2 // 20cm
+    private let taggedDistanceThresholdMeters = GameProximityRules.captureDistanceThresholdMeters
     private let taggedDistanceResetThresholdMeters: Float = 0.35 // 35cm, 잡힘에 대해 아니오를 누른 뒤 다시 잡힘 화면 뜨는 것 방지
     private let nearbyDistanceThresholdMeters: Float = 5.0 // 5m
 
@@ -26,12 +26,16 @@ final class HiderModeViewModel {
     private var activeNearbyTaggerID: String? // 경고 발생시킨 술래 ID
     private var nearbyCooldownUntilByTaggerID: [String: Date] = [:] // 경고 발생 후 일정 시간 재발생 금지 기간
     private var ignoresTaggedDistanceUntilSafe = false // 잡힘 확인 루프 예방
+    private var activeCaptureRequestSentAt: Date?
+    private var dismissedCaptureRequestSentAt: Date?
 
     func startHiding() {
         state = .hiding
         taggerDistance = nil
         activeNearbyTaggerID = nil
         ignoresTaggedDistanceUntilSafe = false // 잡힘 거리 무시 상태 해제
+        activeCaptureRequestSentAt = nil
+        dismissedCaptureRequestSentAt = nil
         cancelWarningDismiss()
     }
 
@@ -68,7 +72,7 @@ final class HiderModeViewModel {
             return
         }
 
-        // 0.2m 이내면 술래에게 잡힘 화면
+        // 기기가 거의 맞닿은 거리면 술래에게 잡힘 확인 화면
         if distance <= taggedDistanceThresholdMeters {
             activeNearbyTaggerID = nil
             cancelWarningDismiss()
@@ -142,6 +146,32 @@ final class HiderModeViewModel {
         state = .taggedCheck
     }
 
+    func updateCaptureRequest(_ request: CaptureRequest?) {
+        guard state != .captured else {
+            return
+        }
+
+        guard let request else {
+            activeCaptureRequestSentAt = nil
+            return
+        }
+
+        activeCaptureRequestSentAt = request.requestedAt
+        guard dismissedCaptureRequestSentAt != request.requestedAt else {
+            return
+        }
+
+        activeNearbyTaggerID = nil
+        cancelWarningDismiss()
+        showTaggedCheck()
+    }
+
+    func markCapturedFromGameState() {
+        cancelWarningDismiss()
+        activeNearbyTaggerID = nil
+        state = .captured
+    }
+
     /// 한번 더 확인
     @discardableResult
     func confirmTaggedAnswer(_ answer: TaggedAnswer) -> Bool {
@@ -152,6 +182,7 @@ final class HiderModeViewModel {
 
         case .negative:
             ignoresTaggedDistanceUntilSafe = true
+            dismissedCaptureRequestSentAt = activeCaptureRequestSentAt
             activeNearbyTaggerID = nil
             cancelWarningDismiss()
             state = .hiding
@@ -169,6 +200,8 @@ final class HiderModeViewModel {
         activeNearbyTaggerID = nil
         nearbyCooldownUntilByTaggerID.removeAll()
         ignoresTaggedDistanceUntilSafe = false
+        activeCaptureRequestSentAt = nil
+        dismissedCaptureRequestSentAt = nil
     }
 
     private func canRunNearbyProcess(for taggerID: String) -> Bool {

@@ -182,7 +182,7 @@ extension GameEngine {
             next.taggerConfirmationSentAt = nil
         }
 
-        if distance <= 0.2 {
+        if distance <= GameProximityRules.captureDistanceThresholdMeters {
             if next.captureRequestSentAt == nil {
                 next.captureRequestSentAt = observedAt
             }

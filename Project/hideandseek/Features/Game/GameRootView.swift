@@ -29,7 +29,6 @@ struct GameRootView: View {
         self.gameModel = gameModel
         self.mcSession = mcSession
         self.niManager = niManager
-        debugLog("init")
     }
 
     var body: some View {
@@ -53,10 +52,6 @@ struct GameRootView: View {
                 }
             }
             .onChange(of: gameModel.sharedState.phase, initial: true) { oldPhase, newPhase in
-                debugLog(
-                    "phase changed old=\(oldPhase) new=\(newPhase) " +
-                        "isLocalTagger=\(gameModel.isLocalTagger) -> reset tagger proximity tracking"
-                )
                 guard gameModel.isLocalTagger || taggerViewModel != nil else { return }
                 let taggerViewModel = ensureTaggerViewModelIfNeeded()
                 taggerViewModel.resetProximityTracking(reason: "GameRootView phase change \(oldPhase)->\(newPhase)")
@@ -106,10 +101,18 @@ struct GameRootView: View {
                     timeLeft: timeLeft,
                     photographerID: gameModel.localParticipant?.id ?? gameModel.localPlayerID,
                     photographerName: gameModel.localParticipant?.name,
-                    photographerRole: gameModel.localParticipant?.role ?? .hider
+                    photographerRole: gameModel.localParticipant?.role ?? .hider,
+                    observedTaggerDistance: localHiderProximity?.lastDistance,
+                    observedTaggerID: gameModel.sharedState.taggerID?.rawValue.uuidString ?? "tagger",
+                    activeCaptureRequest: localHiderCaptureRequest,
+                    isCaptured: isLocalHiderCaptured
                 ) {
                     Task {
-                        await gameModel.send(.confirmCapture(hiderID: gameModel.localPlayerID))
+                        await confirmLocalHiderCapture()
+                    }
+                } onCaptureRejected: {
+                    Task {
+                        await rejectLocalHiderCapture()
                     }
                 }
             }
@@ -125,6 +128,18 @@ struct GameRootView: View {
 
     private var timeLeft: Int {
         gameModel.sharedState.remainingSeconds(at: currentDate)
+    }
+
+    private var localHiderProximity: ProximityState? {
+        gameModel.sharedState.proximityByHiderID[gameModel.localPlayerID]
+    }
+
+    private var localHiderCaptureRequest: CaptureRequest? {
+        gameModel.sharedState.activeCaptureRequests[gameModel.localPlayerID]
+    }
+
+    private var isLocalHiderCaptured: Bool {
+        gameModel.localParticipant?.status == .captured
     }
 
     /// hiding 단계 도입부(룰렛 노출 구간)인지 여부. hideDeadline도 같은 시간만큼 늦춰져 있다.
@@ -156,6 +171,44 @@ struct GameRootView: View {
 
             try? await Task.sleep(nanoseconds: 1_000_000_000)
         }
+    }
+
+    private func confirmLocalHiderCapture() async {
+        let hiderID = gameModel.localPlayerID
+        let hiderPeer = gameModel.localParticipant?.peerID ?? mcSession.localPeer
+
+        if gameModel.sharedState.activeCaptureRequests[hiderID] == nil,
+           let taggerID = gameModel.sharedState.taggerID
+        {
+            await gameModel.send(
+                .observeProximity(
+                    hiderID: hiderID,
+                    distance: GameProximityRules.captureDistanceThresholdMeters,
+                    direction: nil
+                ),
+                as: taggerID
+            )
+        }
+
+        let events = await gameModel.send(.confirmCapture(hiderID: hiderID), as: hiderID)
+
+        guard !events.isEmpty else {
+            return
+        }
+
+        mcSession.sendCaptureConfirmed(hiderPeer: hiderPeer)
+    }
+
+    private func rejectLocalHiderCapture() async {
+        let hiderID = gameModel.localPlayerID
+        let hiderPeer = gameModel.localParticipant?.peerID ?? mcSession.localPeer
+        let events = await gameModel.send(.rejectCapture(hiderID: hiderID), as: hiderID)
+
+        guard !events.isEmpty else {
+            return
+        }
+
+        mcSession.sendCaptureRejected(hiderPeer: hiderPeer)
     }
 
     /// 전송 화면용 세션/서비스/뷰모델을 한 번만 만든다.
@@ -215,11 +268,5 @@ struct GameRootView: View {
         }
 
         return viewModel
-    }
-
-    private func debugLog(_ message: String) {
-        #if DEBUG
-            print("[GameRootView] \(message) phase=\(gameModel.sharedState.phase)")
-        #endif
     }
 }

@@ -265,10 +265,6 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
 
             stateQueue.async {
                 self.photoBatchContinuations[subscriberID] = continuation
-                self.debugLog(
-                    "photoBatchStream subscribed id=\(subscriberID) " +
-                        "bufferedEvents=\(self.photoBatchEventsByGameAndSender.count)"
-                )
                 for event in self.photoBatchEventsByGameAndSender.values {
                     continuation.yield(event)
                 }
@@ -276,7 +272,6 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
 
             continuation.onTermination = { [weak self] _ in
                 self?.stateQueue.async {
-                    self?.debugLog("photoBatchStream terminated id=\(subscriberID)")
                     self?.photoBatchContinuations.removeValue(forKey: subscriberID)
                 }
             }
@@ -290,12 +285,10 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
 
             stateQueue.async {
                 self.photoShareRequestContinuations[subscriberID] = continuation
-                self.debugLog("photoShareRequestStream subscribed id=\(subscriberID)")
             }
 
             continuation.onTermination = { [weak self] _ in
                 self?.stateQueue.async {
-                    self?.debugLog("photoShareRequestStream terminated id=\(subscriberID)")
                     self?.photoShareRequestContinuations.removeValue(forKey: subscriberID)
                 }
             }
@@ -471,11 +464,6 @@ private extension MultipeerGameSession {
 
     func yieldCapturedPhotoBatchEvent(_ event: CapturedPhotoBatchEvent) {
         photoBatchEventsByGameAndSender[photoBatchKey(gameID: event.batch.gameID, sender: event.batch.sender)] = event
-        debugLog(
-            "yield photo batch sender=\(event.batch.sender.displayName)(\(event.batch.sender.rawID)) " +
-                "gameID=\(event.batch.gameID) photos=\(event.batch.photos.count) " +
-                "bytes=\(photoByteCount(event.batch.photos)) subscribers=\(photoBatchContinuations.count)"
-        )
 
         for continuation in photoBatchContinuations.values {
             continuation.yield(event)
@@ -483,11 +471,6 @@ private extension MultipeerGameSession {
     }
 
     func yieldCapturedPhotoShareRequestEvent(_ event: CapturedPhotoShareRequestEvent) {
-        debugLog(
-            "yield photo share request requester=\(event.request.requester.displayName)(\(event.request.requester.rawID)) " +
-                "gameID=\(event.request.gameID) subscribers=\(photoShareRequestContinuations.count)"
-        )
-
         for continuation in photoShareRequestContinuations.values {
             continuation.yield(event)
         }
@@ -499,12 +482,6 @@ private extension MultipeerGameSession {
 
     func photoByteCount(_ photos: [CapturedPhoto]) -> Int {
         photos.reduce(0) { $0 + $1.imageData.count }
-    }
-
-    func debugLog(_ message: String) {
-        #if DEBUG
-            print("[MultipeerGameSession] \(message)")
-        #endif
     }
 
     func sendLocalPeerIdentityOnStateQueue(to targetPeers: [MCPeerID]) {
@@ -523,9 +500,7 @@ private extension MultipeerGameSession {
                 toPeers: targetPeers,
                 with: .reliable
             )
-        } catch {
-            print("Failed to send local peer identity:", error.localizedDescription)
-        }
+        } catch {}
     }
 }
 
@@ -636,12 +611,6 @@ extension MultipeerGameSession: MCSessionDelegate {
                         from: message.payload
                     )
                     self.knownPeerIDsByDisplayName[peerID.displayName] = batch.sender
-                    self.debugLog(
-                        "received photo batch mcPeer=\(peerID.displayName) " +
-                            "sender=\(batch.sender.displayName)(\(batch.sender.rawID)) " +
-                            "gameID=\(batch.gameID) photos=\(batch.photos.count) " +
-                            "payloadBytes=\(message.payload.count) photoBytes=\(self.photoByteCount(batch.photos))"
-                    )
 
                     self.yieldCapturedPhotoBatchEvent(
                         CapturedPhotoBatchEvent(
@@ -656,11 +625,6 @@ extension MultipeerGameSession: MCSessionDelegate {
                         from: message.payload
                     )
                     self.knownPeerIDsByDisplayName[peerID.displayName] = request.requester
-                    self.debugLog(
-                        "received photo share request mcPeer=\(peerID.displayName) " +
-                            "requester=\(request.requester.displayName)(\(request.requester.rawID)) " +
-                            "gameID=\(request.gameID) payloadBytes=\(message.payload.count)"
-                    )
 
                     self.yieldCapturedPhotoShareRequestEvent(
                         CapturedPhotoShareRequestEvent(
@@ -669,9 +633,7 @@ extension MultipeerGameSession: MCSessionDelegate {
                         )
                     )
                 }
-            } catch {
-                print("Failed to handle received multipeer data:", error.localizedDescription)
-            }
+            } catch {}
         }
     }
 
@@ -793,7 +755,6 @@ extension MultipeerGameSession {
     func invite(_ peer: PeerID, timeout: TimeInterval = 10) {
         stateQueue.async {
             guard let mcPeerID = self.discoveredMCPeersByRawID[peer.rawID] else {
-                print("Failed to invite peer. MCPeerID not found:", peer.displayName)
                 return
             }
 
@@ -825,7 +786,6 @@ extension MultipeerGameSession {
                 let targetPeers: [MCPeerID]
                 if let peer {
                     guard let targetPeer = self.connectedMCPeer(for: peer) else {
-                        print("Failed to send NI token. MCPeerID not found:", peer.displayName)
                         return
                     }
 
@@ -835,7 +795,6 @@ extension MultipeerGameSession {
                 }
 
                 guard !targetPeers.isEmpty else {
-                    print("Failed to send NI token. No connected peers.")
                     return
                 }
 
@@ -844,9 +803,7 @@ extension MultipeerGameSession {
                     toPeers: targetPeers,
                     with: .reliable
                 )
-            } catch {
-                print("Failed to send NI token:", error.localizedDescription)
-            }
+            } catch {}
         }
     }
 
@@ -868,7 +825,6 @@ extension MultipeerGameSession {
                 let targetPeers: [MCPeerID]
                 if let peer {
                     guard let targetPeer = self.connectedMCPeer(for: peer) else {
-                        print("Failed to send game flow message. MCPeerID not found:", peer.displayName)
                         return
                     }
 
@@ -878,7 +834,6 @@ extension MultipeerGameSession {
                 }
 
                 guard !targetPeers.isEmpty else {
-                    print("Failed to send game flow message. No connected peers.")
                     return
                 }
 
@@ -887,9 +842,7 @@ extension MultipeerGameSession {
                     toPeers: targetPeers,
                     with: .reliable
                 )
-            } catch {
-                print("Failed to send game flow message:", error.localizedDescription)
-            }
+            } catch {}
         }
     }
 
@@ -904,7 +857,6 @@ extension MultipeerGameSession {
             let targetPeers: [MCPeerID]
             if let peer {
                 guard let targetPeer = self.connectedMCPeer(for: peer) else {
-                    self.debugLog("failed photo batch send: MCPeerID not found peer=\(peer.displayName)")
                     return
                 }
 
@@ -914,10 +866,6 @@ extension MultipeerGameSession {
             }
 
             guard !targetPeers.isEmpty else {
-                self.debugLog(
-                    "skipped photo batch send: no connected peers " +
-                        "gameID=\(gameID) photos=\(photos.count) photoBytes=\(self.photoByteCount(photos))"
-                )
                 return
             }
 
@@ -937,27 +885,12 @@ extension MultipeerGameSession {
                     )
                     let messageData = try JSONEncoder().encode(message)
 
-                    self.debugLog(
-                        "send photo batch gameID=\(gameID) chunk=\(index + 1)/\(photoChunks.count) " +
-                            "photos=\(chunk.count) totalPhotos=\(photos.count) " +
-                            "photoBytes=\(self.photoByteCount(chunk)) payloadBytes=\(payload.count) " +
-                            "messageBytes=\(messageData.count) targets=\(targetPeers.map(\.displayName))"
-                    )
                     try self.session.send(
                         messageData,
                         toPeers: targetPeers,
                         with: .reliable
                     )
-                    self.debugLog(
-                        "send photo batch succeeded chunk=\(index + 1)/\(photoChunks.count) " +
-                            "targets=\(targetPeers.map(\.displayName))"
-                    )
-                } catch {
-                    self.debugLog(
-                        "failed to send photo batch chunk=\(index + 1)/\(photoChunks.count): " +
-                            error.localizedDescription
-                    )
-                }
+                } catch {}
             }
         }
     }
@@ -984,7 +917,6 @@ extension MultipeerGameSession {
                 let targetPeers: [MCPeerID]
                 if let peer {
                     guard let targetPeer = self.connectedMCPeer(for: peer) else {
-                        self.debugLog("failed photo share request: MCPeerID not found peer=\(peer.displayName)")
                         return
                     }
 
@@ -994,23 +926,15 @@ extension MultipeerGameSession {
                 }
 
                 guard !targetPeers.isEmpty else {
-                    self.debugLog("skipped photo share request: no connected peers gameID=\(gameID)")
                     return
                 }
 
-                self.debugLog(
-                    "send photo share request gameID=\(gameID) payloadBytes=\(payload.count) " +
-                        "messageBytes=\(messageData.count) targets=\(targetPeers.map(\.displayName))"
-                )
                 try self.session.send(
                     messageData,
                     toPeers: targetPeers,
                     with: .reliable
                 )
-                self.debugLog("send photo share request succeeded targets=\(targetPeers.map(\.displayName))")
-            } catch {
-                self.debugLog("failed to send photo share request: \(error.localizedDescription)")
-            }
+            } catch {}
         }
     }
 
@@ -1071,6 +995,39 @@ extension MultipeerGameSession {
         )
     }
 
+    /// 술래가 숨는 사람과 접촉 수준으로 가까워졌음을 전송한다.
+    func sendCaptureRequested(
+        hiderPeer: PeerID,
+        to targetPeer: PeerID? = nil
+    ) {
+        sendGameFlowMessage(
+            .captureRequested(hiderPeer: hiderPeer),
+            to: targetPeer
+        )
+    }
+
+    /// 숨는 사람이 잡힘 요청을 부정했음을 전송한다.
+    func sendCaptureRejected(
+        hiderPeer: PeerID,
+        to targetPeer: PeerID? = nil
+    ) {
+        sendGameFlowMessage(
+            .captureRejected(hiderPeer: hiderPeer),
+            to: targetPeer
+        )
+    }
+
+    /// 숨는 사람이 잡힘을 확정했음을 전송한다.
+    func sendCaptureConfirmed(
+        hiderPeer: PeerID,
+        to targetPeer: PeerID? = nil
+    ) {
+        sendGameFlowMessage(
+            .captureConfirmed(hiderPeer: hiderPeer),
+            to: targetPeer
+        )
+    }
+
     /// 게임 종료 메시지를 전송한다.
     func sendGameEnded(
         winner: GameFlowWinner,
@@ -1111,9 +1068,7 @@ extension MultipeerGameSession: MCNearbyServiceAdvertiserDelegate {
     func advertiser(
         _ advertiser: MCNearbyServiceAdvertiser,
         didNotStartAdvertisingPeer error: Error
-    ) {
-        print("Failed to start advertising peer:", error.localizedDescription)
-    }
+    ) {}
 }
 
 extension MultipeerGameSession: MCNearbyServiceBrowserDelegate {
@@ -1182,7 +1137,5 @@ extension MultipeerGameSession: MCNearbyServiceBrowserDelegate {
     func browser(
         _ browser: MCNearbyServiceBrowser,
         didNotStartBrowsingForPeers error: Error
-    ) {
-        print("Failed to start browsing peers:", error.localizedDescription)
-    }
+    ) {}
 }
