@@ -10,17 +10,44 @@ import SwiftUI
 /// 숨는 사람이 보는 전체  화면 흐름 관리하는 메인 화면
 struct HiderModeView: View {
     let camera: CameraModel
+    let photoStore: CapturedPhotoStore
     var timeLeft: Int?
+    let photographerID: PlayerID
+    let photographerName: String?
+    let photographerRole: PlayerRole
     var onCaptureConfirmed: () -> Void = {}
     // 상위 View에서 만든 camera를 받아서 사용
 
     /// HiderModeViewModel을 생성
     @State private var viewModel = HiderModeViewModel()
+    @State private var isCapturingPhoto = false
 
     var body: some View {
-        screenContent // 현재 상태에 따라 보여줄 화면 결정
+        ZStack {
+            if shouldShowCamera {
+                GameCameraBackground(camera: camera, isRevealed: true)
+                    .ignoresSafeArea()
+            }
+
+            screenContent // 현재 상태에 따라 보여줄 화면 결정
+
+            if shouldShowCaptureButton {
+                CaptureButton(isEnabled: camera.isSessionRunning && !isCapturingPhoto) {
+                    capturePhoto()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                .padding(.bottom, 24)
+            }
+        }
             .onAppear {
                 viewModel.startHiding() // 처음 화면
+                debugLog("appear")
+            }
+            .onChange(of: viewModel.state, initial: true) { _, state in
+                debugLog("state changed -> \(state)")
+            }
+            .onChange(of: camera.isSessionRunning, initial: true) { _, isRunning in
+                debugLog("camera.isSessionRunning changed -> \(isRunning)")
             }
     }
 
@@ -36,17 +63,6 @@ struct HiderModeView: View {
         case .taggerNearby:
             TaggerWarningView(
                 timeLeft: displayedTimeLeft
-            )
-
-        case .recording:
-            CameraRecordingView(
-                camera: camera,
-                // 상위 View에서 받은 카메라 객체를 CameraRecordingView에 넘김
-                timeLeft: displayedTimeLeft,
-                isTaggerNearby: true, // 술래가 가까운 상태라고 알려줌
-                onRecordingFinished: {
-                    viewModel.finishRecording()
-                }
             )
 
         case .taggedCheck:
@@ -68,6 +84,50 @@ struct HiderModeView: View {
         timeLeft ?? viewModel.timeLeft
     }
 
+    private var shouldShowCamera: Bool {
+        switch viewModel.state {
+        case .hiding, .taggerNearby:
+            return true
+        case .taggedCheck, .captured:
+            return false
+        }
+    }
+
+    private var shouldShowCaptureButton: Bool {
+        switch viewModel.state {
+        case .hiding, .taggerNearby:
+            return true
+        case .taggedCheck, .captured:
+            return false
+        }
+    }
+
+    private func capturePhoto() {
+        guard !isCapturingPhoto else { return }
+        isCapturingPhoto = true
+        debugLog("capture tapped")
+
+        Task {
+            defer {
+                Task { @MainActor in
+                    isCapturingPhoto = false
+                }
+            }
+
+            guard let photo = await camera.capturePhoto(
+                photographerID: photographerID,
+                photographerName: photographerName,
+                photographerRole: photographerRole
+            ) else {
+                debugLog("capture failed: camera returned nil")
+                return
+            }
+
+            photoStore.add(photo)
+            debugLog("capture stored id=\(photo.id) bytes=\(photo.imageData.count) total=\(photoStore.count)")
+        }
+    }
+
     private var capturedContent: some View {
         ZStack {
             Color.appBackground
@@ -84,10 +144,28 @@ struct HiderModeView: View {
             }
         }
     }
+
+    private func debugLog(_ message: String) {
+        #if DEBUG
+            print(
+                "[HiderModeView] \(message)",
+                "state=\(viewModel.state)",
+                "sessionRunning=\(camera.isSessionRunning)",
+                "isCapturing=\(isCapturingPhoto)",
+                "photoCount=\(photoStore.count)",
+                "photographer=\(photographerName ?? "nil")",
+                "role=\(photographerRole)"
+            )
+        #endif
+    }
 }
 
 #Preview {
     HiderModeView(
-        camera: CameraModel()
+        camera: CameraModel(),
+        photoStore: CapturedPhotoStore(),
+        photographerID: PlayerID(),
+        photographerName: "플레이어",
+        photographerRole: .hider
     )
 }

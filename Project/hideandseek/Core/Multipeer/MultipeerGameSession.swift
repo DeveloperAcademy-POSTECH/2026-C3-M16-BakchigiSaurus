@@ -27,6 +27,33 @@ struct GameFlowMessageEvent {
     let message: GameFlowMessage
 }
 
+/// 게임 종료 후 각 기기가 자신의 촬영본을 묶어 보낼 때 사용하는 payload.
+struct CapturedPhotoBatch: Codable {
+    let gameID: UUID
+    let sender: PeerID
+    let photos: [CapturedPhoto]
+    let sentAt: Date
+}
+
+/// MC를 통해 수신한 사진 배치 이벤트.
+struct CapturedPhotoBatchEvent {
+    let peer: PeerID
+    let batch: CapturedPhotoBatch
+}
+
+/// 사진 수신 실패 시 상대에게 재전송을 요청하는 payload.
+struct CapturedPhotoShareRequest: Codable {
+    let gameID: UUID
+    let requester: PeerID
+    let requestedAt: Date
+}
+
+/// MC를 통해 수신한 사진 재전송 요청 이벤트.
+struct CapturedPhotoShareRequestEvent {
+    let peer: PeerID
+    let request: CapturedPhotoShareRequest
+}
+
 /// 방 목록과 대기실 UI에서 사용하는 광고 스냅샷.
 struct RoomLobbySnapshot: Identifiable, Hashable {
     let id: String
@@ -70,6 +97,15 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
 
     /// MC로 수신한 게임 진행 메시지 이벤트 구독자들.
     private var gameFlowMessageContinuations: [UUID: AsyncStream<GameFlowMessageEvent>.Continuation] = [:]
+
+    /// MC로 수신한 촬영 사진 배치 이벤트 구독자들.
+    private var photoBatchContinuations: [UUID: AsyncStream<CapturedPhotoBatchEvent>.Continuation] = [:]
+
+    /// MC로 수신한 사진 재전송 요청 구독자들.
+    private var photoShareRequestContinuations: [UUID: AsyncStream<CapturedPhotoShareRequestEvent>.Continuation] = [:]
+
+    /// 종료 화면이 구독하기 전에 도착한 사진 배치를 잃지 않기 위한 최근 수신 버퍼.
+    private var photoBatchEventsByGameAndSender: [String: CapturedPhotoBatchEvent] = [:]
 
     /// 호스트 광고를 담당하는 advertiser.
     private var advertiser: MCNearbyServiceAdvertiser?
@@ -217,6 +253,50 @@ final class MultipeerGameSession: NSObject, GameSession, @unchecked Sendable {
             continuation.onTermination = { [weak self] _ in
                 self?.stateQueue.async {
                     self?.gameFlowMessageContinuations.removeValue(forKey: subscriberID)
+                }
+            }
+        }
+    }
+
+    /// MCSession을 통해 수신한 사진 배치 이벤트 스트림을 생성한다.
+    func makeCapturedPhotoBatchStream() -> AsyncStream<CapturedPhotoBatchEvent> {
+        AsyncStream { continuation in
+            let subscriberID = UUID()
+
+            stateQueue.async {
+                self.photoBatchContinuations[subscriberID] = continuation
+                self.debugLog(
+                    "photoBatchStream subscribed id=\(subscriberID) " +
+                        "bufferedEvents=\(self.photoBatchEventsByGameAndSender.count)"
+                )
+                for event in self.photoBatchEventsByGameAndSender.values {
+                    continuation.yield(event)
+                }
+            }
+
+            continuation.onTermination = { [weak self] _ in
+                self?.stateQueue.async {
+                    self?.debugLog("photoBatchStream terminated id=\(subscriberID)")
+                    self?.photoBatchContinuations.removeValue(forKey: subscriberID)
+                }
+            }
+        }
+    }
+
+    /// MCSession을 통해 수신한 사진 재전송 요청 이벤트 스트림을 생성한다.
+    func makeCapturedPhotoShareRequestStream() -> AsyncStream<CapturedPhotoShareRequestEvent> {
+        AsyncStream { continuation in
+            let subscriberID = UUID()
+
+            stateQueue.async {
+                self.photoShareRequestContinuations[subscriberID] = continuation
+                self.debugLog("photoShareRequestStream subscribed id=\(subscriberID)")
+            }
+
+            continuation.onTermination = { [weak self] _ in
+                self?.stateQueue.async {
+                    self?.debugLog("photoShareRequestStream terminated id=\(subscriberID)")
+                    self?.photoShareRequestContinuations.removeValue(forKey: subscriberID)
                 }
             }
         }
@@ -389,6 +469,44 @@ private extension MultipeerGameSession {
         }
     }
 
+    func yieldCapturedPhotoBatchEvent(_ event: CapturedPhotoBatchEvent) {
+        photoBatchEventsByGameAndSender[photoBatchKey(gameID: event.batch.gameID, sender: event.batch.sender)] = event
+        debugLog(
+            "yield photo batch sender=\(event.batch.sender.displayName)(\(event.batch.sender.rawID)) " +
+                "gameID=\(event.batch.gameID) photos=\(event.batch.photos.count) " +
+                "bytes=\(photoByteCount(event.batch.photos)) subscribers=\(photoBatchContinuations.count)"
+        )
+
+        for continuation in photoBatchContinuations.values {
+            continuation.yield(event)
+        }
+    }
+
+    func yieldCapturedPhotoShareRequestEvent(_ event: CapturedPhotoShareRequestEvent) {
+        debugLog(
+            "yield photo share request requester=\(event.request.requester.displayName)(\(event.request.requester.rawID)) " +
+                "gameID=\(event.request.gameID) subscribers=\(photoShareRequestContinuations.count)"
+        )
+
+        for continuation in photoShareRequestContinuations.values {
+            continuation.yield(event)
+        }
+    }
+
+    func photoBatchKey(gameID: UUID, sender: PeerID) -> String {
+        "\(gameID.uuidString)|\(sender.rawID)"
+    }
+
+    func photoByteCount(_ photos: [CapturedPhoto]) -> Int {
+        photos.reduce(0) { $0 + $1.imageData.count }
+    }
+
+    func debugLog(_ message: String) {
+        #if DEBUG
+            print("[MultipeerGameSession] \(message)")
+        #endif
+    }
+
     func sendLocalPeerIdentityOnStateQueue(to targetPeers: [MCPeerID]) {
         guard !targetPeers.isEmpty else { return }
 
@@ -509,6 +627,45 @@ extension MultipeerGameSession: MCSessionDelegate {
                         GameFlowMessageEvent(
                             peer: peer,
                             message: gameFlowMessage
+                        )
+                    )
+
+                case .capturedPhotoBatch:
+                    let batch = try JSONDecoder().decode(
+                        CapturedPhotoBatch.self,
+                        from: message.payload
+                    )
+                    self.knownPeerIDsByDisplayName[peerID.displayName] = batch.sender
+                    self.debugLog(
+                        "received photo batch mcPeer=\(peerID.displayName) " +
+                            "sender=\(batch.sender.displayName)(\(batch.sender.rawID)) " +
+                            "gameID=\(batch.gameID) photos=\(batch.photos.count) " +
+                            "payloadBytes=\(message.payload.count) photoBytes=\(self.photoByteCount(batch.photos))"
+                    )
+
+                    self.yieldCapturedPhotoBatchEvent(
+                        CapturedPhotoBatchEvent(
+                            peer: batch.sender,
+                            batch: batch
+                        )
+                    )
+
+                case .capturedPhotoShareRequest:
+                    let request = try JSONDecoder().decode(
+                        CapturedPhotoShareRequest.self,
+                        from: message.payload
+                    )
+                    self.knownPeerIDsByDisplayName[peerID.displayName] = request.requester
+                    self.debugLog(
+                        "received photo share request mcPeer=\(peerID.displayName) " +
+                            "requester=\(request.requester.displayName)(\(request.requester.rawID)) " +
+                            "gameID=\(request.gameID) payloadBytes=\(message.payload.count)"
+                    )
+
+                    self.yieldCapturedPhotoShareRequestEvent(
+                        CapturedPhotoShareRequestEvent(
+                            peer: request.requester,
+                            request: request
                         )
                     )
                 }
@@ -736,6 +893,126 @@ extension MultipeerGameSession {
         }
     }
 
+    /// 게임 종료 후 촬영 사진 묶음을 연결된 peer에게 전송한다.
+    /// 빈 사진 배열도 전송해서 수신 측이 "이 참여자는 보낼 사진이 없음"을 완료 상태로 알 수 있게 한다.
+    func sendCapturedPhotos(
+        _ photos: [CapturedPhoto],
+        gameID: UUID,
+        to peer: PeerID? = nil
+    ) {
+        stateQueue.async {
+            let targetPeers: [MCPeerID]
+            if let peer {
+                guard let targetPeer = self.connectedMCPeer(for: peer) else {
+                    self.debugLog("failed photo batch send: MCPeerID not found peer=\(peer.displayName)")
+                    return
+                }
+
+                targetPeers = [targetPeer]
+            } else {
+                targetPeers = self.session.connectedPeers
+            }
+
+            guard !targetPeers.isEmpty else {
+                self.debugLog(
+                    "skipped photo batch send: no connected peers " +
+                        "gameID=\(gameID) photos=\(photos.count) photoBytes=\(self.photoByteCount(photos))"
+                )
+                return
+            }
+
+            let photoChunks: [[CapturedPhoto]] = photos.isEmpty ? [[]] : photos.map { [$0] }
+            for (index, chunk) in photoChunks.enumerated() {
+                do {
+                    let batch = CapturedPhotoBatch(
+                        gameID: gameID,
+                        sender: self.localPeer,
+                        photos: chunk,
+                        sentAt: Date()
+                    )
+                    let payload = try JSONEncoder().encode(batch)
+                    let message = MultipeerMessage(
+                        kind: .capturedPhotoBatch,
+                        payload: payload
+                    )
+                    let messageData = try JSONEncoder().encode(message)
+
+                    self.debugLog(
+                        "send photo batch gameID=\(gameID) chunk=\(index + 1)/\(photoChunks.count) " +
+                            "photos=\(chunk.count) totalPhotos=\(photos.count) " +
+                            "photoBytes=\(self.photoByteCount(chunk)) payloadBytes=\(payload.count) " +
+                            "messageBytes=\(messageData.count) targets=\(targetPeers.map(\.displayName))"
+                    )
+                    try self.session.send(
+                        messageData,
+                        toPeers: targetPeers,
+                        with: .reliable
+                    )
+                    self.debugLog(
+                        "send photo batch succeeded chunk=\(index + 1)/\(photoChunks.count) " +
+                            "targets=\(targetPeers.map(\.displayName))"
+                    )
+                } catch {
+                    self.debugLog(
+                        "failed to send photo batch chunk=\(index + 1)/\(photoChunks.count): " +
+                            error.localizedDescription
+                    )
+                }
+            }
+        }
+    }
+
+    /// 사진 수신 실패 시 상대에게 사진 재전송을 요청한다.
+    func sendCapturedPhotoShareRequest(
+        gameID: UUID,
+        to peer: PeerID? = nil
+    ) {
+        stateQueue.async {
+            do {
+                let request = CapturedPhotoShareRequest(
+                    gameID: gameID,
+                    requester: self.localPeer,
+                    requestedAt: Date()
+                )
+                let payload = try JSONEncoder().encode(request)
+                let message = MultipeerMessage(
+                    kind: .capturedPhotoShareRequest,
+                    payload: payload
+                )
+                let messageData = try JSONEncoder().encode(message)
+
+                let targetPeers: [MCPeerID]
+                if let peer {
+                    guard let targetPeer = self.connectedMCPeer(for: peer) else {
+                        self.debugLog("failed photo share request: MCPeerID not found peer=\(peer.displayName)")
+                        return
+                    }
+
+                    targetPeers = [targetPeer]
+                } else {
+                    targetPeers = self.session.connectedPeers
+                }
+
+                guard !targetPeers.isEmpty else {
+                    self.debugLog("skipped photo share request: no connected peers gameID=\(gameID)")
+                    return
+                }
+
+                self.debugLog(
+                    "send photo share request gameID=\(gameID) payloadBytes=\(payload.count) " +
+                        "messageBytes=\(messageData.count) targets=\(targetPeers.map(\.displayName))"
+                )
+                try self.session.send(
+                    messageData,
+                    toPeers: targetPeers,
+                    with: .reliable
+                )
+                self.debugLog("send photo share request succeeded targets=\(targetPeers.map(\.displayName))")
+            } catch {
+                self.debugLog("failed to send photo share request: \(error.localizedDescription)")
+            }
+        }
+    }
     /// 게임 시작 메시지를 전송한다.
     func sendGameStarted(
         participants: [PeerID]? = nil,

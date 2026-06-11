@@ -13,8 +13,6 @@ struct HiderSearchView: View {
 
     var body: some View {
         ZStack {
-            searchBackground // 배경
-
             GameTimer(timeLeft: timeLeft)
                 .frame(width: 171, height: 67)
                 .padding(.top, 84)
@@ -26,19 +24,6 @@ struct HiderSearchView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
         }
         .ignoresSafeArea()
-    }
-
-    private var searchBackground: some View {
-        LinearGradient(
-            colors: [
-                Color(red: 0.20, green: 0.13, blue: 0.09),
-                Color(red: 0.10, green: 0.13, blue: 0.14),
-                Color(red: 0.32, green: 0.24, blue: 0.18)
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .blur(radius: 2)
     }
 
     private var bottomMessage: some View {

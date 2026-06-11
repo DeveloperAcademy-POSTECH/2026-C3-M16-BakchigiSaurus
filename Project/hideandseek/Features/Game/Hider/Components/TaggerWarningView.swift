@@ -13,8 +13,6 @@ struct TaggerWarningView: View {
 
     var body: some View {
         ZStack {
-            backgroundView
-
             VStack {
                 topWarningBar
 
@@ -27,19 +25,6 @@ struct TaggerWarningView: View {
             }
         }
         .ignoresSafeArea()
-    }
-
-    private var backgroundView: some View {
-        LinearGradient(
-            colors: [
-                Color(red: 0.35, green: 0.05, blue: 0.05),
-                Color(red: 0.62, green: 0.18, blue: 0.14),
-                Color(red: 0.78, green: 0.42, blue: 0.36),
-                Color(red: 0.45, green: 0.03, blue: 0.04)
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
     }
 
     private var topWarningBar: some View {

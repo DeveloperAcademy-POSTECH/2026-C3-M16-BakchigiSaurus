@@ -80,7 +80,11 @@ struct GameRootView: View {
             } else {
                 HiderModeView(
                     camera: camera,
-                    timeLeft: timeLeft
+                    photoStore: photoStore,
+                    timeLeft: timeLeft,
+                    photographerID: gameModel.localParticipant?.id ?? gameModel.localPlayerID,
+                    photographerName: gameModel.localParticipant?.name,
+                    photographerRole: gameModel.localParticipant?.role ?? .hider
                 ) {
                     Task {
                         await gameModel.send(.confirmCapture(hiderID: gameModel.localPlayerID))
@@ -89,7 +93,11 @@ struct GameRootView: View {
             }
 
         case .ended:
-            waitingView(title: "게임이 종료됐어요")
+            EndGamePhotoShareView(
+                gameModel: gameModel,
+                mcSession: mcSession,
+                photoStore: photoStore
+            )
         }
     }
 

@@ -19,10 +19,10 @@ final class HiderModeViewModel {
     private let taggedDistanceResetThresholdMeters: Float = 0.35 // 35cm, 잡힘에 대해 아니오를 누른 뒤 다시 잡힘 화면 뜨는 것 방지
     private let nearbyDistanceThresholdMeters: Float = 5.0 // 5m
 
-    private let warningDisplayDuration: UInt64 = 1_000_000_000 // 1초?. 경고 화면 보여주는 시간 (그 후 녹화)
+    private let warningVisibleDuration: UInt64 = 3_000_000_000 // 3초 동안 경고 표시
     private let nearbyCooldownDuration: TimeInterval = 60 // 1분
 
-    private var warningToRecordingTask: Task<Void, Never>? // 녹화 화면으로 전환
+    private var warningDismissTask: Task<Void, Never>?
     private var activeNearbyTaggerID: String? // 경고 발생시킨 술래 ID
     private var nearbyCooldownUntilByTaggerID: [String: Date] = [:] // 경고 발생 후 일정 시간 재발생 금지 기간
     private var ignoresTaggedDistanceUntilSafe = false // 잡힘 확인 루프 예방
@@ -32,7 +32,7 @@ final class HiderModeViewModel {
         taggerDistance = nil
         activeNearbyTaggerID = nil
         ignoresTaggedDistanceUntilSafe = false // 잡힘 거리 무시 상태 해제
-        cancelWarningToRecording()
+        cancelWarningDismiss()
     }
 
     func updateTimeLeft(_ seconds: Int) {
@@ -50,13 +50,13 @@ final class HiderModeViewModel {
         }
 
         guard let distance else {
-            if state == .taggerNearby || state == .recording {
+            if state == .taggerNearby {
                 return
             }
 
             state = .hiding
             activeNearbyTaggerID = nil
-            cancelWarningToRecording()
+            cancelWarningDismiss()
             return
         }
 
@@ -71,13 +71,13 @@ final class HiderModeViewModel {
         // 0.2m 이내면 술래에게 잡힘 화면
         if distance <= taggedDistanceThresholdMeters {
             activeNearbyTaggerID = nil
-            cancelWarningToRecording()
+            cancelWarningDismiss()
             showTaggedCheck()
             return
         }
 
-        // 주변 술래 경고 및 녹화 시, 5m 판정으로 화면을 다시 바꾸지 않음
-        if state == .taggerNearby || state == .recording {
+        // 주변 술래 경고 시, 5m 판정으로 화면을 다시 바꾸지 않음
+        if state == .taggerNearby {
             return
         }
 
@@ -95,51 +95,50 @@ final class HiderModeViewModel {
 
         state = .hiding
         activeNearbyTaggerID = nil
-        cancelWarningToRecording()
+        cancelWarningDismiss()
     }
 
     private func showTaggerWarning() {
         state = .taggerNearby
-        scheduleRecordingIfNeeded()
+        scheduleWarningDismiss()
     }
 
-    /// 녹화 전환 중복 방지
-    private func scheduleRecordingIfNeeded() {
-        guard warningToRecordingTask == nil else {
+    /// 경고를 일정 시간 보여준 뒤 숨는 화면으로 복귀하고 쿨다운을 적용
+    private func scheduleWarningDismiss() {
+        guard warningDismissTask == nil else {
             return
         }
 
-        warningToRecordingTask = Task { [weak self] in
+        warningDismissTask = Task { [weak self] in
             guard let self else {
                 return
             }
 
-            try? await Task.sleep(nanoseconds: self.warningDisplayDuration)
+            try? await Task.sleep(nanoseconds: self.warningVisibleDuration)
 
             guard !Task.isCancelled else {
                 return
             }
 
-            self.state = .recording
-            self.warningToRecordingTask = nil
+            self.dismissWarning()
         }
     }
 
-    /// 2초 녹화가 끝났을 때 호출
-    func finishRecording() {
-        cancelWarningToRecording()
-
+    private func dismissWarning() {
+        warningDismissTask = nil
         if let activeNearbyTaggerID {
             nearbyCooldownUntilByTaggerID[activeNearbyTaggerID] = Date().addingTimeInterval(nearbyCooldownDuration)
         }
 
         activeNearbyTaggerID = nil
-        state = .hiding
+        if state == .taggerNearby {
+            state = .hiding
+        }
     }
 
     /// 잡힘 확인 화면으로 이동
     func showTaggedCheck() {
-        cancelWarningToRecording()
+        cancelWarningDismiss()
         state = .taggedCheck
     }
 
@@ -154,7 +153,7 @@ final class HiderModeViewModel {
         case .negative:
             ignoresTaggedDistanceUntilSafe = true
             activeNearbyTaggerID = nil
-            cancelWarningToRecording()
+            cancelWarningDismiss()
             state = .hiding
             return false
         }
@@ -162,7 +161,7 @@ final class HiderModeViewModel {
 
     /// 초기화
     func reset() {
-        cancelWarningToRecording()
+        cancelWarningDismiss()
 
         state = .hiding
         timeLeft = 600
@@ -185,8 +184,8 @@ final class HiderModeViewModel {
         return false
     }
 
-    private func cancelWarningToRecording() {
-        warningToRecordingTask?.cancel()
-        warningToRecordingTask = nil
+    private func cancelWarningDismiss() {
+        warningDismissTask?.cancel()
+        warningDismissTask = nil
     }
 }
