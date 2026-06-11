@@ -76,27 +76,29 @@ final class NearbyInteractionManager: NSObject {
     /// NI 세션을 시작 준비하는 함수
     /// NISession만 생성한다(거리 전용 준비 상태). 방향 모드 진입 시 camera assistance만 켠다.
     func startSession() {
-#if DEBUG
-        let caps = NISession.deviceCapabilities
-        print("[NIDiag] supportsPreciseDistance=\(caps.supportsPreciseDistanceMeasurement)")
-        print("[NIDiag] supportsCameraAssistance=\(caps.supportsCameraAssistance)")
-        if #available(iOS 16.0, *) {
-            print("[NIDiag] supportsDirectionMeasurement=\(caps.supportsDirectionMeasurement)")
-        }
-        if #available(iOS 17.4, *) {
-            print("[NIDiag] supportsExtendedDistance=\(caps.supportsExtendedDistanceMeasurement)")
-        }
-        let cameraStatus = AVCaptureDevice.authorizationStatus(for: .video)
-        print("[NIDiag] cameraAuthStatus=\(cameraStatus.rawValue) (0=notDetermined 1=restricted 2=denied 3=authorized)")
-        print("[NIDiag] deviceModel=\(UIDevice.current.model) systemVersion=\(UIDevice.current.systemVersion)")
+        #if DEBUG
+            let caps = NISession.deviceCapabilities
+            print("[NIDiag] supportsPreciseDistance=\(caps.supportsPreciseDistanceMeasurement)")
+            print("[NIDiag] supportsCameraAssistance=\(caps.supportsCameraAssistance)")
+            if #available(iOS 16.0, *) {
+                print("[NIDiag] supportsDirectionMeasurement=\(caps.supportsDirectionMeasurement)")
+            }
+            if #available(iOS 17.4, *) {
+                print("[NIDiag] supportsExtendedDistance=\(caps.supportsExtendedDistanceMeasurement)")
+            }
+            let cameraStatus = AVCaptureDevice.authorizationStatus(for: .video)
+            print(
+                "[NIDiag] cameraAuthStatus=\(cameraStatus.rawValue) (0=notDetermined 1=restricted 2=denied 3=authorized)"
+            )
+            print("[NIDiag] deviceModel=\(UIDevice.current.model) systemVersion=\(UIDevice.current.systemVersion)")
 
-        var sysInfo = utsname()
-        uname(&sysInfo)
-        let modelCode = withUnsafePointer(to: &sysInfo.machine) {
-            $0.withMemoryRebound(to: CChar.self, capacity: 1) { ptr in String(cString: ptr) }
-        }
-        print("[NIDiag] modelIdentifier=\(modelCode)")
-#endif
+            var sysInfo = utsname()
+            uname(&sysInfo)
+            let modelCode = withUnsafePointer(to: &sysInfo.machine) {
+                $0.withMemoryRebound(to: CChar.self, capacity: 1) { ptr in String(cString: ptr) }
+            }
+            print("[NIDiag] modelIdentifier=\(modelCode)")
+        #endif
 
         guard NISession.deviceCapabilities.supportsPreciseDistanceMeasurement else {
             state = .unsupported
@@ -122,9 +124,9 @@ final class NearbyInteractionManager: NSObject {
         lastDirectionSampleDebugLogAt = nil
         didLogFirstDirectionSampleInCurrentRun = false
         state = .ready
-#if DEBUG
-        print("[NIDiag] startSession (distance-only, no ARSession)")
-#endif
+        #if DEBUG
+            print("[NIDiag] startSession (distance-only, no ARSession)")
+        #endif
     }
 
     /// 상대에게 전송할 내 NI DiscoveryToken 반환 (가져오기)
@@ -150,8 +152,8 @@ final class NearbyInteractionManager: NSObject {
         sharedTokenWithPeer = true
         debugLog(
             "run (distance mode) " +
-            "localCaps={\(localCapabilitySummary)} " +
-            "peerCaps={\(peerCapabilitySummary(peerToken))}"
+                "localCaps={\(localCapabilitySummary)} " +
+                "peerCaps={\(peerCapabilitySummary(peerToken))}"
         )
     }
 
@@ -204,9 +206,9 @@ final class NearbyInteractionManager: NSObject {
         session.run(directionConfig)
         debugLog(
             "enableDirectionMode run directionRun=\(directionRunSequence) " +
-            "cameraAssist=\(directionConfig.isCameraAssistanceEnabled) autoARSession=true " +
-            "stateBeforeRun=\(state) localCaps={\(localCapabilitySummary)} " +
-            "peerCaps={\(peerCapabilitySummary(peerToken))}"
+                "cameraAssist=\(directionConfig.isCameraAssistanceEnabled) autoARSession=true " +
+                "stateBeforeRun=\(state) localCaps={\(localCapabilitySummary)} " +
+                "peerCaps={\(peerCapabilitySummary(peerToken))}"
         )
         return true
     }
@@ -311,10 +313,10 @@ extension NearbyInteractionManager: NISessionDelegate {
         if shouldLogUpdate(for: reading) {
             debugLog(
                 "didUpdate matched distance=\(format(distance: reading.distance)) " +
-                "horizontalAngle=\(format(angle: reading.horizontalAngle)) " +
-                "direction=\(format(direction: reading.direction)) mode=\(mode) " +
-                "directionRun=\(directionRunSequence) nilStreak=\(directionNilUpdateCount) " +
-                "elapsed=\(format(seconds: directionModeElapsed))"
+                    "horizontalAngle=\(format(angle: reading.horizontalAngle)) " +
+                    "direction=\(format(direction: reading.direction)) mode=\(mode) " +
+                    "directionRun=\(directionRunSequence) nilStreak=\(directionNilUpdateCount) " +
+                    "elapsed=\(format(seconds: directionModeElapsed))"
             )
         }
         onReadingUpdated?(reading)
@@ -351,8 +353,8 @@ extension NearbyInteractionManager: NISessionDelegate {
         state = .suspended
         debugLog(
             "sessionWasSuspended mode=\(mode) " +
-            "cameraAssist=\(formatCameraAssistanceEnabled(session.configuration)) " +
-            "directionRun=\(directionRunSequence)"
+                "cameraAssist=\(formatCameraAssistanceEnabled(session.configuration)) " +
+                "directionRun=\(directionRunSequence)"
         )
     }
 
@@ -368,8 +370,8 @@ extension NearbyInteractionManager: NISessionDelegate {
         session.run(configuration)
         debugLog(
             "sessionSuspensionEnded rerun mode=\(mode) " +
-            "cameraAssist=\(formatCameraAssistanceEnabled(configuration)) " +
-            "directionRun=\(directionRunSequence)"
+                "cameraAssist=\(formatCameraAssistanceEnabled(configuration)) " +
+                "directionRun=\(directionRunSequence)"
         )
     }
 
@@ -400,16 +402,16 @@ extension NearbyInteractionManager: NISessionDelegate {
         let isPeerObject = object?.discoveryToken == peerDiscoveryToken
         debugLog(
             "didUpdateAlgorithmConvergence status=\(format(convergence.status)) " +
-            "object=\(object == nil ? "session" : "nearbyObject") " +
-            "isPeerObject=\(isPeerObject) mode=\(mode) " +
-            "directionRun=\(directionRunSequence) elapsed=\(format(seconds: directionModeElapsed))"
+                "object=\(object == nil ? "session" : "nearbyObject") " +
+                "isPeerObject=\(isPeerObject) mode=\(mode) " +
+                "directionRun=\(directionRunSequence) elapsed=\(format(seconds: directionModeElapsed))"
         )
     }
 
     private func debugLog(_ message: String) {
-#if DEBUG
-        print("[NearbyInteractionManager] \(message) state=\(state)")
-#endif
+        #if DEBUG
+            print("[NearbyInteractionManager] \(message) state=\(state)")
+        #endif
     }
 
     private func shouldLogUpdate(for reading: NearbyInteractionReading) -> Bool {

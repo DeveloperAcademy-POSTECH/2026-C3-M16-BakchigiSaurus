@@ -42,7 +42,7 @@ struct GameRootView: View {
             .onChange(of: gameModel.sharedState.phase, initial: true) { oldPhase, newPhase in
                 debugLog(
                     "phase changed old=\(oldPhase) new=\(newPhase) " +
-                    "isLocalTagger=\(gameModel.isLocalTagger) -> reset tagger proximity tracking"
+                        "isLocalTagger=\(gameModel.isLocalTagger) -> reset tagger proximity tracking"
                 )
                 guard gameModel.isLocalTagger || taggerViewModel != nil else { return }
                 let taggerViewModel = ensureTaggerViewModelIfNeeded()
@@ -144,7 +144,7 @@ struct GameRootView: View {
 
     private func debugLog(_ message: String) {
         #if DEBUG
-        print("[GameRootView] \(message) phase=\(gameModel.sharedState.phase)")
+            print("[GameRootView] \(message) phase=\(gameModel.sharedState.phase)")
         #endif
     }
 }

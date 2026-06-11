@@ -67,18 +67,18 @@ struct HintResultView: View {
     private var iconName: String {
         switch result {
         case .success:
-            return isDirectionalSuccess ? "arrow.up.circle.fill" : "location.circle.fill"
+            isDirectionalSuccess ? "arrow.up.circle.fill" : "location.circle.fill"
         case .failure:
-            return "xmark.circle.fill"
+            "xmark.circle.fill"
         }
     }
 
     private var leadingText: String {
         switch result {
         case .success:
-            return isDirectionalSuccess ? "화살표 방향에" : "근처에"
+            isDirectionalSuccess ? "화살표 방향에" : "근처에"
         case .failure:
-            return "주변에"
+            "주변에"
         }
     }
 }
@@ -87,27 +87,27 @@ private extension HintDisplayResult {
     var overlayColor: Color {
         switch self {
         case .success:
-            return .appSuccess
+            .appSuccess
         case .failure:
-            return .red
+            .red
         }
     }
 
     var trailingText: String {
         switch self {
         case .success:
-            return "이 있어요"
+            "이 있어요"
         case .failure:
-            return "이 없어요"
+            "이 없어요"
         }
     }
 
     var displayDuration: UInt64 {
         switch self {
         case .success:
-            return 7_000_000_000
+            7_000_000_000
         case .failure:
-            return 2_000_000_000
+            2_000_000_000
         }
     }
 }

@@ -67,7 +67,7 @@ final nonisolated class PhotoCaptureProcessor: NSObject, @unchecked Sendable {
 }
 
 extension PhotoCaptureProcessor: @preconcurrency AVCapturePhotoCaptureDelegate {
-    // AVFoundation이 자체 스레드에서 호출한다.
+    /// AVFoundation이 자체 스레드에서 호출한다.
     func photoOutput(
         _ output: AVCapturePhotoOutput,
         didFinishProcessingPhoto photo: AVCapturePhoto,
@@ -173,9 +173,9 @@ actor CaptureService {
     }
 
     private func debugLog(_ message: String) {
-#if DEBUG
-        print("[CaptureService] \(message)")
-#endif
+        #if DEBUG
+            print("[CaptureService] \(message)")
+        #endif
     }
 }
 
@@ -231,13 +231,13 @@ final class CameraModel {
         let actualRunningBefore = await service.isRunning
         debugLog(
             "closeSession requested isReady=\(isReady) " +
-            "modelRunning=\(isSessionRunning) actualRunning=\(actualRunningBefore)"
+                "modelRunning=\(isSessionRunning) actualRunning=\(actualRunningBefore)"
         )
         await service.stop()
         isSessionRunning = await service.isRunning
         debugLog(
             "closeSession finished isReady=\(isReady) " +
-            "modelRunning=\(isSessionRunning)"
+                "modelRunning=\(isSessionRunning)"
         )
     }
 
@@ -246,7 +246,7 @@ final class CameraModel {
         let actualRunningBefore = await service.isRunning
         debugLog(
             "openSession requested didConfigure=\(didConfigure) isReady=\(isReady) " +
-            "modelRunning=\(isSessionRunning) actualRunning=\(actualRunningBefore)"
+                "modelRunning=\(isSessionRunning) actualRunning=\(actualRunningBefore)"
         )
         guard didConfigure else {
             await bootstrap()
@@ -257,7 +257,7 @@ final class CameraModel {
         isSessionRunning = await service.isRunning
         debugLog(
             "openSession finished isReady=\(isReady) " +
-            "modelRunning=\(isSessionRunning)"
+                "modelRunning=\(isSessionRunning)"
         )
     }
 
@@ -292,8 +292,8 @@ final class CameraModel {
     }
 
     private func debugLog(_ message: String) {
-#if DEBUG
-        print("[CameraModel] \(message)")
-#endif
+        #if DEBUG
+            print("[CameraModel] \(message)")
+        #endif
     }
 }

@@ -10,7 +10,7 @@ import SwiftUI
 /// 숨는 사람이 보는 전체  화면 흐름 관리하는 메인 화면
 struct HiderModeView: View {
     let camera: CameraModel
-    var timeLeft: Int? = nil
+    var timeLeft: Int?
     var onCaptureConfirmed: () -> Void = {}
     // 상위 View에서 만든 camera를 받아서 사용
 

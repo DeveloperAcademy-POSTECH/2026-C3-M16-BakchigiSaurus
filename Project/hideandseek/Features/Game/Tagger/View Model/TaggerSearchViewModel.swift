@@ -150,7 +150,8 @@ final class TaggerSearchViewModel {
         gameModel.participants.compactMap { participant in
             guard participant.id != gameModel.localPlayerID,
                   participant.role != .tagger,
-                  participant.status != .captured else {
+                  participant.status != .captured
+            else {
                 return nil
             }
             return participant.id
@@ -173,17 +174,17 @@ final class TaggerSearchViewModel {
                 if shouldLogReading {
                     self.debugLog(
                         "NI reading received distance=\(self.format(distance: reading.distance)) " +
-                        "horizontalAngle=\(self.format(angle: reading.horizontalAngle)) " +
-                        "direction=\(self.format(direction: convertedDirection)) " +
-                        "timestamp=\(self.format(date: reading.timestamp)) " +
-                        "canTrack=\(self.canTrackLocalProximity) activeHiders=\(self.activeHiderIDSummary)"
+                            "horizontalAngle=\(self.format(angle: reading.horizontalAngle)) " +
+                            "direction=\(self.format(direction: convertedDirection)) " +
+                            "timestamp=\(self.format(date: reading.timestamp)) " +
+                            "canTrack=\(self.canTrackLocalProximity) activeHiders=\(self.activeHiderIDSummary)"
                     )
                 }
 
                 guard self.canTrackLocalProximity else {
                     self.debugLog(
                         "NI reading ignored: cannot track local proximity " +
-                        "phase=\(self.gameModel.sharedState.phase) isLocalTagger=\(self.gameModel.isLocalTagger)"
+                            "phase=\(self.gameModel.sharedState.phase) isLocalTagger=\(self.gameModel.isLocalTagger)"
                     )
                     self.resetProximityTracking(reason: "cannot track local proximity")
                     return
@@ -227,10 +228,10 @@ final class TaggerSearchViewModel {
     func beginHintWithDirection(camera: CameraModel) async -> HintDisplayResult? {
         debugLog(
             "beginHintWithDirection start canUseHint=\(canUseHint) " +
-            "cameraRunning=\(camera.isSessionRunning) niState=\(niManager.state) " +
-            "niDirectionActive=\(niManager.isDirectionModeActive) " +
-            "latestDistance=\(format(distance: latestObservedDistance)) " +
-            "state={\(debugStateSummary)}"
+                "cameraRunning=\(camera.isSessionRunning) niState=\(niManager.state) " +
+                "niDirectionActive=\(niManager.isDirectionModeActive) " +
+                "latestDistance=\(format(distance: latestObservedDistance)) " +
+                "state={\(debugStateSummary)}"
         )
 
         guard canUseHint else {
@@ -241,7 +242,7 @@ final class TaggerSearchViewModel {
         guard niManager.canEnterDirectionMode else {
             debugLog(
                 "aborted before camera: NI unavailable " +
-                "state=\(niManager.state) hasSession=\(niManager.canEnterDirectionMode)"
+                    "state=\(niManager.state) hasSession=\(niManager.canEnterDirectionMode)"
             )
             return .failure
         }
@@ -258,7 +259,7 @@ final class TaggerSearchViewModel {
         await camera.closeSession()
         debugLog(
             "beginHintWithDirection camera closed cameraRunning=\(camera.isSessionRunning) " +
-            "niState=\(niManager.state)"
+                "niState=\(niManager.state)"
         )
         try? await Task.sleep(nanoseconds: cameraToDirectionHandoffDelayNanos)
 
@@ -283,7 +284,7 @@ final class TaggerSearchViewModel {
         } else {
             debugLog(
                 "beginHintWithDirection first angle timeout=\(format(seconds: hintDirectionConvergenceTimeout)) " +
-                "-> continue with live/fallback hint"
+                    "-> continue with live/fallback hint"
             )
         }
 
@@ -298,9 +299,9 @@ final class TaggerSearchViewModel {
         }
         debugLog(
             "beginHintWithDirection finished result=\(String(describing: result)) " +
-            "currentHintAngle=\(format(angleRadians: currentHintAngleRadians)) " +
-            "cameraRunning=\(camera.isSessionRunning) niState=\(niManager.state) " +
-            "niDirectionActive=\(niManager.isDirectionModeActive)"
+                "currentHintAngle=\(format(angleRadians: currentHintAngleRadians)) " +
+                "cameraRunning=\(camera.isSessionRunning) niState=\(niManager.state) " +
+                "niDirectionActive=\(niManager.isDirectionModeActive)"
         )
         return result
     }
@@ -310,7 +311,7 @@ final class TaggerSearchViewModel {
     func endHintDirectionMode(camera: CameraModel) async {
         debugLog(
             "endHintDirectionMode start cameraRunning=\(camera.isSessionRunning) " +
-            "niState=\(niManager.state) niDirectionActive=\(niManager.isDirectionModeActive)"
+                "niState=\(niManager.state) niDirectionActive=\(niManager.isDirectionModeActive)"
         )
         let wasDirectionModeActive = isHintDirectionModeActive
         isHintDirectionModeActive = false
@@ -320,8 +321,8 @@ final class TaggerSearchViewModel {
         await camera.openSession()
         debugLog(
             "endHintDirectionMode: NI distance mode + camera reopened " +
-            "wasDirectionModeActive=\(wasDirectionModeActive) " +
-            "cameraRunning=\(camera.isSessionRunning) niState=\(niManager.state)"
+                "wasDirectionModeActive=\(wasDirectionModeActive) " +
+                "cameraRunning=\(camera.isSessionRunning) niState=\(niManager.state)"
         )
     }
 
@@ -341,10 +342,10 @@ final class TaggerSearchViewModel {
     func tapHintButton() async -> HintDisplayResult? {
         debugLog(
             "tapHintButton start canUseHint=\(canUseHint) " +
-            "latestDistance=\(format(distance: latestObservedDistance)) " +
-            "latestAngle=\(format(angle: latestObservedHorizontalAngle)) " +
-            "latestDirection=\(format(direction: latestObservedDirection)) " +
-            "trackingTarget=\(trackingTargetID.map(shortID) ?? "nil")"
+                "latestDistance=\(format(distance: latestObservedDistance)) " +
+                "latestAngle=\(format(angle: latestObservedHorizontalAngle)) " +
+                "latestDirection=\(format(direction: latestObservedDirection)) " +
+                "trackingTarget=\(trackingTargetID.map(shortID) ?? "nil")"
         )
 
         guard canUseHint else {
@@ -360,9 +361,9 @@ final class TaggerSearchViewModel {
                 guard let distance, distance <= 5 else {
                     debugLog(
                         "hint candidate skipped hider=\(shortID(participant.id)) " +
-                        "distance=\(format(distance: distance)) " +
-                        "proximityDistance=\(format(distance: proximity?.lastDistance)) " +
-                        "latestDistance=\(format(distance: latestObservedDistance))"
+                            "distance=\(format(distance: distance)) " +
+                            "proximityDistance=\(format(distance: proximity?.lastDistance)) " +
+                            "latestDistance=\(format(distance: latestObservedDistance))"
                     )
                     return nil
                 }
@@ -371,9 +372,9 @@ final class TaggerSearchViewModel {
                 let direction = currentDirection(for: participant.id, proximity: proximity)
                 debugLog(
                     "hint candidate accepted hider=\(shortID(participant.id)) " +
-                    "distance=\(format(distance: distance)) " +
-                    "horizontalAngle=\(format(angle: horizontalAngle)) " +
-                    "direction=\(format(direction: direction))"
+                        "distance=\(format(distance: distance)) " +
+                        "horizontalAngle=\(format(angle: horizontalAngle)) " +
+                        "direction=\(format(direction: direction))"
                 )
 
                 return HintCandidate(
@@ -395,10 +396,10 @@ final class TaggerSearchViewModel {
 
         debugLog(
             "tapHintButton resolution selectedHider=" +
-            "\(resolution.selectedHiderID.map(shortID) ?? "nil") " +
-            "direction=\(format(direction: resolution.direction)) " +
-            "horizontalAngle=\(format(angle: resolution.horizontalAngle)) " +
-            "remaining=\(resolution.remainingCount)"
+                "\(resolution.selectedHiderID.map(shortID) ?? "nil") " +
+                "direction=\(format(direction: resolution.direction)) " +
+                "horizontalAngle=\(format(angle: resolution.horizontalAngle)) " +
+                "remaining=\(resolution.remainingCount)"
         )
 
         hintDisplayTask?.cancel()
@@ -412,8 +413,8 @@ final class TaggerSearchViewModel {
         isHintActive = result.isSuccess
         debugLog(
             "tapHintButton result=\(result) " +
-            "currentHintAngle=\(format(angleRadians: currentHintAngleRadians)) " +
-            "isHintActive=\(isHintActive)"
+                "currentHintAngle=\(format(angleRadians: currentHintAngleRadians)) " +
+                "isHintActive=\(isHintActive)"
         )
 
         guard result.isSuccess else {
@@ -451,7 +452,7 @@ final class TaggerSearchViewModel {
         let didResume = niManager.resumeSessionIfPossible()
         debugLog(
             "activateProximityTracking reason=\(reason) didResumeNI=\(didResume) " +
-            "state={\(debugStateSummary)}"
+                "state={\(debugStateSummary)}"
         )
     }
 
@@ -513,7 +514,7 @@ final class TaggerSearchViewModel {
             lastLoggedWithinWarningRadius = isWithinWarningRadius
             debugLog(
                 "within warning radius changed distance=\(format(distance: distance)) " +
-                "within5m=\(isWithinWarningRadius) state={\(debugStateSummary)}"
+                    "within5m=\(isWithinWarningRadius) state={\(debugStateSummary)}"
             )
         }
 
@@ -530,7 +531,7 @@ final class TaggerSearchViewModel {
             {
                 debugLog(
                     "recordLocalProximity confirms by reading elapsed=" +
-                    "\(format(seconds: observedAt.timeIntervalSince(enteredAt)))"
+                        "\(format(seconds: observedAt.timeIntervalSince(enteredAt)))"
                 )
                 expandDynamicIsland(observedAt: observedAt)
             }
@@ -547,7 +548,7 @@ final class TaggerSearchViewModel {
 
         debugLog(
             "scheduleLocalProximityConfirmation enteredAt=\(format(date: enteredAt)) " +
-            "delay=\(format(seconds: delay))"
+                "delay=\(format(seconds: delay))"
         )
 
         proximityConfirmationTask = Task { [weak self] in
@@ -556,9 +557,9 @@ final class TaggerSearchViewModel {
 
             await MainActor.run {
                 guard let self else {
-#if DEBUG
-                    print("[TaggerSearchViewModel] confirmation task aborted: self nil")
-#endif
+                    #if DEBUG
+                        print("[TaggerSearchViewModel] confirmation task aborted: self nil")
+                    #endif
                     return
                 }
 
@@ -566,7 +567,7 @@ final class TaggerSearchViewModel {
                 let latestAge = self.latestObservedAt.map { now.timeIntervalSince($0) }
                 self.debugLog(
                     "confirmation task woke enteredAt=\(self.format(date: enteredAt)) " +
-                    "state={\(self.debugStateSummary)} latestAge=\(self.format(seconds: latestAge))"
+                        "state={\(self.debugStateSummary)} latestAge=\(self.format(seconds: latestAge))"
                 )
 
                 guard self.canTrackLocalProximity else {
@@ -582,7 +583,7 @@ final class TaggerSearchViewModel {
                 guard self.localEnteredWarningRadiusAt == enteredAt else {
                     self.debugLog(
                         "confirmation blocked: enteredAt mismatch expected=\(self.format(date: enteredAt)) " +
-                        "actual=\(self.format(date: self.localEnteredWarningRadiusAt))"
+                            "actual=\(self.format(date: self.localEnteredWarningRadiusAt))"
                     )
                     return
                 }
@@ -600,7 +601,7 @@ final class TaggerSearchViewModel {
                 guard distance <= self.warningRadiusMeters else {
                     self.debugLog(
                         "confirmation blocked: distance=\(self.format(distance: distance)) " +
-                        "threshold=\(self.format(distance: self.warningRadiusMeters))"
+                            "threshold=\(self.format(distance: self.warningRadiusMeters))"
                     )
                     return
                 }
@@ -608,8 +609,8 @@ final class TaggerSearchViewModel {
                 guard now.timeIntervalSince(latestObservedAt) <= self.readingStaleDuration else {
                     self.debugLog(
                         "confirmation blocked: latest reading stale age=" +
-                        "\(self.format(seconds: now.timeIntervalSince(latestObservedAt))) " +
-                        "limit=\(self.format(seconds: self.readingStaleDuration))"
+                            "\(self.format(seconds: now.timeIntervalSince(latestObservedAt))) " +
+                            "limit=\(self.format(seconds: self.readingStaleDuration))"
                     )
                     return
                 }
@@ -627,7 +628,7 @@ final class TaggerSearchViewModel {
         if shouldLogStalenessSchedule(at: observedAt) {
             debugLog(
                 "schedule staleness reset observedAt=\(format(date: observedAt)) " +
-                "delay=\(format(seconds: staleDuration))"
+                    "delay=\(format(seconds: staleDuration))"
             )
         }
 
@@ -637,15 +638,15 @@ final class TaggerSearchViewModel {
 
             await MainActor.run {
                 guard let self else {
-#if DEBUG
-                    print("[TaggerSearchViewModel] staleness task aborted: self nil")
-#endif
+                    #if DEBUG
+                        print("[TaggerSearchViewModel] staleness task aborted: self nil")
+                    #endif
                     return
                 }
 
                 self.debugLog(
                     "staleness task woke observedAt=\(self.format(date: observedAt)) " +
-                    "latestObservedAt=\(self.format(date: self.latestObservedAt))"
+                        "latestObservedAt=\(self.format(date: self.latestObservedAt))"
                 )
 
                 guard self.latestObservedAt == observedAt else {
@@ -745,7 +746,7 @@ final class TaggerSearchViewModel {
             if cachedHintHorizontalAngle != nil, shouldLogHintAngleUpdate(at: observedAt) {
                 debugLog(
                     "recordHintHorizontalAngle keep cached angle=" +
-                    "\(format(angle: cachedHintHorizontalAngle)) nil update observedAt=\(format(date: observedAt))"
+                        "\(format(angle: cachedHintHorizontalAngle)) nil update observedAt=\(format(date: observedAt))"
                 )
             }
             return
@@ -762,7 +763,7 @@ final class TaggerSearchViewModel {
         if shouldLogHintAngleUpdate(at: observedAt) {
             debugLog(
                 "recordHintHorizontalAngle cached angle=\(format(angle: horizontalAngle)) " +
-                "observedAt=\(format(date: observedAt))"
+                    "observedAt=\(format(date: observedAt))"
             )
         }
     }
@@ -798,9 +799,9 @@ final class TaggerSearchViewModel {
     }
 
     private func debugLog(_ message: String, function: String = #function) {
-#if DEBUG
-        print("[TaggerSearchViewModel] \(function) \(message)")
-#endif
+        #if DEBUG
+            print("[TaggerSearchViewModel] \(function) \(message)")
+        #endif
     }
 
     private func format(distance: Float?) -> String {
@@ -839,9 +840,9 @@ final class TaggerSearchViewModel {
         return candidates
             .map { candidate in
                 "hider=\(shortID(candidate.hiderID)) " +
-                "distance=\(format(distance: candidate.distance)) " +
-                "angle=\(format(angle: candidate.horizontalAngle)) " +
-                "direction=\(format(direction: candidate.direction))"
+                    "distance=\(format(distance: candidate.distance)) " +
+                    "angle=\(format(angle: candidate.horizontalAngle)) " +
+                    "direction=\(format(direction: candidate.direction))"
             }
             .joined(separator: " | ")
     }
@@ -875,9 +876,9 @@ final class TaggerSearchViewModel {
         guard hiderID == trackingTargetID, didReceiveLocalReading else {
             debugLog(
                 "currentHorizontalAngle nil hider=\(shortID(hiderID)) " +
-                "trackingTarget=\(trackingTargetID.map(shortID) ?? "nil") " +
-                "didReceiveLocalReading=\(didReceiveLocalReading) " +
-                "latestAngle=\(format(angle: latestObservedHorizontalAngle))"
+                    "trackingTarget=\(trackingTargetID.map(shortID) ?? "nil") " +
+                    "didReceiveLocalReading=\(didReceiveLocalReading) " +
+                    "latestAngle=\(format(angle: latestObservedHorizontalAngle))"
             )
             return nil
         }
@@ -885,8 +886,8 @@ final class TaggerSearchViewModel {
         let angle = latestObservedHorizontalAngle ?? cachedHintHorizontalAngle
         debugLog(
             "currentHorizontalAngle hider=\(shortID(hiderID)) " +
-            "angle=\(format(angle: latestObservedHorizontalAngle)) " +
-            "cachedAngle=\(format(angle: cachedHintHorizontalAngle))"
+                "angle=\(format(angle: latestObservedHorizontalAngle)) " +
+                "cachedAngle=\(format(angle: cachedHintHorizontalAngle))"
         )
         return angle
     }

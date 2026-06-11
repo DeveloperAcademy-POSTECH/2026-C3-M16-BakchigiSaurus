@@ -202,19 +202,19 @@ struct TaggerSearchView: View {
 
     private func logRenderState(_ message: String) {
         #if DEBUG
-        print(
-            "[TaggerSearchView] \(message)",
-            "isIslandExpanded=\(viewModel.isIslandExpanded)",
-            "canCapturePhoto=\(viewModel.canCapturePhoto)",
-            "sessionRunning=\(camera.isSessionRunning)",
-            "activeHintResult=\(String(describing: activeHintResult))",
-            "isMeasuringHint=\(isMeasuringHint)",
-            "distance=\(format(distance: viewModel.latestObservedDistance))",
-            "angle=\(format(angle: viewModel.latestObservedHorizontalAngle))",
-            "hintAngle=\(format(angleRadians: viewModel.currentHintAngleRadians))",
-            "within5m=\(viewModel.isHiderWithinWarningRadius)",
-            "confirmedAt=\(format(date: viewModel.localTaggerConfirmationSentAt))"
-        )
+            print(
+                "[TaggerSearchView] \(message)",
+                "isIslandExpanded=\(viewModel.isIslandExpanded)",
+                "canCapturePhoto=\(viewModel.canCapturePhoto)",
+                "sessionRunning=\(camera.isSessionRunning)",
+                "activeHintResult=\(String(describing: activeHintResult))",
+                "isMeasuringHint=\(isMeasuringHint)",
+                "distance=\(format(distance: viewModel.latestObservedDistance))",
+                "angle=\(format(angle: viewModel.latestObservedHorizontalAngle))",
+                "hintAngle=\(format(angleRadians: viewModel.currentHintAngleRadians))",
+                "within5m=\(viewModel.isHiderWithinWarningRadius)",
+                "confirmedAt=\(format(date: viewModel.localTaggerConfirmationSentAt))"
+            )
         #endif
     }
 

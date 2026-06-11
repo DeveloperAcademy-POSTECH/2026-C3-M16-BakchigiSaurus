@@ -60,5 +60,7 @@ final class CapturedPhotoStore {
         photos.removeAll()
     }
 
-    var count: Int { photos.count }
+    var count: Int {
+        photos.count
+    }
 }

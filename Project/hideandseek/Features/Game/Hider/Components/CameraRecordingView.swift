@@ -14,8 +14,8 @@ struct CameraRecordingView: View {
     let isTaggerNearby: Bool // 술래가 가까운지 여부
     let onRecordingFinished: () -> Void // 녹화가 끝난 뒤 상위View에 알려주기 위한 클로저
 
-    // NOTE: 숨는 사람 촬영 UX는 다음 단계로 미룸. 이 화면은 녹화 제거 이후 컴파일만
-    // 맞춰둔 임시 상태다. (실제 사진 촬영은 추후 HiderModeView에 CaptureButton으로 붙임)
+    /// NOTE: 숨는 사람 촬영 UX는 다음 단계로 미룸. 이 화면은 녹화 제거 이후 컴파일만
+    /// 맞춰둔 임시 상태다. (실제 사진 촬영은 추후 HiderModeView에 CaptureButton으로 붙임)
     var body: some View {
         ZStack {
             GameCameraBackground(
