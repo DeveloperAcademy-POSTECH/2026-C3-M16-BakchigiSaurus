@@ -48,6 +48,7 @@ enum NearbyInteractionError: Error {
 
 /// NI가 측정한 거리/ 방향 값
 struct NearbyInteractionReading {
+    let peer: PeerID?
     let distance: Float?
     let direction: SIMD3<Float>?
     let timestamp: Date

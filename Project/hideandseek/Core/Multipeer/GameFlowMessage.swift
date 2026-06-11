@@ -41,6 +41,8 @@ struct GameFlowMessage {
     let seconds: Int?
     let targetPeerRawID: String?
     let targetPeerDisplayName: String?
+    let participantPeerRawIDs: [String]?
+    let participantPeerDisplayNames: [String]?
     let winner: GameFlowWinner?
 
     var referencedPeer: PeerID? {
@@ -54,14 +56,32 @@ struct GameFlowMessage {
         )
     }
 
+    var participantPeers: [PeerID]? {
+        guard let participantPeerRawIDs,
+              let participantPeerDisplayNames,
+              participantPeerRawIDs.count == participantPeerDisplayNames.count
+        else {
+            return nil
+        }
+
+        return zip(participantPeerRawIDs, participantPeerDisplayNames).map { rawID, displayName in
+            PeerID(rawID: rawID, displayName: displayName)
+        }
+    }
+
     /// 게임 시작 메시지를 만든다.
-    static func gameStarted() -> GameFlowMessage {
+    static func gameStarted(
+        participants: [PeerID]? = nil,
+        taggerPeer: PeerID? = nil
+    ) -> GameFlowMessage {
         GameFlowMessage(
             kind: .gameStarted,
             role: nil,
             seconds: nil,
-            targetPeerRawID: nil,
-            targetPeerDisplayName: nil,
+            targetPeerRawID: taggerPeer?.rawID,
+            targetPeerDisplayName: taggerPeer?.displayName,
+            participantPeerRawIDs: participants?.map(\.rawID),
+            participantPeerDisplayNames: participants?.map(\.displayName),
             winner: nil
         )
     }
@@ -77,6 +97,8 @@ struct GameFlowMessage {
             seconds: nil,
             targetPeerRawID: taggerPeer?.rawID,
             targetPeerDisplayName: taggerPeer?.displayName,
+            participantPeerRawIDs: nil,
+            participantPeerDisplayNames: nil,
             winner: nil
         )
     }
@@ -89,6 +111,8 @@ struct GameFlowMessage {
             seconds: seconds,
             targetPeerRawID: nil,
             targetPeerDisplayName: nil,
+            participantPeerRawIDs: nil,
+            participantPeerDisplayNames: nil,
             winner: nil
         )
     }
@@ -101,6 +125,8 @@ struct GameFlowMessage {
             seconds: nil,
             targetPeerRawID: nil,
             targetPeerDisplayName: nil,
+            participantPeerRawIDs: nil,
+            participantPeerDisplayNames: nil,
             winner: nil
         )
     }
@@ -113,6 +139,8 @@ struct GameFlowMessage {
             seconds: nil,
             targetPeerRawID: peer.rawID,
             targetPeerDisplayName: peer.displayName,
+            participantPeerRawIDs: nil,
+            participantPeerDisplayNames: nil,
             winner: nil
         )
     }
@@ -125,6 +153,8 @@ struct GameFlowMessage {
             seconds: nil,
             targetPeerRawID: nil,
             targetPeerDisplayName: nil,
+            participantPeerRawIDs: nil,
+            participantPeerDisplayNames: nil,
             winner: winner
         )
     }
@@ -137,6 +167,8 @@ extension GameFlowMessage: Codable {
         case seconds
         case targetPeerRawID
         case targetPeerDisplayName
+        case participantPeerRawIDs
+        case participantPeerDisplayNames
         case winner
     }
 
@@ -204,6 +236,14 @@ extension GameFlowMessage: Codable {
             String.self,
             forKey: .targetPeerDisplayName
         )
+        self.participantPeerRawIDs = try container.decodeIfPresent(
+            [String].self,
+            forKey: .participantPeerRawIDs
+        )
+        self.participantPeerDisplayNames = try container.decodeIfPresent(
+            [String].self,
+            forKey: .participantPeerDisplayNames
+        )
         self.winner = winner
     }
 
@@ -230,6 +270,14 @@ extension GameFlowMessage: Codable {
         try container.encodeIfPresent(
             targetPeerDisplayName,
             forKey: .targetPeerDisplayName
+        )
+        try container.encodeIfPresent(
+            participantPeerRawIDs,
+            forKey: .participantPeerRawIDs
+        )
+        try container.encodeIfPresent(
+            participantPeerDisplayNames,
+            forKey: .participantPeerDisplayNames
         )
         try container.encodeIfPresent(
             winner?.rawValue,
