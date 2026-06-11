@@ -30,6 +30,12 @@ final class RoomFlowViewModel: ObservableObject {
     @Published private(set) var gameModel: GameModel?
     @Published var selectedTaggerRawID: String?
     @Published var statusMessage: String?
+    
+    @Published private(set) var isReconnecting = false
+
+    private var reconnectTask: Task<Void, Never>?
+    private var reconnectAttempt = 0
+    private let maxReconnectAttempts = 60   // 백오프 포함 수 분간 시도
 
     init(
         session: MultipeerGameSession = MultipeerGameSession(),
@@ -54,6 +60,7 @@ final class RoomFlowViewModel: ObservableObject {
         gameFlowTask?.cancel()
         phaseTransitionTask?.cancel()
         niManager.invalidateSession()
+        reconnectTask?.cancel()
     }
 
     var gameSession: MultipeerGameSession {
@@ -151,6 +158,7 @@ final class RoomFlowViewModel: ObservableObject {
         statusMessage = nil
         currentPeers = [localPeer]
         activateLobby()
+        stopReconnect(reason: "left room")
     }
 
     func toggleTagger(for peer: PeerID) {
@@ -243,8 +251,20 @@ final class RoomFlowViewModel: ObservableObject {
             } else if isHostInActiveRoom {
                 statusMessage = "\(peer.displayName) 님이 참가했습니다"
             }
+            
+            if isReconnecting,
+                   (peer.rawID == activeRoom?.host.rawID || isHostInActiveRoom) {
+                    stopReconnect(reason: "peer reconnected")
+                    statusMessage = "다시 연결됐어요"
+                }
 
         case let .peerDisconnected(peer):
+            if gameStarted {
+                    statusMessage = "상대 연결이 끊어졌어요. 다시 연결 중…"
+                    beginReconnect()
+                    return
+                }
+            
             if !isHostInActiveRoom, peer.rawID == activeRoom?.host.rawID {
                 statusMessage = "호스트 연결이 끊어졌습니다"
                 activeRoom = nil
@@ -402,5 +422,54 @@ final class RoomFlowViewModel: ObservableObject {
                 }
             }
         }
+    }
+    
+    private func beginReconnect() {
+        guard !isReconnecting else { return }
+        isReconnecting = true
+
+        if isHostInActiveRoom {
+            // 호스트: 광고만 유지하면 클라이언트가 재초대한다.
+            session.startHosting()
+            return
+        }
+
+        // 클라이언트: 호스트를 다시 탐색해서 재초대 (백오프 반복).
+        reconnectAttempt = 0
+        reconnectTask?.cancel()
+        reconnectTask = Task { [weak self] in
+            guard let self else { return }
+            self.session.startBrowsing()          // 끊고 멈췄던 탐색 재개
+
+            while !Task.isCancelled,
+                  self.isReconnecting,
+                  self.reconnectAttempt < self.maxReconnectAttempts {
+                self.reconnectAttempt += 1
+
+                if let host = self.activeRoom?.host,
+                   self.session.discoveredRooms.contains(where: { $0.host.rawID == host.rawID }) {
+                    self.session.invite(host)      // 재발견되면 재초대
+                    self.statusMessage = "다시 연결 중… (\(self.reconnectAttempt))"
+                }
+
+                let delay = min(8, 2 * Double(self.reconnectAttempt)) // 2→4→6→8s 캡
+                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            }
+
+            if self.isReconnecting {
+                await MainActor.run {
+                    self.statusMessage = "재연결에 실패했어요. 방을 나가 다시 시도해 주세요."
+                }
+            }
+        }
+    }
+
+    private func stopReconnect(reason: String) {
+        guard isReconnecting else { return }
+        isReconnecting = false
+        reconnectTask?.cancel()
+        reconnectTask = nil
+        reconnectAttempt = 0
+        session.stopBrowsing()   // 재연결 끝나면 다시 탐색 정리
     }
 }

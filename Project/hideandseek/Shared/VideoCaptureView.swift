@@ -13,7 +13,7 @@ import SwiftUI
 
 // 아래 세 뷰는 사용법을 보여주는 예시다. 핵심은:
 //   · 카메라 모델은 루트에서 1개만 만들어 공유한다.
-//   · reveal(블러)과 record(저장) 조건을 페이지마다 다르게 줄 수 있다.
+//   · reveal(블러) 조건을 페이지마다 다르게 줄 수 있다.
 // =====================================================================
 
 // 게임 루트: 카메라 1개를 만들어 게임 내내 유지하고 각 페이지에 주입한다.
@@ -28,7 +28,7 @@ import SwiftUI
 //    }
 // }
 // ```
-// 숨는 사람 화면: 술래가 근접하면 화면이 공개되고 동시에 녹화된다.
+// 숨는 사람 화면: 술래가 근접하면 화면이 공개된다.
 // ```swift
 // struct HiderPage: View {
 //    let camera: CameraModel        // @Observable → 그냥 let으로 받음
@@ -37,8 +37,7 @@ import SwiftUI
 //    var body: some View {
 //        ZStack {
 //            GameCameraBackground(camera: camera,
-//                                 isRevealed: isSeekerNearby,
-//                                 isRecording: isSeekerNearby)
+//                                 isRevealed: isSeekerNearby)
 //            // ... 게임 UI를 위에 얹음
 //        }
 //    }
@@ -46,7 +45,6 @@ import SwiftUI
 // ```
 //
 // 술래 화면: 블러는 "근접 + 힌트 사용 중"일 때만 걷힌다.
-// 단, 녹화는 근접 시점부터 시작한다(힌트 없어도) — reveal과 record 조건을 분리한 예.
 // ```swift
 // struct SeekerPage: View {
 //    let camera: CameraModel
@@ -56,8 +54,7 @@ import SwiftUI
 //    var body: some View {
 //        ZStack {
 //            GameCameraBackground(camera: camera,
-//                                 isRevealed: isHiderNearby && isUsingHint,
-//                                 isRecording: isHiderNearby)
+//                                 isRevealed: isHiderNearby && isUsingHint)
 //            // ... 게임 UI를 위에 얹음
 //        }
 //    }
@@ -108,26 +105,26 @@ struct CameraPreview: UIViewRepresentable {
 
 // =====================================================================
 
-/// 화면 배경에 카메라 미리보기를 깔고, 공개 여부에 따라 블러로 가리는 재사용 컴포넌트.
+/// 화면 배경에 카메라 미리보기를 깔고, 촬영 가능 여부에 따라 블러로 가리는 재사용 컴포넌트.
 ///
-/// 카메라는 항상 켜져 있고(``CameraModel``이 관리), 이 뷰는 두 Bool로만 동작한다.
+/// 카메라는 항상 켜져 있고(``CameraModel``이 관리), 이 뷰는 `isRevealed` 하나로만 동작한다.
 /// 페이지 배경(ZStack 최하단)에 깔아 그 위에 게임 UI를 얹는 용도다.
 ///
+/// `isRevealed`는 "촬영 가능 상태"를 뜻한다.
+///  · true  → 블러 없이 카메라가 보임 = 촬영 가능
+///  · false → 블러로 가림 = 촬영 불가
+///
 /// ```swift
-/// // 숨는 사람: 술래가 가까우면 공개 + 녹화
-/// GameCameraBackground(camera: camera,
-///                      isRevealed: isSeekerNearby,
-///                      isRecording: isSeekerNearby)
+/// // 숨는 사람: 항상 촬영 가능
+/// GameCameraBackground(camera: camera, isRevealed: true)
+/// // 술래: 다이내믹 아일랜드가 확장됐을 때만 촬영 가능
+/// GameCameraBackground(camera: camera, isRevealed: viewModel.isIslandExpanded)
 /// ```
 struct GameCameraBackground: View {
     /// 게임 루트에서 만든 **공유** 카메라 모델.
     let camera: CameraModel
-    /// `false`면 블러로 카메라를 가린다. 공개 조건은 페이지마다 다르게 주입한다.
+    /// `false`면 블러로 카메라를 가린다(촬영 불가). 공개 조건은 페이지마다 다르게 주입한다.
     let isRevealed: Bool
-    /// 값이 바뀌면 녹화 시작/정지가 자동으로 따라온다.
-    let isRecording: Bool
-    /// false면 이 뷰는 preview/blur만 그리고 녹화 상태는 건드리지 않는다.
-    var controlsRecording: Bool = true
 
     var body: some View {
         ZStack {
@@ -142,11 +139,6 @@ struct GameCameraBackground: View {
             }
         }
         .animation(.easeInOut(duration: 0.3), value: isRevealed)
-        // 외부 Bool 변화 → 녹화 제어. initial: true로 첫 진입 상태도 반영.
-        .onChange(of: isRecording, initial: true) { _, shouldRecord in
-            guard controlsRecording else { return }
-            Task { await camera.setRecording(shouldRecord) }
-        }
     }
 }
 

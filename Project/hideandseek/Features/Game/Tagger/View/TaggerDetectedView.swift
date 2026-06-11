@@ -18,8 +18,7 @@ struct TaggerDetectedView: View {
         ZStack(alignment: .top) {
             GameCameraBackground(
                 camera: camera,
-                isRevealed: isHiderNearby && isUsingHint,
-                isRecording: isHiderNearby
+                isRevealed: isHiderNearby && isUsingHint
             )
             .ignoresSafeArea()
 

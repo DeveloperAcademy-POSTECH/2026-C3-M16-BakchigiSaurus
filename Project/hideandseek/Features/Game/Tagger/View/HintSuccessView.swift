@@ -10,9 +10,8 @@ import SwiftUI
 struct HintResultView: View {
     let result: HintDisplayResult
     let timeLeft: Int
+    let angleRadians: Double?
     var onFinished: @MainActor () -> Void = {}
-
-    @State var rotation: Double = 0
 
     var body: some View {
         ZStack {
@@ -23,14 +22,15 @@ struct HintResultView: View {
                 VStack {
                     GameTimer(timeLeft: timeLeft)
                     Spacer()
-                    Image(systemName: result.iconName)
+                    Image(systemName: iconName)
                         .font(.system(size: 200))
-                        .rotationEffect(result == .success ? Angle(degrees: rotation) : .zero)
+                        .rotationEffect(isDirectionalSuccess ? Angle(radians: activeAngleRadians ?? 0) : .zero)
+                        .animation(.easeInOut(duration: 0.15), value: activeAngleRadians)
 
                     Spacer()
                     HStack {
                         VStack(alignment: .leading) {
-                            Text(result.leadingText)
+                            Text(leadingText)
                                 .font(.largeTitle.bold())
                                 .foregroundStyle(.secondary)
                             HStack {
@@ -52,7 +52,33 @@ struct HintResultView: View {
         .task(id: result) {
             try? await Task.sleep(nanoseconds: result.displayDuration)
             guard !Task.isCancelled else { return }
-            await onFinished()
+            onFinished()
+        }
+    }
+
+    private var activeAngleRadians: Double? {
+        angleRadians ?? result.angleRadians
+    }
+
+    private var isDirectionalSuccess: Bool {
+        result.isSuccess && activeAngleRadians != nil
+    }
+
+    private var iconName: String {
+        switch result {
+        case .success:
+            return isDirectionalSuccess ? "arrow.up.circle.fill" : "location.circle.fill"
+        case .failure:
+            return "xmark.circle.fill"
+        }
+    }
+
+    private var leadingText: String {
+        switch result {
+        case .success:
+            return isDirectionalSuccess ? "화살표 방향에" : "근처에"
+        case .failure:
+            return "주변에"
         }
     }
 }
@@ -67,19 +93,6 @@ private extension HintDisplayResult {
         }
     }
 
-    var iconName: String {
-        switch self {
-        case .success:
-            return "arrow.up.circle.fill"
-        case .failure:
-            return "xmark.circle.fill"
-        }
-    }
-
-    var leadingText: String {
-        "화살표 방향에"
-    }
-
     var trailingText: String {
         switch self {
         case .success:
@@ -92,7 +105,7 @@ private extension HintDisplayResult {
     var displayDuration: UInt64 {
         switch self {
         case .success:
-            return 5_000_000_000
+            return 7_000_000_000
         case .failure:
             return 2_000_000_000
         }
@@ -107,8 +120,9 @@ struct HintSuccessView: View {
 
     var body: some View {
         HintResultView(
-            result: .success,
-            timeLeft: timeLeft
+            result: .success(angleRadians: nil),
+            timeLeft: timeLeft,
+            angleRadians: nil
         )
     }
 }

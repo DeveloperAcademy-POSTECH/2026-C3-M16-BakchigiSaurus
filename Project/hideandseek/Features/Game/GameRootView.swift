@@ -10,9 +10,12 @@ import SwiftUI
 @MainActor
 struct GameRootView: View {
     let gameModel: GameModel
+    private let mcSession: MultipeerGameSession
+    private let niManager: NearbyInteractionManager
     @State private var camera = CameraModel()
+    @State private var photoStore = CapturedPhotoStore()
     @State private var currentDate = Date()
-    @State private var taggerViewModel: TaggerSearchViewModel
+    @State private var taggerViewModel: TaggerSearchViewModel?
 
     init(
         gameModel: GameModel,
@@ -20,19 +23,17 @@ struct GameRootView: View {
         niManager: NearbyInteractionManager
     ) {
         self.gameModel = gameModel
-        _taggerViewModel = State(
-            initialValue: TaggerSearchViewModel(
-                gameModel: gameModel,
-                mcSession: mcSession,
-                niManager: niManager
-            )
-        )
+        self.mcSession = mcSession
+        self.niManager = niManager
         debugLog("init")
     }
 
     var body: some View {
         content
             .task {
+                if gameModel.isLocalTagger {
+                    ensureTaggerViewModelIfNeeded()
+                }
                 await camera.bootstrap()
             }
             .task {
@@ -43,6 +44,8 @@ struct GameRootView: View {
                     "phase changed old=\(oldPhase) new=\(newPhase) " +
                     "isLocalTagger=\(gameModel.isLocalTagger) -> reset tagger proximity tracking"
                 )
+                guard gameModel.isLocalTagger || taggerViewModel != nil else { return }
+                let taggerViewModel = ensureTaggerViewModelIfNeeded()
                 taggerViewModel.resetProximityTracking(reason: "GameRootView phase change \(oldPhase)->\(newPhase)")
 
                 if newPhase == .playing, gameModel.isLocalTagger {
@@ -64,11 +67,16 @@ struct GameRootView: View {
 
         case .playing:
             if gameModel.isLocalTagger {
-                TaggerSearchView(
-                    camera: camera,
-                    viewModel: taggerViewModel,
-                    timeLeft: timeLeft
-                )
+                if let taggerViewModel {
+                    TaggerSearchView(
+                        camera: camera,
+                        viewModel: taggerViewModel,
+                        photoStore: photoStore,
+                        timeLeft: timeLeft
+                    )
+                } else {
+                    waitingView(title: "게임을 준비중이에요")
+                }
             } else {
                 HiderModeView(
                     camera: camera,
@@ -112,6 +120,26 @@ struct GameRootView: View {
 
             try? await Task.sleep(nanoseconds: 1_000_000_000)
         }
+    }
+
+    @discardableResult
+    private func ensureTaggerViewModelIfNeeded() -> TaggerSearchViewModel {
+        if let taggerViewModel {
+            return taggerViewModel
+        }
+
+        let viewModel = TaggerSearchViewModel(
+            gameModel: gameModel,
+            mcSession: mcSession,
+            niManager: niManager
+        )
+        taggerViewModel = viewModel
+
+        if gameModel.sharedState.phase == .playing, gameModel.isLocalTagger {
+            viewModel.activateProximityTracking(reason: "GameRootView created tagger view model")
+        }
+
+        return viewModel
     }
 
     private func debugLog(_ message: String) {

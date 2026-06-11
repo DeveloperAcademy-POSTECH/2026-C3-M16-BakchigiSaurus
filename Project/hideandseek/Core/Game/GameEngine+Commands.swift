@@ -153,7 +153,8 @@ extension GameEngine {
             usedAt: usedAt,
             remainingCount: max(0, state.hintCountRemaining - 1),
             selectedHiderID: selectedCandidate?.hiderID,
-            direction: selectedCandidate?.direction
+            direction: selectedCandidate?.direction,
+            horizontalAngle: selectedCandidate?.horizontalAngle
         )
 
         return [makeEnvelope(.hintConsumed(resolution), by: sourcePlayerID, at: usedAt)]
