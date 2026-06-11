@@ -65,22 +65,16 @@ final class CapturedPhotoStore {
     /// 촬영본 1장을 추가한다. 삽입 후 시간순 정렬을 보장한다.
     func add(_ photo: CapturedPhoto) {
         guard !photos.contains(where: { $0.id == photo.id }) else {
-            debugLog("skip duplicate id=\(photo.id) bytes=\(photo.imageData.count)")
             return
         }
 
         photos.append(photo)
         photos.sort { $0.capturedAt < $1.capturedAt }
-        debugLog(
-            "add id=\(photo.id) bytes=\(photo.imageData.count) " +
-                "photographer=\(photo.displayName) role=\(String(describing: photo.photographerRole)) total=\(photos.count)"
-        )
     }
 
     /// 외부 피어에서 받은 사진 묶음을 머지한다. 중복 사진은 ID 기준으로 무시한다.
     func mergeRemote(_ remotePhotos: [CapturedPhoto]) {
         let bytes = remotePhotos.reduce(0) { $0 + $1.imageData.count }
-        debugLog("mergeRemote count=\(remotePhotos.count) bytes=\(bytes) currentTotal=\(photos.count)")
         for photo in remotePhotos {
             add(photo)
         }
@@ -99,9 +93,4 @@ final class CapturedPhotoStore {
         photos.count
     }
 
-    private func debugLog(_ message: String) {
-        #if DEBUG
-            print("[CapturedPhotoStore] \(message)")
-        #endif
-    }
 }

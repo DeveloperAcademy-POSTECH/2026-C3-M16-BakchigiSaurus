@@ -29,7 +29,6 @@ struct GameRootView: View {
         self.gameModel = gameModel
         self.mcSession = mcSession
         self.niManager = niManager
-        debugLog("init")
     }
 
     var body: some View {
@@ -53,10 +52,6 @@ struct GameRootView: View {
                 }
             }
             .onChange(of: gameModel.sharedState.phase, initial: true) { oldPhase, newPhase in
-                debugLog(
-                    "phase changed old=\(oldPhase) new=\(newPhase) " +
-                        "isLocalTagger=\(gameModel.isLocalTagger) -> reset tagger proximity tracking"
-                )
                 guard gameModel.isLocalTagger || taggerViewModel != nil else { return }
                 let taggerViewModel = ensureTaggerViewModelIfNeeded()
                 taggerViewModel.resetProximityTracking(reason: "GameRootView phase change \(oldPhase)->\(newPhase)")
@@ -185,10 +180,6 @@ struct GameRootView: View {
         if gameModel.sharedState.activeCaptureRequests[hiderID] == nil,
            let taggerID = gameModel.sharedState.taggerID
         {
-            debugLog(
-                "confirmLocalHiderCapture creating local capture request " +
-                    "hider=\(hiderID.rawValue) tagger=\(taggerID.rawValue)"
-            )
             await gameModel.send(
                 .observeProximity(
                     hiderID: hiderID,
@@ -200,10 +191,6 @@ struct GameRootView: View {
         }
 
         let events = await gameModel.send(.confirmCapture(hiderID: hiderID), as: hiderID)
-        debugLog(
-            "confirmLocalHiderCapture events=\(events.count) " +
-                "hiderPeer=\(hiderPeer.displayName)(\(hiderPeer.rawID))"
-        )
 
         guard !events.isEmpty else {
             return
@@ -216,10 +203,6 @@ struct GameRootView: View {
         let hiderID = gameModel.localPlayerID
         let hiderPeer = gameModel.localParticipant?.peerID ?? mcSession.localPeer
         let events = await gameModel.send(.rejectCapture(hiderID: hiderID), as: hiderID)
-        debugLog(
-            "rejectLocalHiderCapture events=\(events.count) " +
-                "hiderPeer=\(hiderPeer.displayName)(\(hiderPeer.rawID))"
-        )
 
         guard !events.isEmpty else {
             return
@@ -287,9 +270,4 @@ struct GameRootView: View {
         return viewModel
     }
 
-    private func debugLog(_ message: String) {
-        #if DEBUG
-            print("[GameRootView] \(message) phase=\(gameModel.sharedState.phase)")
-        #endif
-    }
 }

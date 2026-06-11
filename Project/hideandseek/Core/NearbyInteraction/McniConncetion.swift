@@ -59,12 +59,10 @@ final class McniConnection {
 
                     // 같은 peer와 중복 토큰 교환 방지
                     if !tokenExchangePeerRawIDs.contains(peer.rawID) {
-                        print("MC peer Connected:", peer)
                         startNITokenExchange(with: peer)
                     }
 
                 case let .peerDisconnected(peer):
-                    print("MC peer Disconnected:", peer)
 
                     connectedPeersByRawID.removeValue(forKey: peer.rawID)
                     tokenExchangePeerRawIDs.remove(peer.rawID)
@@ -88,12 +86,10 @@ final class McniConnection {
 
         guard let localToken = niManager.getMyDiscoveryToken(for: peer) else {
             tokenExchangePeerRawIDs.remove(peer.rawID)
-            print("Local NI token 생성 실패")
             return
         }
 
         mcSession.sendNIDiscoveryToken(localToken, to: peer)
-        print("Local NI token sent to peer:", peer)
     }
 
     /// NI token 이벤트 구독 예정
@@ -103,7 +99,6 @@ final class McniConnection {
             guard let self else { return }
 
             for await event in mcSession.makeNIDiscoveryTokenStream() {
-                print("NI token received from:", event.peer)
                 niManager.run(with: event.token, peer: event.peer)
             }
         }

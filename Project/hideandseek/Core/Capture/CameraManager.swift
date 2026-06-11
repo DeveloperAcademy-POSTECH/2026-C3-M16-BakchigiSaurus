@@ -139,26 +139,20 @@ actor CaptureService {
 
     /// 세션을 시작한다. (이미 실행 중이면 무시)
     func start() {
-        debugLog("start requested isRunningBefore=\(session.isRunning)")
         guard !session.isRunning else {
-            debugLog("start skipped: already running")
             return
         }
 
         session.startRunning()
-        debugLog("start finished isRunningAfter=\(session.isRunning)")
     }
 
     /// 세션을 정지한다. (힌트 NI 토글, 게임 종료 등)
     func stop() {
-        debugLog("stop requested isRunningBefore=\(session.isRunning)")
         guard session.isRunning else {
-            debugLog("stop skipped: already stopped")
             return
         }
 
         session.stopRunning()
-        debugLog("stop finished isRunningAfter=\(session.isRunning)")
     }
 
     var isRunning: Bool {
@@ -173,11 +167,6 @@ actor CaptureService {
         return try await processor.capture(using: photoOutput, settings: settings)
     }
 
-    private func debugLog(_ message: String) {
-        #if DEBUG
-            print("[CaptureService] \(message)")
-        #endif
-    }
 }
 
 // =====================================================================
@@ -211,7 +200,6 @@ final class CameraModel {
     /// 권한 요청 → 세션 구성 → 시작까지 한 번에 수행한다. 게임 루트에서 **1회만** 호출한다.
     /// 중복 호출은 무시되므로(`isReady` 가드) `.task` 재실행 등에도 안전하다.
     func bootstrap() async {
-        debugLog("bootstrap requested isReady=\(isReady) isSessionRunning=\(isSessionRunning)")
         guard !isReady else { return }
         guard await requestCameraPermission() else { return }
 
@@ -221,34 +209,20 @@ final class CameraModel {
             didConfigure = true
             isReady = true
             isSessionRunning = await service.isRunning
-            debugLog("bootstrap finished isReady=\(isReady) isSessionRunning=\(isSessionRunning)")
         } catch {
-            print("camera setup error:", error)
         }
     }
 
     /// 카메라 세션을 잠깐 닫는다. (힌트 NI 방향 측정을 위해 카메라 자원을 양보할 때)
     func closeSession() async {
         let actualRunningBefore = await service.isRunning
-        debugLog(
-            "closeSession requested isReady=\(isReady) " +
-                "modelRunning=\(isSessionRunning) actualRunning=\(actualRunningBefore)"
-        )
         await service.stop()
         isSessionRunning = await service.isRunning
-        debugLog(
-            "closeSession finished isReady=\(isReady) " +
-                "modelRunning=\(isSessionRunning)"
-        )
     }
 
     /// 카메라 세션을 다시 연다. (힌트 종료 후) 재구성 없이 start만 한다.
     func openSession() async {
         let actualRunningBefore = await service.isRunning
-        debugLog(
-            "openSession requested didConfigure=\(didConfigure) isReady=\(isReady) " +
-                "modelRunning=\(isSessionRunning) actualRunning=\(actualRunningBefore)"
-        )
         guard didConfigure else {
             await bootstrap()
             return
@@ -256,19 +230,13 @@ final class CameraModel {
 
         await service.start()
         isSessionRunning = await service.isRunning
-        debugLog(
-            "openSession finished isReady=\(isReady) " +
-                "modelRunning=\(isSessionRunning)"
-        )
     }
 
     /// 세션을 정지하고 준비 상태를 해제한다. 게임을 완전히 떠날 때 호출한다.
     func stop() async {
-        debugLog("stop requested isReady=\(isReady) isSessionRunning=\(isSessionRunning)")
         await service.stop()
         isReady = false
         isSessionRunning = false
-        debugLog("stop finished isReady=\(isReady) isSessionRunning=\(isSessionRunning)")
     }
 
     /// 한 장 촬영한다. 세션이 안 켜져 있으면 nil. 성공 시 ``CapturedPhoto``를 돌려준다.
@@ -288,10 +256,6 @@ final class CameraModel {
         do {
             let rawData = try await service.capturePhoto()
             let data = normalizedPhotoDataForStory(from: rawData)
-            debugLog(
-                "capturePhoto succeeded rawBytes=\(rawData.count) storedBytes=\(data.count) " +
-                    "photographer=\(photographerName ?? "nil") role=\(String(describing: photographerRole))"
-            )
             return CapturedPhoto(
                 imageData: data,
                 capturedAt: Date(),
@@ -300,7 +264,6 @@ final class CameraModel {
                 photographerRole: photographerRole
             )
         } catch {
-            print("photo capture error:", error)
             return nil
         }
     }
@@ -312,7 +275,6 @@ final class CameraModel {
         compressionQuality: CGFloat = 0.72
     ) -> Data {
         guard let image = UIImage(data: data) else {
-            debugLog("normalize skipped: UIImage decode failed bytes=\(data.count)")
             return data
         }
 
@@ -338,15 +300,9 @@ final class CameraModel {
         }
 
         guard let jpegData = renderedImage.jpegData(compressionQuality: compressionQuality) else {
-            debugLog("normalize skipped: JPEG encode failed bytes=\(data.count)")
             return data
         }
 
-        debugLog(
-            "normalize photo originalSize=\(Int(size.width))x\(Int(size.height)) " +
-                "targetSize=\(Int(targetSize.width))x\(Int(targetSize.height)) " +
-                "rawBytes=\(data.count) jpegBytes=\(jpegData.count)"
-        )
         return jpegData
     }
 
@@ -355,9 +311,4 @@ final class CameraModel {
         await AVCaptureDevice.requestAccess(for: .video)
     }
 
-    private func debugLog(_ message: String) {
-        #if DEBUG
-            print("[CameraModel] \(message)")
-        #endif
-    }
 }

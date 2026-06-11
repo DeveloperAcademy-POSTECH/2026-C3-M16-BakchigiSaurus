@@ -48,30 +48,21 @@ struct HiderModeView: View {
         }
         .onAppear {
             viewModel.startHiding() // 처음 화면
-            debugLog("appear")
         }
         .onChange(of: viewModel.state, initial: true) { _, state in
-            debugLog("state changed -> \(state)")
         }
             .onChange(of: camera.isSessionRunning, initial: true) { _, isRunning in
-                debugLog("camera.isSessionRunning changed -> \(isRunning)")
             }
             .onChange(of: observedTaggerDistance, initial: true) { _, distance in
                 viewModel.updateTaggerDistance(distance, taggerID: observedTaggerID)
-                debugLog("observedTaggerDistance changed -> \(format(distance: distance))")
             }
             .onChange(of: activeCaptureRequest?.requestedAt, initial: true) { _, _ in
                 viewModel.updateCaptureRequest(activeCaptureRequest)
-                debugLog(
-                    "activeCaptureRequest changed -> " +
-                        "\(activeCaptureRequest.map { format(date: $0.requestedAt) } ?? "nil")"
-                )
             }
             .onChange(of: isCaptured, initial: true) { _, isCaptured in
                 if isCaptured {
                     viewModel.markCapturedFromGameState()
                 }
-                debugLog("isCaptured changed -> \(isCaptured)")
             }
     }
 
@@ -132,7 +123,6 @@ struct HiderModeView: View {
     private func capturePhoto() {
         guard !isCapturingPhoto else { return }
         isCapturingPhoto = true
-        debugLog("capture tapped")
 
         Task {
             defer {
@@ -146,12 +136,10 @@ struct HiderModeView: View {
                 photographerName: photographerName,
                 photographerRole: photographerRole
             ) else {
-                debugLog("capture failed: camera returned nil")
                 return
             }
 
             photoStore.add(photo)
-            debugLog("capture stored id=\(photo.id) bytes=\(photo.imageData.count) total=\(photoStore.count)")
         }
     }
 
@@ -172,19 +160,6 @@ struct HiderModeView: View {
         }
     }
 
-    private func debugLog(_ message: String) {
-        #if DEBUG
-            print(
-                "[HiderModeView] \(message)",
-                "state=\(viewModel.state)",
-                "sessionRunning=\(camera.isSessionRunning)",
-                "isCapturing=\(isCapturingPhoto)",
-                "photoCount=\(photoStore.count)",
-                "photographer=\(photographerName ?? "nil")",
-                "role=\(photographerRole)"
-            )
-        #endif
-    }
 
     private func format(distance: Float?) -> String {
         guard let distance else { return "nil" }
