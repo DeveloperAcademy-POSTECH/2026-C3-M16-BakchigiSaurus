@@ -37,6 +37,7 @@ struct CameraBottomGradient: View {
                 startPoint: .top,
                 endPoint: .bottom
             )
+            .padding(.horizontal, -20)
             .frame(height: 260)
             .blur(radius: 10)
             .offset(y: 8)
@@ -45,4 +46,3 @@ struct CameraBottomGradient: View {
         .allowsHitTesting(false)
     }
 }
-
