@@ -17,6 +17,9 @@ enum GameFlowMessageKind: String {
     case countdownStarted
     case searchStarted
     case playerFound
+    case captureRequested
+    case captureRejected
+    case captureConfirmed
     case gameEnded
 }
 
@@ -139,6 +142,48 @@ struct GameFlowMessage {
             seconds: nil,
             targetPeerRawID: peer.rawID,
             targetPeerDisplayName: peer.displayName,
+            participantPeerRawIDs: nil,
+            participantPeerDisplayNames: nil,
+            winner: nil
+        )
+    }
+
+    /// 술래가 특정 숨는 사람과 기기 접촉 수준으로 가까워졌다는 메시지를 만든다.
+    static func captureRequested(hiderPeer: PeerID) -> GameFlowMessage {
+        GameFlowMessage(
+            kind: .captureRequested,
+            role: nil,
+            seconds: nil,
+            targetPeerRawID: hiderPeer.rawID,
+            targetPeerDisplayName: hiderPeer.displayName,
+            participantPeerRawIDs: nil,
+            participantPeerDisplayNames: nil,
+            winner: nil
+        )
+    }
+
+    /// 숨는 사람이 잡힘 요청을 부정했다는 메시지를 만든다.
+    static func captureRejected(hiderPeer: PeerID) -> GameFlowMessage {
+        GameFlowMessage(
+            kind: .captureRejected,
+            role: nil,
+            seconds: nil,
+            targetPeerRawID: hiderPeer.rawID,
+            targetPeerDisplayName: hiderPeer.displayName,
+            participantPeerRawIDs: nil,
+            participantPeerDisplayNames: nil,
+            winner: nil
+        )
+    }
+
+    /// 숨는 사람이 잡힘을 직접 확정했다는 메시지를 만든다.
+    static func captureConfirmed(hiderPeer: PeerID) -> GameFlowMessage {
+        GameFlowMessage(
+            kind: .captureConfirmed,
+            role: nil,
+            seconds: nil,
+            targetPeerRawID: hiderPeer.rawID,
+            targetPeerDisplayName: hiderPeer.displayName,
             participantPeerRawIDs: nil,
             participantPeerDisplayNames: nil,
             winner: nil

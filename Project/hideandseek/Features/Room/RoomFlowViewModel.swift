@@ -247,7 +247,7 @@ final class RoomFlowViewModel: ObservableObject {
         gameFlowTask = Task { [weak self, session] in
             for await event in session.makeGameFlowMessageStream() {
                 await MainActor.run {
-                    self?.handleGameFlowMessage(event.message)
+                    self?.handleGameFlowMessage(event.message, from: event.peer)
                 }
             }
         }
@@ -296,7 +296,7 @@ final class RoomFlowViewModel: ObservableObject {
         }
     }
 
-    private func handleGameFlowMessage(_ message: GameFlowMessage) {
+    private func handleGameFlowMessage(_ message: GameFlowMessage, from peer: PeerID) {
         switch message.kind {
         case .roleAssigned:
             localAssignedRole = message.role
@@ -341,9 +341,177 @@ final class RoomFlowViewModel: ObservableObject {
                 await gameModel.send(.startPlaying())
             }
 
+        case .captureRequested:
+            guard let hiderPeer = message.referencedPeer else {
+                debugLog("captureRequested ignored: missing hider peer from=\(peer.displayName)")
+                return
+            }
+
+            handleCaptureRequested(for: hiderPeer, from: peer)
+
+        case .captureRejected:
+            guard let hiderPeer = message.referencedPeer else {
+                debugLog("captureRejected ignored: missing hider peer from=\(peer.displayName)")
+                return
+            }
+
+            handleCaptureRejected(for: hiderPeer, from: peer)
+
+        case .captureConfirmed:
+            guard let hiderPeer = message.referencedPeer else {
+                debugLog("captureConfirmed ignored: missing hider peer from=\(peer.displayName)")
+                return
+            }
+
+            handleCaptureConfirmed(for: hiderPeer, from: peer)
+
         default:
             break
         }
+    }
+
+    private func handleCaptureRejected(for hiderPeer: PeerID, from senderPeer: PeerID) {
+        guard let gameModel else {
+            debugLog("captureRejected ignored: gameModel=nil")
+            return
+        }
+
+        guard let hiderID = playerID(for: hiderPeer) else {
+            debugLog(
+                "captureRejected ignored: missing hiderID " +
+                    "hider=\(hiderPeer.displayName)(\(hiderPeer.rawID))"
+            )
+            return
+        }
+
+        guard senderPeer.rawID == hiderPeer.rawID else {
+            debugLog(
+                "captureRejected sender mismatch sender=\(senderPeer.displayName)(\(senderPeer.rawID)) " +
+                    "hider=\(hiderPeer.displayName)(\(hiderPeer.rawID))"
+            )
+            return
+        }
+
+        debugLog(
+            "captureRejected apply hider=\(hiderPeer.displayName)(\(hiderPeer.rawID))"
+        )
+
+        Task {
+            let events = await gameModel.send(.rejectCapture(hiderID: hiderID), as: hiderID)
+            await MainActor.run {
+                self.debugLog("captureRejected applied events=\(events.count)")
+            }
+        }
+    }
+
+    private func handleCaptureRequested(for hiderPeer: PeerID, from senderPeer: PeerID) {
+        guard let gameModel else {
+            debugLog("captureRequested ignored: gameModel=nil")
+            return
+        }
+
+        guard let taggerID = playerID(for: senderPeer),
+              let hiderID = playerID(for: hiderPeer)
+        else {
+            debugLog(
+                "captureRequested ignored: missing playerID " +
+                    "sender=\(senderPeer.displayName)(\(senderPeer.rawID)) " +
+                    "hider=\(hiderPeer.displayName)(\(hiderPeer.rawID))"
+            )
+            return
+        }
+
+        debugLog(
+            "captureRequested apply sender=\(senderPeer.displayName)(\(senderPeer.rawID)) " +
+                "hider=\(hiderPeer.displayName)(\(hiderPeer.rawID))"
+        )
+
+        Task {
+            let events = await gameModel.send(
+                .observeProximity(
+                    hiderID: hiderID,
+                    distance: GameProximityRules.captureDistanceThresholdMeters,
+                    direction: nil
+                ),
+                as: taggerID
+            )
+            await MainActor.run {
+                self.debugLog("captureRequested applied events=\(events.count)")
+            }
+        }
+    }
+
+    private func handleCaptureConfirmed(for hiderPeer: PeerID, from senderPeer: PeerID) {
+        guard let gameModel else {
+            debugLog("captureConfirmed ignored: gameModel=nil")
+            return
+        }
+
+        guard let hiderID = playerID(for: hiderPeer) else {
+            debugLog(
+                "captureConfirmed ignored: missing hiderID " +
+                    "hider=\(hiderPeer.displayName)(\(hiderPeer.rawID))"
+            )
+            return
+        }
+
+        guard senderPeer.rawID == hiderPeer.rawID else {
+            debugLog(
+                "captureConfirmed sender mismatch sender=\(senderPeer.displayName)(\(senderPeer.rawID)) " +
+                    "hider=\(hiderPeer.displayName)(\(hiderPeer.rawID))"
+            )
+            return
+        }
+
+        debugLog(
+            "captureConfirmed apply hider=\(hiderPeer.displayName)(\(hiderPeer.rawID))"
+        )
+
+        Task {
+            await self.ensureLocalCaptureRequestIfNeeded(for: hiderID, in: gameModel)
+            let events = await gameModel.send(.confirmCapture(hiderID: hiderID), as: hiderID)
+            await MainActor.run {
+                self.debugLog("captureConfirmed applied events=\(events.count)")
+            }
+        }
+    }
+
+    private func ensureLocalCaptureRequestIfNeeded(for hiderID: PlayerID, in gameModel: GameModel) async {
+        guard gameModel.sharedState.activeCaptureRequests[hiderID] == nil else {
+            return
+        }
+
+        guard let taggerID = gameModel.sharedState.taggerID else {
+            debugLog("ensureLocalCaptureRequest skipped: taggerID=nil")
+            return
+        }
+
+        debugLog(
+            "ensureLocalCaptureRequest hider=\(hiderID.rawValue) tagger=\(taggerID.rawValue)"
+        )
+        await gameModel.send(
+            .observeProximity(
+                hiderID: hiderID,
+                distance: GameProximityRules.captureDistanceThresholdMeters,
+                direction: nil
+            ),
+            as: taggerID
+        )
+    }
+
+    private func playerID(for peer: PeerID) -> PlayerID? {
+        if let playerID = playerIDByPeerRawID[peer.rawID] {
+            return playerID
+        }
+
+        guard let participant = gameModel?.participants.first(where: { participant in
+            participant.peerID?.rawID == peer.rawID
+        }) else {
+            return nil
+        }
+
+        playerIDByPeerRawID[peer.rawID] = participant.id
+        return participant.id
     }
 
     private func makeGameModel(selectedTaggerRawID: String?) -> GameModel {
@@ -515,5 +683,11 @@ final class RoomFlowViewModel: ObservableObject {
         reconnectTask = nil
         reconnectAttempt = 0
         session.stopBrowsing() // 재연결 끝나면 다시 탐색 정리
+    }
+
+    private func debugLog(_ message: String) {
+        #if DEBUG
+            print("[RoomFlowViewModel] \(message)")
+        #endif
     }
 }

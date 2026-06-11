@@ -1071,6 +1071,51 @@ extension MultipeerGameSession {
         )
     }
 
+    /// 술래가 숨는 사람과 접촉 수준으로 가까워졌음을 전송한다.
+    func sendCaptureRequested(
+        hiderPeer: PeerID,
+        to targetPeer: PeerID? = nil
+    ) {
+        debugLog(
+            "send capture requested hider=\(hiderPeer.displayName)(\(hiderPeer.rawID)) " +
+                "target=\(targetPeer?.displayName ?? "all")"
+        )
+        sendGameFlowMessage(
+            .captureRequested(hiderPeer: hiderPeer),
+            to: targetPeer
+        )
+    }
+
+    /// 숨는 사람이 잡힘 요청을 부정했음을 전송한다.
+    func sendCaptureRejected(
+        hiderPeer: PeerID,
+        to targetPeer: PeerID? = nil
+    ) {
+        debugLog(
+            "send capture rejected hider=\(hiderPeer.displayName)(\(hiderPeer.rawID)) " +
+                "target=\(targetPeer?.displayName ?? "all")"
+        )
+        sendGameFlowMessage(
+            .captureRejected(hiderPeer: hiderPeer),
+            to: targetPeer
+        )
+    }
+
+    /// 숨는 사람이 잡힘을 확정했음을 전송한다.
+    func sendCaptureConfirmed(
+        hiderPeer: PeerID,
+        to targetPeer: PeerID? = nil
+    ) {
+        debugLog(
+            "send capture confirmed hider=\(hiderPeer.displayName)(\(hiderPeer.rawID)) " +
+                "target=\(targetPeer?.displayName ?? "all")"
+        )
+        sendGameFlowMessage(
+            .captureConfirmed(hiderPeer: hiderPeer),
+            to: targetPeer
+        )
+    }
+
     /// 게임 종료 메시지를 전송한다.
     func sendGameEnded(
         winner: GameFlowWinner,

@@ -231,6 +231,7 @@ final class TaggerSearchViewModel {
                     direction: convertedDirection,
                     observedAt: reading.timestamp
                 ))
+                self.broadcastCaptureRequests(from: events)
                 if shouldLogReading {
                     self.debugLog("observeProximity sent events=\(events.count) hider=\(self.shortID(hiderID))")
                 }
@@ -926,6 +927,27 @@ final class TaggerSearchViewModel {
             return nil
         }
         .first
+    }
+
+    private func broadcastCaptureRequests(from events: [GameEventEnvelope]) {
+        for envelope in events {
+            guard case let .captureRequested(request) = envelope.event else {
+                continue
+            }
+
+            guard let hiderPeer = peerForHiderID(request.hiderID) else {
+                debugLog(
+                    "capture request broadcast skipped: missing peer hider=\(shortID(request.hiderID))"
+                )
+                continue
+            }
+
+            debugLog(
+                "capture request broadcast hider=\(shortID(request.hiderID)) " +
+                    "peer=\(format(peer: hiderPeer)) requestedAt=\(format(date: request.requestedAt))"
+            )
+            mcSession.sendCaptureRequested(hiderPeer: hiderPeer)
+        }
     }
 
     private func peerForHiderID(_ hiderID: PlayerID) -> PeerID? {

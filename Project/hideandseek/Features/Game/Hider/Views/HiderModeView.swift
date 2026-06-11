@@ -15,7 +15,12 @@ struct HiderModeView: View {
     let photographerID: PlayerID
     let photographerName: String?
     let photographerRole: PlayerRole
+    let observedTaggerDistance: Float?
+    let observedTaggerID: String
+    let activeCaptureRequest: CaptureRequest?
+    let isCaptured: Bool
     var onCaptureConfirmed: () -> Void = {}
+    var onCaptureRejected: () -> Void = {}
     // 상위 View에서 만든 camera를 받아서 사용
 
     /// HiderModeViewModel을 생성
@@ -48,9 +53,26 @@ struct HiderModeView: View {
         .onChange(of: viewModel.state, initial: true) { _, state in
             debugLog("state changed -> \(state)")
         }
-        .onChange(of: camera.isSessionRunning, initial: true) { _, isRunning in
-            debugLog("camera.isSessionRunning changed -> \(isRunning)")
-        }
+            .onChange(of: camera.isSessionRunning, initial: true) { _, isRunning in
+                debugLog("camera.isSessionRunning changed -> \(isRunning)")
+            }
+            .onChange(of: observedTaggerDistance, initial: true) { _, distance in
+                viewModel.updateTaggerDistance(distance, taggerID: observedTaggerID)
+                debugLog("observedTaggerDistance changed -> \(format(distance: distance))")
+            }
+            .onChange(of: activeCaptureRequest?.requestedAt, initial: true) { _, _ in
+                viewModel.updateCaptureRequest(activeCaptureRequest)
+                debugLog(
+                    "activeCaptureRequest changed -> " +
+                        "\(activeCaptureRequest.map { format(date: $0.requestedAt) } ?? "nil")"
+                )
+            }
+            .onChange(of: isCaptured, initial: true) { _, isCaptured in
+                if isCaptured {
+                    viewModel.markCapturedFromGameState()
+                }
+                debugLog("isCaptured changed -> \(isCaptured)")
+            }
     }
 
     @ViewBuilder // 여러 종류 View를 조건에 따라 반환
@@ -74,6 +96,8 @@ struct HiderModeView: View {
                 onConfirmAnswer: { answer in
                     if viewModel.confirmTaggedAnswer(answer) {
                         onCaptureConfirmed()
+                    } else if answer == .negative {
+                        onCaptureRejected()
                     }
                 }
             )
@@ -161,6 +185,15 @@ struct HiderModeView: View {
             )
         #endif
     }
+
+    private func format(distance: Float?) -> String {
+        guard let distance else { return "nil" }
+        return String(format: "%.2fm", distance)
+    }
+
+    private func format(date: Date) -> String {
+        String(format: "%.3f", date.timeIntervalSince1970)
+    }
 }
 
 #Preview {
@@ -169,6 +202,12 @@ struct HiderModeView: View {
         photoStore: CapturedPhotoStore(),
         photographerID: PlayerID(),
         photographerName: "플레이어",
-        photographerRole: .hider
+        photographerRole: .hider,
+        observedTaggerDistance: nil,
+        observedTaggerID: "preview",
+        activeCaptureRequest: nil,
+        isCaptured: false,
+        onCaptureConfirmed: {},
+        onCaptureRejected: {}
     )
 }
