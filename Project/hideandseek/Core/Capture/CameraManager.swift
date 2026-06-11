@@ -166,7 +166,6 @@ actor CaptureService {
         let settings = AVCapturePhotoSettings()
         return try await processor.capture(using: photoOutput, settings: settings)
     }
-
 }
 
 // =====================================================================
@@ -209,8 +208,7 @@ final class CameraModel {
             didConfigure = true
             isReady = true
             isSessionRunning = await service.isRunning
-        } catch {
-        }
+        } catch {}
     }
 
     /// 카메라 세션을 잠깐 닫는다. (힌트 NI 방향 측정을 위해 카메라 자원을 양보할 때)
@@ -310,5 +308,4 @@ final class CameraModel {
     private func requestCameraPermission() async -> Bool {
         await AVCaptureDevice.requestAccess(for: .video)
     }
-
 }

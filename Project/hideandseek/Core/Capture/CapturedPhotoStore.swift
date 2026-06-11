@@ -92,5 +92,4 @@ final class CapturedPhotoStore {
     var count: Int {
         photos.count
     }
-
 }

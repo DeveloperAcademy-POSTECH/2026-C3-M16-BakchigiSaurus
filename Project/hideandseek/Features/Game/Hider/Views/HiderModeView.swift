@@ -49,21 +49,21 @@ struct HiderModeView: View {
         .onAppear {
             viewModel.startHiding() // 처음 화면
         }
-        .onChange(of: viewModel.state, initial: true) { _, state in
+        .onChange(of: viewModel.state, initial: true) { _, _ in
         }
-            .onChange(of: camera.isSessionRunning, initial: true) { _, isRunning in
+        .onChange(of: camera.isSessionRunning, initial: true) { _, _ in
+        }
+        .onChange(of: observedTaggerDistance, initial: true) { _, distance in
+            viewModel.updateTaggerDistance(distance, taggerID: observedTaggerID)
+        }
+        .onChange(of: activeCaptureRequest?.requestedAt, initial: true) { _, _ in
+            viewModel.updateCaptureRequest(activeCaptureRequest)
+        }
+        .onChange(of: isCaptured, initial: true) { _, isCaptured in
+            if isCaptured {
+                viewModel.markCapturedFromGameState()
             }
-            .onChange(of: observedTaggerDistance, initial: true) { _, distance in
-                viewModel.updateTaggerDistance(distance, taggerID: observedTaggerID)
-            }
-            .onChange(of: activeCaptureRequest?.requestedAt, initial: true) { _, _ in
-                viewModel.updateCaptureRequest(activeCaptureRequest)
-            }
-            .onChange(of: isCaptured, initial: true) { _, isCaptured in
-                if isCaptured {
-                    viewModel.markCapturedFromGameState()
-                }
-            }
+        }
     }
 
     @ViewBuilder // 여러 종류 View를 조건에 따라 반환
@@ -159,7 +159,6 @@ struct HiderModeView: View {
             }
         }
     }
-
 
     private func format(distance: Float?) -> String {
         guard let distance else { return "nil" }

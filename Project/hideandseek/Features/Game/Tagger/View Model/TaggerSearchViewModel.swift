@@ -80,7 +80,6 @@ final class TaggerSearchViewModel {
         self.gameModel = gameModel
         self.mcSession = mcSession
         self.niManager = niManager
-
     }
 
     var hintCountRemaining: Int {
@@ -170,8 +169,7 @@ final class TaggerSearchViewModel {
 
             Task { @MainActor in
                 let shouldLogReading = self.shouldLogProximityReading(at: reading.timestamp)
-                if shouldLogReading {
-                }
+                if shouldLogReading {}
 
                 guard self.canTrackLocalProximity else {
                     self.resetProximityTracking(reason: "cannot track local proximity")
@@ -184,13 +182,11 @@ final class TaggerSearchViewModel {
                 }
 
                 guard self.shouldUseReading(for: hiderID, distance: reading.distance) else {
-                    if shouldLogReading {
-                    }
+                    if shouldLogReading {}
                     return
                 }
 
-                if shouldLogReading {
-                }
+                if shouldLogReading {}
 
                 self.recordLocalProximity(
                     distance: reading.distance,
@@ -206,8 +202,7 @@ final class TaggerSearchViewModel {
                     observedAt: reading.timestamp
                 ))
                 self.broadcastCaptureRequests(from: events)
-                if shouldLogReading {
-                }
+                if shouldLogReading {}
             }
         }
     }
@@ -218,7 +213,6 @@ final class TaggerSearchViewModel {
     ///   ``endHintDirectionMode(camera:)``를 호출해 거리 모드 + 카메라를 복구해야 한다.
     /// - Parameter camera: 게임 루트에서 공유 중인 카메라 모델.
     func beginHintWithDirection(camera: CameraModel) async -> HintDisplayResult? {
-
         guard canUseHint else {
             return nil
         }
@@ -254,8 +248,7 @@ final class TaggerSearchViewModel {
 
         let firstAngle = await waitForFirstHorizontalAngle(timeout: hintDirectionConvergenceTimeout)
         if let firstAngle {
-        } else {
-        }
+        } else {}
 
         // 힌트 결과 계산(기존 로직). isHintActive 및 표시 타이머는 tapHintButton이 관리.
         let result = await tapHintButton()
@@ -294,7 +287,6 @@ final class TaggerSearchViewModel {
     }
 
     func tapHintButton() async -> HintDisplayResult? {
-
         guard canUseHint else {
             return nil
         }
@@ -319,12 +311,10 @@ final class TaggerSearchViewModel {
                 )
             }
 
-
         let events = await gameModel.send(.useHint(candidates: candidates))
         guard let resolution = hintResolution(from: events) else {
             return .failure
         }
-
 
         hintDisplayTask?.cancel()
         let result: HintDisplayResult
@@ -445,14 +435,13 @@ final class TaggerSearchViewModel {
         let enteredAt = localEnteredWarningRadiusAt ?? Date()
         let delay = max(0, requiredProximityDuration - Date().timeIntervalSince(enteredAt))
 
-
         proximityConfirmationTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             guard !Task.isCancelled else { return }
 
             await MainActor.run {
                 guard let self else {
-return
+                    return
                 }
 
                 let now = Date()
@@ -496,8 +485,7 @@ return
         proximityStalenessTask?.cancel()
         let staleDuration = readingStaleDuration
 
-        if shouldLogStalenessSchedule(at: observedAt) {
-        }
+        if shouldLogStalenessSchedule(at: observedAt) {}
 
         proximityStalenessTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(staleDuration * 1_000_000_000))
@@ -505,9 +493,8 @@ return
 
             await MainActor.run {
                 guard let self else {
-return
+                    return
                 }
-
 
                 guard self.latestObservedAt == observedAt else {
                     return
@@ -541,8 +528,7 @@ return
         gameModel.sharedState.phase == .playing && gameModel.isLocalTagger
     }
 
-    private func logProximityState(_ state: String) {
-    }
+    private func logProximityState(_ state: String) {}
 
     private func shouldLogProximityReading(at observedAt: Date) -> Bool {
         guard let lastProximityReadingLogAt else {
@@ -596,8 +582,7 @@ return
                 return
             }
 
-            if cachedHintHorizontalAngle != nil, shouldLogHintAngleUpdate(at: observedAt) {
-            }
+            if cachedHintHorizontalAngle != nil, shouldLogHintAngleUpdate(at: observedAt) {}
             return
         }
 
@@ -609,8 +594,7 @@ return
 
         cachedHintHorizontalAngle = horizontalAngle
         cachedHintAngleObservedAt = observedAt
-        if shouldLogHintAngleUpdate(at: observedAt) {
-        }
+        if shouldLogHintAngleUpdate(at: observedAt) {}
     }
 
     private func resetHintDirectionSample() {
@@ -642,7 +626,6 @@ return
         let ids = activeHiderIDs.map(shortID)
         return ids.isEmpty ? "[]" : "[\(ids.joined(separator: ","))]"
     }
-
 
     private func format(distance: Float?) -> String {
         guard let distance else { return "nil" }
@@ -722,8 +705,7 @@ return
             return nil
         }
 
-        let angle = latestObservedHorizontalAngle ?? cachedHintHorizontalAngle
-        return angle
+        return latestObservedHorizontalAngle ?? cachedHintHorizontalAngle
     }
 
     private func hintResolution(from events: [GameEventEnvelope]) -> HintResolution? {

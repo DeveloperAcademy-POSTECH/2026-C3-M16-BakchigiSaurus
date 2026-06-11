@@ -380,11 +380,9 @@ final class RoomFlowViewModel: ObservableObject {
             return
         }
 
-
         Task {
             let events = await gameModel.send(.rejectCapture(hiderID: hiderID), as: hiderID)
-            await MainActor.run {
-            }
+            await MainActor.run {}
         }
     }
 
@@ -399,7 +397,6 @@ final class RoomFlowViewModel: ObservableObject {
             return
         }
 
-
         Task {
             let events = await gameModel.send(
                 .observeProximity(
@@ -409,8 +406,7 @@ final class RoomFlowViewModel: ObservableObject {
                 ),
                 as: taggerID
             )
-            await MainActor.run {
-            }
+            await MainActor.run {}
         }
     }
 
@@ -427,12 +423,10 @@ final class RoomFlowViewModel: ObservableObject {
             return
         }
 
-
         Task {
             await self.ensureLocalCaptureRequestIfNeeded(for: hiderID, in: gameModel)
             let events = await gameModel.send(.confirmCapture(hiderID: hiderID), as: hiderID)
-            await MainActor.run {
-            }
+            await MainActor.run {}
         }
     }
 
@@ -640,5 +634,4 @@ final class RoomFlowViewModel: ObservableObject {
         reconnectAttempt = 0
         session.stopBrowsing() // 재연결 끝나면 다시 탐색 정리
     }
-
 }

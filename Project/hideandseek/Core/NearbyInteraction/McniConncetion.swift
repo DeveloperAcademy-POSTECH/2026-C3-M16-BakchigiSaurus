@@ -63,7 +63,6 @@ final class McniConnection {
                     }
 
                 case let .peerDisconnected(peer):
-
                     connectedPeersByRawID.removeValue(forKey: peer.rawID)
                     tokenExchangePeerRawIDs.remove(peer.rawID)
 

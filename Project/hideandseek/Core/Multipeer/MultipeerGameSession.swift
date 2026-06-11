@@ -471,7 +471,6 @@ private extension MultipeerGameSession {
     }
 
     func yieldCapturedPhotoShareRequestEvent(_ event: CapturedPhotoShareRequestEvent) {
-
         for continuation in photoShareRequestContinuations.values {
             continuation.yield(event)
         }
@@ -484,7 +483,6 @@ private extension MultipeerGameSession {
     func photoByteCount(_ photos: [CapturedPhoto]) -> Int {
         photos.reduce(0) { $0 + $1.imageData.count }
     }
-
 
     func sendLocalPeerIdentityOnStateQueue(to targetPeers: [MCPeerID]) {
         guard !targetPeers.isEmpty else { return }
@@ -502,8 +500,7 @@ private extension MultipeerGameSession {
                 toPeers: targetPeers,
                 with: .reliable
             )
-        } catch {
-        }
+        } catch {}
     }
 }
 
@@ -636,8 +633,7 @@ extension MultipeerGameSession: MCSessionDelegate {
                         )
                     )
                 }
-            } catch {
-            }
+            } catch {}
         }
     }
 
@@ -807,8 +803,7 @@ extension MultipeerGameSession {
                     toPeers: targetPeers,
                     with: .reliable
                 )
-            } catch {
-            }
+            } catch {}
         }
     }
 
@@ -847,8 +842,7 @@ extension MultipeerGameSession {
                     toPeers: targetPeers,
                     with: .reliable
                 )
-            } catch {
-            }
+            } catch {}
         }
     }
 
@@ -896,8 +890,7 @@ extension MultipeerGameSession {
                         toPeers: targetPeers,
                         with: .reliable
                     )
-                } catch {
-                }
+                } catch {}
             }
         }
     }
@@ -941,8 +934,7 @@ extension MultipeerGameSession {
                     toPeers: targetPeers,
                     with: .reliable
                 )
-            } catch {
-            }
+            } catch {}
         }
     }
 
@@ -1076,8 +1068,7 @@ extension MultipeerGameSession: MCNearbyServiceAdvertiserDelegate {
     func advertiser(
         _ advertiser: MCNearbyServiceAdvertiser,
         didNotStartAdvertisingPeer error: Error
-    ) {
-    }
+    ) {}
 }
 
 extension MultipeerGameSession: MCNearbyServiceBrowserDelegate {
@@ -1146,6 +1137,5 @@ extension MultipeerGameSession: MCNearbyServiceBrowserDelegate {
     func browser(
         _ browser: MCNearbyServiceBrowser,
         didNotStartBrowsingForPeers error: Error
-    ) {
-    }
+    ) {}
 }

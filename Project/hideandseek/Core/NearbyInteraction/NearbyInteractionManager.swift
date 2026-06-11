@@ -98,10 +98,8 @@ final class NearbyInteractionManager: NSObject {
     func startSession(for peer: PeerID?) {
         #if DEBUG
             let caps = NISession.deviceCapabilities
-            if #available(iOS 16.0, *) {
-            }
-            if #available(iOS 17.4, *) {
-            }
+            if #available(iOS 16.0, *) {}
+            if #available(iOS 17.4, *) {}
             let cameraStatus = AVCaptureDevice.authorizationStatus(for: .video)
 
             var sysInfo = utsname()
@@ -156,7 +154,7 @@ final class NearbyInteractionManager: NSObject {
         lastDirectionSampleDebugLogAt = nil
         didLogFirstDirectionSampleInCurrentRun = false
         state = .ready
-}
+    }
 
     /// 상대에게 전송할 내 NI DiscoveryToken 반환 (가져오기)
     func getMyDiscoveryToken() -> NIDiscoveryToken? {
@@ -463,8 +461,7 @@ extension NearbyInteractionManager: NISessionDelegate {
         )
 
         recordDirectionUpdateDiagnostics(reading)
-        if shouldLogUpdate(for: reading) {
-        }
+        if shouldLogUpdate(for: reading) {}
         onReadingUpdated?(reading)
     }
 
@@ -574,7 +571,6 @@ extension NearbyInteractionManager: NISessionDelegate {
         let matchedPeerToken = peerRawID.flatMap { peerDiscoveryTokensByRawID[$0] } ?? peerDiscoveryToken
         let isPeerObject = object?.discoveryToken == matchedPeerToken
     }
-
 
     private func shouldLogUpdate(for reading: NearbyInteractionReading) -> Bool {
         if mode == .direction,

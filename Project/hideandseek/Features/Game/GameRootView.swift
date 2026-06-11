@@ -269,5 +269,4 @@ struct GameRootView: View {
 
         return viewModel
     }
-
 }

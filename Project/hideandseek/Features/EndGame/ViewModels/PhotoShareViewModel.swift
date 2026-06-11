@@ -74,7 +74,6 @@ final class PhotoShareViewModel {
         self.participants = snapshots.filter { snapshot in
             seenRawIDs.insert(snapshot.peer.rawID).inserted
         }
-
     }
 
     var rows: [Row] {
@@ -144,7 +143,6 @@ final class PhotoShareViewModel {
             return
         }
 
-
         for participant in retryTargets {
             failedPeerRawIDs.remove(participant.peer.rawID)
             session.sendCapturedPhotoShareRequest(gameID: gameID, to: participant.peer)
@@ -188,8 +186,7 @@ final class PhotoShareViewModel {
         guard isRecentEnough(event.batch.sentAt) else {
             return
         }
-        if event.batch.gameID != gameID {
-        }
+        if event.batch.gameID != gameID {}
 
         photoStore.mergeRemote(event.batch.photos)
         let peerRawID = event.batch.sender.rawID
@@ -212,8 +209,7 @@ final class PhotoShareViewModel {
         guard isRecentEnough(event.request.requestedAt) else {
             return
         }
-        if event.request.gameID != gameID {
-        }
+        if event.request.gameID != gameID {}
 
         session.sendCapturedPhotos(photoStore.photos, gameID: gameID, to: event.request.requester)
     }
@@ -251,7 +247,6 @@ final class PhotoShareViewModel {
     private func isRecentEnough(_ date: Date) -> Bool {
         date >= collectionStartedAt.addingTimeInterval(-acceptedBatchAgeBeforeCollection)
     }
-
 }
 
 private extension [CapturedPhoto] {

@@ -241,8 +241,7 @@ struct TaggerSearchView: View {
             : "가까운 숨은 사람이 있는지 잠시동안 표시됩니다"
     }
 
-    private func logRenderState(_ message: String) {
-}
+    private func logRenderState(_ message: String) {}
 
     private func format(distance: Float?) -> String {
         guard let distance else { return "nil" }
