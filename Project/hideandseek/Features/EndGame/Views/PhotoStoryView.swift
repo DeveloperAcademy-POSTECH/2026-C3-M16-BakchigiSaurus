@@ -56,7 +56,7 @@ struct PhotoStoryView: View {
 
                     Spacer()
                 }
-                .padding(.top, 12)
+                .padding(.top, topControlsPadding(proxy))
 
                 if viewModel.isFinished {
                     finishedOverlay
@@ -74,6 +74,10 @@ struct PhotoStoryView: View {
         .onDisappear {
             viewModel.stop()
         }
+    }
+
+    private func topControlsPadding(_ proxy: GeometryProxy) -> CGFloat {
+        max(proxy.safeAreaInsets.top, 24) + 60
     }
 
     @ViewBuilder
